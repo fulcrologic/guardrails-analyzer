@@ -598,50 +598,60 @@
                                 (seq ~(last sym-arg-list)) (apply ~f ~@sym-arg-list)
                                 :else (~f ~@(butlast sym-arg-list)))
                              `(~f ~@sym-arg-list))]
-         `(~@(remove nil? [arg-list prepost])
-            (let [{~argspec :args ~retspec :ret} ~fspec]
-              ~args-check
-              (let [~f ~real-function
-                    ~ret ~call]
-                ~ret-check
-                ~ret)))))
+         [`(~@(remove nil? [arg-list prepost])
+             (let [{~argspec :args ~retspec :ret} ~fspec]
+               ~args-check
+               (let [~f ~real-function
+                     ~ret ~call]
+                 ~ret-check
+                 ~ret)))
+          ;; TASK: emit static check registrations
+          `(do "STATIC REGISTRATIONS GO HERE")]))
 
      (defn- generate-defn
        [forms private env]
-       (let [conformed-gdefn   (s/conform ::>defn-args forms)
-             fn-bodies         (:bs conformed-gdefn)
-             arity             (key fn-bodies)
-             fn-name           (:name conformed-gdefn)
-             docstring         (:docstring conformed-gdefn)
-             meta-map          (merge (:meta conformed-gdefn)
-                                 (generate-type-annotations env fn-bodies)
-                                 {::guardrails true})
+       (let [conformed-gdefn (s/conform ::>defn-args forms)
+             fn-bodies       (:bs conformed-gdefn)
+             arity           (key fn-bodies)
+             fn-name         (:name conformed-gdefn)
+             docstring       (:docstring conformed-gdefn)
+             meta-map        (merge (:meta conformed-gdefn)
+                               (generate-type-annotations env fn-bodies)
+                               {::guardrails true})
              ;;; Assemble the config
              {:keys [defn-macro emit-spec?] :as config} (cfg/merge-config env (meta fn-name) meta-map)
-             defn-sym          (cond defn-macro (with-meta (symbol defn-macro) {:private private})
-                                     private 'defn-
-                                     :else 'defn)
+             defn-sym        (cond defn-macro (with-meta (symbol defn-macro) {:private private})
+                                   private 'defn-
+                                   :else 'defn)
              ;;; Code generation
-             fdef-body         (generate-fspec-body fn-bodies)
-             fdef              (when (and fdef-body emit-spec?) `(s/fdef ~fn-name ~@fdef-body))
+             fdef-body       (generate-fspec-body fn-bodies)
+             fdef            (when (and fdef-body emit-spec?) `(s/fdef ~fn-name ~@fdef-body))
              individual-arity-fspecs
-                               (map (fn [{:keys [args gspec]}]
-                                      (when gspec
-                                        (gspec->fspec* args gspec true false false)))
-                                 (val fn-bodies))
+                             (map (fn [{:keys [args gspec]}]
+                                    (when gspec
+                                      (gspec->fspec* args gspec true false false)))
+                               (val fn-bodies))
 
-             process-fn-bodies (fn []
-                                 (let [process-cfg {:env     env
-                                                    :config  config
-                                                    :fn-name fn-name}]
-                                   (case arity
-                                     :arity-1 (->> fn-bodies val (process-defn-body process-cfg `(s/fspec ~@fdef-body)))
-                                     :arity-n (map (partial process-defn-body process-cfg)
-                                                individual-arity-fspecs
-                                                (val fn-bodies)))))
-             main-defn         `(~@(remove nil? [defn-sym fn-name docstring meta-map])
-                                  ~@(process-fn-bodies))]
-         `(do ~fdef (declare ~fn-name) ~main-defn)))
+             make-bodies     (fn []
+                               (let [process-cfg {:env     env
+                                                  :config  config
+                                                  :fn-name fn-name}]
+                                 (case arity
+                                   :arity-1 (->> fn-bodies val
+                                              (process-defn-body process-cfg
+                                                `(s/fspec ~@fdef-body)))
+                                   :arity-n (let [pairs (map (partial process-defn-body process-cfg)
+                                                          individual-arity-fspecs
+                                                          (val fn-bodies))]
+                                              [(map first pairs) (map second pairs)]))))
+             [fn-bodies static-checks] (make-bodies)
+             main-defn       `(~@(remove nil? [defn-sym fn-name docstring meta-map])
+                                ~@fn-bodies)]
+         `(do
+            ~fdef
+            (declare ~fn-name)
+            ~main-defn
+            ~static-checks)))
 
      (defmacro emit-specs? []
        (get (cfg/get-env-config) :emit-spec? true))
@@ -726,3 +736,9 @@
            (cljs-env? &env) clj->cljs)))
 
      (s/fdef >fdef :args ::>fdef-args)))
+
+(comment
+  (s/unform ::map-binding (s/conform ::map-binding ['a :a]))
+  (macroexpand-1 '(>defn f [x]
+                    [int? => int?]
+                    x)))
