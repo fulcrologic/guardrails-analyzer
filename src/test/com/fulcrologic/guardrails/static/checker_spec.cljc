@@ -140,3 +140,4 @@
       "Type check each binding and body expression, adding error messages when problems are found."
       (count msgs) => 1
       (subs (first msgs) 0 140) => "file.cljc:11: Argument 1 of (com.fulcrologic.guardrails.static.checker-spec/add a x) should have type number?.\nHowever, the expression ->x<-")))
+
