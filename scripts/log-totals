@@ -1,0 +1,13 @@
+#!/bin/bash
+
+if [ -d timesheets ]; then
+  echo "Adding new totals to the timesheet.log"
+  date >> timesheet.log
+  for n in timesheets/*.edn
+  do 
+    echo $n >> timesheet.log
+    clojure -A:dev:hours $n | tail -1 >> timesheet.log
+  done
+else
+  echo "Please run from project root"
+fi

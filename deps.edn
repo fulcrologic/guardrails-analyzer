@@ -8,6 +8,9 @@
  :aliases {:test      {:extra-paths ["src/test"]
                        :extra-deps  {fulcrologic/fulcro-spec {:mvn/version "3.1.4"}}}
 
+           :hours     {:extra-paths ["src/dev"]
+                       :main-opts   ["-m" "timesheets"]}
+
            :clj-tests {:extra-paths ["src/test"]
                        :main-opts   ["-m" "kaocha.runner"]
                        :extra-deps  {lambdaisland/kaocha {:mvn/version "0.0-590"}}}

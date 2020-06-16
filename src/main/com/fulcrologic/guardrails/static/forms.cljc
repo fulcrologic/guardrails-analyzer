@@ -35,7 +35,7 @@
 
 (comment
   ;; look at the meta on the CLJC conditional in the let
-  (-> @memory (get 'f) (nth 3) second (nth 5) #_meta))
+  (-> @memory (get 'f) (nth 3) second (nth 5) meta))
 
 (defn remember! [s form]
   (swap! memory assoc s form))
@@ -49,6 +49,6 @@
 (>defn f [v]
   (let [{::keys [a]} v
         c #(+ a %)
-        b #?(:clj (+ a 2) :cljs (react/render a))]
+        b #?(:clj (+ a 2) :cljs (.boo react/thing a))]
     (+ a b)))
 

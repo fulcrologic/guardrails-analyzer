@@ -1,0 +1,28 @@
+#!/bin/bash
+
+if [ ! -x scripts/log-totals ]; then
+  echo "Please run from project root, and make sure scripts/log-totals is executable."
+  exit 1
+fi
+
+if [ -z "$1" ]; then
+  echo "Please include your initials"
+  exit 1
+fi
+
+scripts/log-totals
+tail -n 10 timesheet.log
+
+echo "Examine recent history (above). Does this look ok? (enter 'y' to continue)"
+
+read yn
+while [ "y" != "$yn" ]; do
+  echo "Enter 'y' to continue. CTRL-C to abort."
+  read yn
+done
+
+echo "Committing any changes"
+git commit -a -m 'pre-timesheet commit'
+
+today=$(date "+%Y-%m-%d")
+git tag -m "timesheet tag" -s "${today}-$1"
