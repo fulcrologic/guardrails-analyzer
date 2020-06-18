@@ -1,0 +1,48 @@
+== Runtime Capture
+
+This document describes ideas and implementation for doing compile-time capture of the necessary information
+for the checking.
+
+=== Basic Approach
+
+The basic approach is to use a macro to capture the forms in a function:
+
+* Arg list
+* Type signature
+* Body
+
+The CLJ/CLJS envs provide varying levels of detail on the forms (line/file/column). CLJS does better.  We need
+information that allows us to show the function in a UI and highlight a particular form to associate a message with
+it (or send a marker to an IDE).
+
+The error checking may run in passes, and via plugins. Therefore, capturing this metadata and augmenting it so that
+these routines can "point" at the right thing is very important. Therefore we will preserve and augment as follows:
+
+* Emit an expression the re-captures the file/line metadata that is available in `&form`.
+* For every element of the forms, add an "id" that is unique (at least within that function). This could be a UUID, but
+it might be better for this to be an ordinal (i.e. breadth-first form traversal order).
+
+NOTE: It may turn out to be important to be able to track a form over time. For example, let's say we have a feature
+that allows them to say "ignore that problem".  If they then edit the function and move that line, how can we remember
+not to annoy them again with the error they've opted out of? Some kind of expression matching is likely to be needed.
+
+=== Details for Analysis
+
+In order to do the actual analysis we also need to capture the following details:
+
+* For *every* symbol in the function: what does it resolve to? I.e. is it local, or from some other ns? What ns?
+
+=== Details for Efficient Updates
+
+Larger programs may cause significant overhead for checking. We want to do minimal amounts of re-checking. The symbol
+map captured for Analysis gives us the ability to generate a dependency tree: What functions are called by what other
+functions transitively. This graph will change over time.
+
+We should only re-run checks on functions that are affected by a change. Therefore we should track:
+
+* When the macro ran (what time we last captured a function)
+* Deduce, for a ns, when a function has disappeared (i.e. if ANY capture happens on a ns, they should all update, so
+any mismatch on timestamps implies something disappeared).
+* The dependency graph, in a format where we can ask "what functions are affected by the change I just saw"
+* The *hash* of the function's form, so we can detect if it *actually* changed, or was just re-saved. This will dramatically
+reduce the overhead.
