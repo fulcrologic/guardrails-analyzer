@@ -1,0 +1,79 @@
+== General Requirements
+
+Guardrails (GR) is meant to be free OSS that is usable by any project/library, and Guardrails Pro
+(GRP) is meant to be a set of paid features for GR.
+
+=== Seamless General Use
+
+The library needs to satisfy the following constraints for general use:
+
+. Libraries can use it without hurting their community.
+. Free users of GR can upgrade to GRPro without making any source changes.
+. GR and GRP can be on classpath at the same time without ill effect. If you have
+a license, you get GRP features automatically.
+
+Therefore: GRP *uses* GR as a dependency.  The central function and spec macros
+defined in GR will either have to be extensible, or they will have to capture everything
+we need even though GR itself does not use it.
+
+Since capture has space overhead, it will be off by default, and therefore will have
+zero overhead for GR users (it won't even be a documented option in GR).
+
+Actually, it might also be possible to simply have a `:pro true` option that causes
+GR `>defn` to simply re-emit a `grp/>defn` macro, which will only be available if they
+have GRP. This is probably the best option: The core `>defn` macro is in GR, but the option
+simply causes `>defn` to re-emit a GRP `>defn`.
+
+=== Low Development Overhead
+
+GR currently does checking at runtime. We will continue to support this mode of operation,
+but will be adding in static checking. When static checking is enabled it will capture
+the code and place it in a registry. This allows us to create an alternate build
+and runtime in which the static checks can run.
+
+This means that the developer can use their normal REPL-driven development without *any*
+runtime checks in their normal REPL, and can run our static analysis on a separate thread
+(for clj or cljs) in order to keep their flow.
+
+=== Optimized Checking
+
+GRP should be able to analyze the dependency graph and last change timestamps (combined with the hash
+of the function content) to understand what work can be skipped.
+
+=== Targeted Checking
+
+A developer should be able to indicate the primary interest (i.e. the function they are working on)
+so that messages unrelated to that function are muted. Such a mode would probably show the body of
+the function being coded, with any warnings/errors.
+
+=== Generative Testing
+
+It should be trivial to run generative tests on a function via the REPL or the GRP GUI and
+see results.
+
+Ideally there will be a generative testing section where generative tests on all known-pure functions
+are run any time that function's hash changes (or the hash of anything in its deps tree).
+
+=== Pluggable
+
+The static analysis should have hooks that make it easy to add new checkers. The simplest of
+these could simply be passed the functions that have been determined to be stale. Some checks
+may need to re-run in a global way even if there were just local changes. For example, a
+check that looks for specific entries for multi-methods might need to run on any change.
+
+=== Environment State
+
+It will be necessary to reload namespaces in order to ensure we "unload" things
+that have been renamed or removed. It will also be necessary to figure out
+how to "uninstall" things that relate to protocols,
+mutlimethods, and other things that "capture" state in libraries (i.e. source not in
+the current project). Another example that is important is Clojure Spec's registry,
+since a spec might be *removed* from code, the namespace reloaded, but the
+registry would still have it (and we rely on them).
+
+Multimethods and protocols *live* in the namespace in which they are declared; therefore,
+reloading those namespaces should effectively *clear* those.
+
+It's probably true that we only care about *augmented* protocols and multimethods, so perhaps
+we use our own `>defmulti` and `>defprotocol`, and that will give us a clear hook into
+dealing with their internal state over time.
