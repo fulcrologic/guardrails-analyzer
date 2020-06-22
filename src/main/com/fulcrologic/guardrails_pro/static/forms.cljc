@@ -1,5 +1,5 @@
-(ns com.fulcrologic.guardrails.static.forms
-  #?(:cljs (:require-macros [com.fulcrologic.guardrails.static.forms :refer [>defn]]))
+(ns com.fulcrologic.guardrails-pro.static.forms
+  #?(:cljs (:require-macros [com.fulcrologic.guardrails-pro.static.forms :refer [>defn]]))
   (:require
     [clojure.spec.alpha :as s]
     #?(:cljs ["react" :as react]))
@@ -48,7 +48,7 @@
 
 (>defn f [v]
   (let [{::keys [a]} v
-        c #(+ a %)
+        c         #(+ a %)
         b #?(:clj (+ a 2) :cljs (.boo react/thing a))]
     (+ a b)))
 

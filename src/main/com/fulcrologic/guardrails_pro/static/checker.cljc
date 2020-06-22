@@ -1,5 +1,5 @@
-(ns com.fulcrologic.guardrails.static.checker
-  #?(:cljs (:require-macros [com.fulcrologic.guardrails.static.checker :refer [function-assertions >>defn]]))
+(ns com.fulcrologic.guardrails-pro.static.checker
+  #?(:cljs (:require-macros [com.fulcrologic.guardrails-pro.static.checker :refer [function-assertions >>defn]]))
   (:require
     #?(:clj [cljs.analyzer])
     [clojure.spec.alpha :as s]

@@ -1,13 +1,13 @@
-(ns com.fulcrologic.guardrails.static.checker-spec
+(ns com.fulcrologic.guardrails-pro.static.checker-spec
   (:require
-    [com.fulcrologic.guardrails.static.checker :as checker #?@(:cljs [:refer [Literal ASymbol Call Unknown]])]
+    [com.fulcrologic.guardrails-pro.static.checker :as checker #?@(:cljs [:refer [Literal ASymbol Call Unknown]])]
     [fulcro-spec.core :refer [specification assertions behavior component]]
     [taoensso.timbre :as log]
     [clojure.spec.alpha :as s]
     [clojure.test :refer [deftest is]])
   #?(:clj
      (:import
-       [com.fulcrologic.guardrails.static.checker Literal Call ASymbol])))
+       [com.fulcrologic.guardrails-pro.static.checker Literal Call ASymbol])))
 
 (specification "recognize"
   (let [s (checker/recognize {} 'a)
