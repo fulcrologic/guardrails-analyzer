@@ -1,4 +1,5 @@
 (ns com.fulcrologic.guardrails-pro.static.checker
+  "Implementation of the core static checking architecture."
   #?(:cljs (:require-macros [com.fulcrologic.guardrails-pro.static.checker :refer [function-assertions >>defn]]))
   (:require
     #?(:clj [cljs.analyzer])
