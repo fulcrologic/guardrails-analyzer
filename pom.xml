@@ -5,7 +5,7 @@
     <groupId>com.fulcrologic</groupId>
     <artifactId>guardrails-pro</artifactId>
     <packaging>jar</packaging>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>1.0.0-SNAPSHOT</version>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>

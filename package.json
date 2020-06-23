@@ -9,10 +9,12 @@
     "karma-chrome-launcher": "2.2.0",
     "karma-cljs-test": "0.1.0",
     "karma-firefox-launcher": "1.1.0",
-    "shadow-cljs": "2.8.67"
+    "shadow-cljs": "2.10.13"
   },
   "author": "Tony Kay",
   "license": "MIT",
   "dependencies": {
+    "react": "^16.13.1",
+    "react-dom": "^16.13.1"
   }
 }
