@@ -302,7 +302,7 @@
      (defn ~sym ~arglist ~@body)
      ~(apply function-assertions* &env &form sym arglist spec body)))
 
-(defn check [sym]
+(defn ^:export check [sym]
   (let [target (get-in @registry [sym])
         checks (get target :checks)
         nspc   (some-> target :name namespace)

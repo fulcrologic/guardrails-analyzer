@@ -9,8 +9,4 @@
   (app/mount! app root/Root "checker"))
 
 (defn ^:export init []
-  (let [body js/document.body
-        div  (.createElement js/document "div")]
-    (set! (.-id div) "checker")
-    (.appendChild body div))
   (app/mount! app root/Root "checker"))

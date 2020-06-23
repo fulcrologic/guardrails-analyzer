@@ -1,28 +1,32 @@
-{:deps   {:aliases [:test :dev]}
- :nrepl  {:port 9000}
+{:deps     {:aliases [:test :dev :tooling]}
+ :nrepl    {:port 9000}
  :dev-http {9001 "resources/public"}
- :builds {:guardrailspro {:target     :browser
-                          :output-dir "resources/public/js/guardrails"
-                          :asset-path "/js/guardrails"
-                          :dev        {:compiler-options {:external-config {:guardrails {}}}}
-                          :modules    {:main {:init-fn com.fulcrologic.guardrails-pro.ui.main-ui/init}}
-                          :devtools   {:preloads   [com.fulcrologic.fulcro.inspect.preload]
-                                       :after-load com.fulcrologic.guardrails-pro.ui.main-ui/reload}}
+ :builds   {:guardrailspro {:target           :browser
+                            :output-dir       "resources/public/js/guardrails"
+                            :asset-path       "/js/guardrails"
+                            :dev              {:compiler-options {:external-config {:guardrails {}}}}
+                            :compiler-options {:optimizations :simple}
+                            :modules          {:main {:entries [com.fulcrologic.guardrails-pro.ui.main-ui
+                                                                com.fulcrologic.guardrails-pro.runtime.artifacts
+                                                                com.fulcrologic.guardrails-pro.static.checker
+                                                                com.fulcrologic.guardrails-pro.ui.main-ui]}}
+                            :devtools         {:preloads   [com.fulcrologic.fulcro.inspect.preload]
+                                               :after-load com.fulcrologic.guardrails-pro.ui.main-ui/reload}}
 
-          :test          {:target           :browser-test
-                          :test-dir         "resources/public/js/test"
-                          :ns-regexp        "-spec$"
-                          :compiler-options {:static-fns      false
-                                             :external-config {:guardrails {:throw? false}}}
-                          :devtools         {:http-port          9002
-                                             :http-resource-root "public"
-                                             :http-root          "resources/public/js/test"}}
+            :test          {:target           :browser-test
+                            :test-dir         "resources/public/js/test"
+                            :ns-regexp        "-spec$"
+                            :compiler-options {:static-fns      false
+                                               :external-config {:guardrails {:throw? false}}}
+                            :devtools         {:http-port          9002
+                                               :http-resource-root "public"
+                                               :http-root          "resources/public/js/test"}}
 
-          :ci-tests      {:target     :karma
-                          :dev        {:compiler-options {:static-fns      false
-                                                          :external-config {:guardrails {:throw? true}}}}
-                          :release    {:compiler-options {:static-fns false}}
-                          :js-options {:js-provider :shadow}
-                          :output-to  "target/ci.js"
-                          :ns-regexp  "-spec$"}}}
+            :ci-tests      {:target     :karma
+                            :dev        {:compiler-options {:static-fns      false
+                                                            :external-config {:guardrails {:throw? true}}}}
+                            :release    {:compiler-options {:static-fns false}}
+                            :js-options {:js-provider :shadow}
+                            :output-to  "target/ci.js"
+                            :ns-regexp  "-spec$"}}}
 

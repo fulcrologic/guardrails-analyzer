@@ -5,7 +5,7 @@
 
 (defonce memory (atom {}))
 
-(defn remember!
+(defn ^:export remember!
   "Remember the given `form` under key `s` (typically the function's FQ sym)."
   [s form]
   (swap! memory assoc s form))

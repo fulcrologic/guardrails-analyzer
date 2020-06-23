@@ -25,3 +25,10 @@
                                form))
         (symbol? form) `(quote ~form)
         :else form))))
+
+(comment
+  (binding [*compile-path* "/Users/tonykay/fulcrologic/guardrails-pro/src/main"]
+    (compile 'com.fulcrologic.guardrails-pro.static.forms)
+    (compile 'com.fulcrologic.guardrails-pro.static.checker)
+    (compile 'com.fulcrologic.guardrails-pro.runtime.artifacts)
+    ))
