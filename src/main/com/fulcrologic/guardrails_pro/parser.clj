@@ -1,5 +1,7 @@
 (ns com.fulcrologic.guardrails-pro.parser
-  (:require [taoensso.timbre :as log])
+  (:require
+    [com.fulcrologic.guardrails-pro.static.forms :as forms]
+    [taoensso.timbre :as log])
   (:import (clojure.lang Cons)))
 
 (defn function-name [[result [nm :as args]]]
@@ -21,13 +23,18 @@
       [r args]
       (if a
         (recur
-          (update r :argument-types (fnil conj []) a)
+          (-> r
+            (update :argument-types (fnil conj []) `(quote ~a))
+            (update :argument-specs (fnil conj []) a))
           as
           (first as)
           (next as))
         (throw (ex-info "Syntax error in argument spec. Expected a return type." {}))))))
 
-(defn arg-predicates [[result [lookahead & remainder :as args] :as env]]
+(defn replace-args [lambda new-arglist]
+  (apply list (first lambda) new-arglist (rest (rest lambda))))
+
+(defn arg-predicates [[result [lookahead & remainder :as args] :as env] arglist]
   (if (#{:st '|} lookahead)
     (loop [r    result
            args remainder
@@ -37,7 +44,7 @@
         [r args]
         (if a
           (recur
-            (update r :argument-predicates (fnil conj []) a)
+            (update r :argument-predicates (fnil conj []) (replace-args a arglist))
             as
             (first as)
             (next as))
@@ -46,7 +53,9 @@
 
 (defn return-type [[result [lookahead t & remainder :as args]]]
   (if (#{:ret '=>} lookahead)
-    [(assoc result :return-type t) remainder]
+    [(assoc result
+       :return-spec t
+       :return-type `(quote ~t)) remainder]
     (throw (ex-info "Syntax error. Expected return type" {}))))
 
 (defn such-that [[result [lookahead & remainder :as args] :as env]]
@@ -71,11 +80,11 @@
     [(assoc result :generator (first remainder)) []]
     env))
 
-(defn parse-gspec [spec]
+(defn parse-gspec [spec arglist]
   (first
     (-> [{} spec]
       (arg-specs)
-      (arg-predicates)
+      (arg-predicates arglist)
       (return-type)
       (such-that)
       (generator))))
@@ -89,9 +98,10 @@
                (count arglist)))))
 
 (defn single-arity [[result [arglist spec & forms :as args]]]
-  [(assoc result (body-arity args) {:arglist arglist
-                                    :gspec   (parse-gspec spec)
-                                    :forms   forms})])
+  [(assoc result (body-arity args) {:arglist  `(quote ~arglist)
+                                    :gspec    (parse-gspec spec arglist)
+                                    :raw-body `(quote ~(vec forms))
+                                    :body     (forms/form-expression (vec forms))})])
 
 (defn multiple-arities [[result args]]
   (loop [r           result
@@ -113,7 +123,7 @@
     (multiple-arities env)
     (single-arity env)))
 
-(defn parse-function
+(defn parse-defn-args
   "Parses the body of a function and returns a map describing what it found."
   [args]
   (first
@@ -124,11 +134,10 @@
 
 
 (comment
-  (parse-function '(nm "hello"
-                     [a] [string? => int?]
-                     (str a)
-                     ))
-  (parse-function '(nm "hello"
-                     ([a] [string? => int?] (+ 1 a))
-                     ([a b] [string? string? => int?] (+ a b))
-                     ([a b & more] [string? string? => int?] (apply + a b more)))))
+  (parse-defn-args '(nm "hello"
+                      [a] [string? | #(not (empty? a)) => int?]
+                      (str a)))
+  (parse-defn-args '(nm "hello"
+                      ([a] [string? | #(> 1 a) => int? | #(pos-int? %)] (+ 1 a))
+                      ([a b] [string? string? => int?] (+ a b))
+                      ([a b & more] [string? string? (s/+ int?) => int?] (apply + a b more)))))
