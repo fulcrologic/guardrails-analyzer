@@ -1,9 +1,10 @@
 (ns com.fulcrologic.guardrails-pro.core
   (:require
-    [com.fulcrologic.guardrails-pro.static.forms :as forms]
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as a]
+    [com.fulcrologic.guardrails-pro.static.forms :as forms]
     [taoensso.encore :as enc]
-    [clojure.walk :as walk]))
+    [clojure.walk :as walk]
+    [taoensso.timbre :as log]))
 
 (try
   (require 'cljs.analyzer.api)
@@ -11,12 +12,26 @@
 
 (defn cljc-resolve [env s]
   (if (enc/compiling-cljs?)
-    (cljs.analyzer.api/resolve env s)
+    (let [ast-node (cljs.analyzer.api/resolve env s)
+          macro?   (boolean (:macro ast-node))]
+      (when ast-node
+        (cond-> {:name   `(quote ~(:name ast-node))
+                 :op     (:op ast-node)
+                 :macro? macro?}
+          macro? (assoc :op :macro)
+          (not macro?) (assoc :value s))))
     (if (contains? env s)
-      {:name s
-       :op   :local}
-      (when-let [sym (some->> s (ns-resolve *ns* env) (symbol))]
-        {:name sym}))))
+      {:name   `(quote ~s)
+       :macro? false
+       :op     :local}
+      (let [sym-var (ns-resolve *ns* env s)
+            cls?    (class? sym-var)
+            macro?  (boolean (and (not cls?) (some-> sym-var meta :macro)))]
+        (when sym-var
+          (cond-> {:name   `(quote ~(symbol sym-var))
+                   :class? cls?
+                   :macro? macro?}
+            (not macro?) (assoc :value (symbol sym-var))))))))
 
 #_(let [specs              (remove #(= % '=>) fspec)
         current-ns         (if (enc/compiling-cljs?) (-> env** :ns :name name) (name (ns-name *ns*)))
@@ -63,19 +78,26 @@
         sym               (second form)
         current-ns        (if (enc/compiling-cljs?) (-> env :ns :name name) (name (ns-name *ns*)))
         fqsym             `(symbol ~current-ns ~(name sym))
-        global-symbol-map (atom {})
+        expr              (symbol current-ns (name sym))
+        extern-symbol-map (atom {})
         _                 (walk/postwalk (fn [f]
                                            (when (symbol? f)
                                              (when-let [extern (cljc-resolve env f)]
-                                               ;; TASK: make it so we emit code that is the ref to the real function as well, so we can call it.
-                                               (swap! global-symbol-map assoc `(quote ~f) `(quote ~extern)))))
+                                               (swap! extern-symbol-map assoc `(quote ~f) extern))))
                             ;; TODO: skip through the arglist
-                            (rest (rest (rest form))))]
+                            (rest (rest (rest form))))
+        guard-type        (if (enc/compiling-cljs?)
+                            :default
+                            'Exception)]
     `(do
        (defn ~@args)
-       (a/remember! ~fqsym ~{:name           fqsym
-                             :global-symbols @global-symbol-map
-                             :form           form-expression}))))
+       (try
+         (a/remember! ~fqsym ~{:name           fqsym
+                               :value          expr
+                               :extern-symbols @extern-symbol-map
+                               :form           form-expression})
+         (catch ~guard-type e#
+           (log/error e# "Cannot record function info for GRP: " ~fqsym))))))
 
 (defmacro >defn
   "Pro version of >defn. The non-pro version of this macro simply emits *this* macro if it is in pro mode."
