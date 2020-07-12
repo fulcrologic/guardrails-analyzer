@@ -46,3 +46,283 @@ any mismatch on timestamps implies something disappeared).
 * The dependency graph, in a format where we can ask "what functions are affected by the change I just saw"
 * The *hash* of the function's form, so we can detect if it *actually* changed, or was just re-saved. This will dramatically
 reduce the overhead.
+
+= Lab Notes
+
+== Clojure Macro Info
+
+The following code:
+
+[source]
+-----
+(let [^{:boo true} x  (+ 1 2)]
+  (>defn some-calc [n]
+   [int? => string?]
+   (let [a (add n 23)
+         b (str "a is " a x)]
+     b)))
+-----
+
+=== What's in `&form`
+
+Both languages put this in `&form`:
+
+[source]
+-----
+(com.fulcrologic.guardrails-pro.core/>defn some-calc [n] [int? => string?] (let [a (add n 23) b (str "a is " a x)] b))
+-----
+
+This form contains metadata. In CLJ, the metadata is on each *list*. In CLJS, the metadata is on everything that
+can carry it.
+
+=== What's in `&env`
+
+==== CLJ
+
+In CLJ, `&env` is `nil` if there are no local bindings (i.e. no `let` around the defn). Otherwise, it is a map from
+symbol to `LocalBinding` (a Java class in clojure.core).
+
+[source]
+-----
+{x #object[clojure.lang.Compiler$LocalBinding 0x6192bf6b clojure.lang.Compiler$LocalBinding@6192bf6b]}
+-----
+
+Resolving other symbols (such as `str` in the body) can be done using various calls to resolve.
+
+NOTE: The `x` key in the above map *will* maintain the metadata that was assigned in the outer `let` for CLJ.
+
+==== CLJS
+
+In Clojurescript &env has a boat-load of information. This is because namespaces are not reified in CLJS, and there
+is no way to "resolve" symbols from a namespace in the runtime environment (as you would in CLJ). In Clojurescript
+you use the CLJS analyzer combined with the `&env` to figure out fully-qualified names for the internal symbols.
+
+One must be careful when "capturing" things out of the `&env` in a cljs compile, since the output must be compatible
+with the js runtime. I.e. pulling out a Java class and trying to capture that into a CLJS def isn't going to work.
+
+The *keys* of `&env` in the above example are:
+
+[source]
+-----
+(:fn-scope :locals :js-globals :ns :shadow.build/mode :column
+ :shadow.build/tweaks :line :context)
+-----
+
+`(get-in &env [:locals 'x])` contains an AST node:
+
+[source]
+-----
+:binding-form? true
+:column 20
+:env {:line 11, :column 20}
+:info {:name x, :shadow nil}
+:init {:args [{:op :const, :val 1, :env {:fn-scope [], :locals {}, :js-globals {console {:op :js-var, :nam ...
+:line 11
+:local :let
+:name x
+:op :binding
+:shadow nil
+:tag number
+-----
+
+and also note this:
+
+[source]
+-----
+(meta (get-in the-env [:locals 'x :name]))
+=> {:file "com/fulcrologic/sample.cljc",
+    :line 11, :column 20, :end-line 11, :end-column 21,
+    :boo true}
+-----
+
+The metadata on the form is preserved on the top-level AST node, including the reader metadata.
+
+===== The `:ns` entry
+
+`:defs`:: A map from symbols that have been defined (so far) in the current namespace to
+a map with entries like this:
+
+-----
+:arglists (quote ([a b]))
+:arglists-meta (nil nil)
+:column 1
+:end-column 11
+:end-line 7
+:file "com/fulcrologic/sample.cljc"
+:fn-var true
+:line 7
+:max-fixed-arity 2
+:meta {:file "com/fulcrologic/sample.cljc", :line 7, :column 8, :end-line 7, :end-column 11, :arglists (qu ...
+:method-params ([a b])
+:name com.fulcrologic.sample/add
+:protocol-impl nil
+:protocol-inline nil
+:ret-tag number
+:variadic? false
+-----
+
+`:deps`:: A sequence of fully-qualified namespaces this one depends on.
+
+`:excludes`:: A set of simple symbols that were excluded from `cljs.core`.
+
+`:ns-aliases`:: A map of rewrites from locally-user namespace names to the real ones needed in CLJS. For
+example `{clojure.pprint cljs.pprint}`.
+
+Here is a quick snapshot of the code and result of `:ns`:
+
+[source]
+-----
+(ns com.fulcrologic.sample
+  (:refer-clojure :exclude [map])
+  (:require
+    [com.fulcrologic.guardrails-pro.runtime.artifacts :as art]
+    [com.fulcrologic.guardrails.core :refer [>defn => | ?]]
+    [com.fulcrologic.guardrails-pro.runtime.artifacts :as a]))
+
+(>defn add [a b]
+  [number? number? => number?]
+  (+ a b))
+
+(let [^{:boo true} x (+ 1 2)]
+  (>defn some-calc [n]
+    [int? => string?]
+    (let [a (add n 23)
+          c (map :x n)
+          b (str "a is " a x)]
+      b)))
+-----
+
+The `(:ns &env)` when evaluating the `>defn` macro was:
+
+[source]
+-----
+{:defs {add {:protocol-inline nil, :meta {:file "com/fulcrologic/sample.cljc", :line 8, :column 8, :end-lin ...
+ :deps [goog cljs.core com.fulcrologic.guardrails-pro.runtime.artifacts com.fulcrologic.guardrails.core]
+ :excludes #{map}
+ :flags {:require #{}}
+ :imports nil
+ :js-deps {}
+ :meta {:file "com/fulcrologic/sample.cljc", :line 1, :column 5, :end-line 1, :end-column 27}
+ :name com.fulcrologic.sample
+ :ns-aliases {cljs.loader shadow.loader, clojure.pprint cljs.pprint, clojure.spec.alpha cljs.spec.alpha, clojure. ...
+ :rename-macros nil
+ :renames {}
+ :require-macros {cljs.core cljs.core, com.fulcrologic.guardrails.core com.fulcrologic.guardrails.core}
+ :requires {com.fulcrologic.guardrails-pro.runtime.artifacts com.fulcrologic.guardrails-pro.runtime.artifacts, ...
+ :seen #{:require}
+ :use-macros {>defn com.fulcrologic.guardrails.core, ? com.fulcrologic.guardrails.core}
+ :uses {>defn com.fulcrologic.guardrails.core, => com.fulcrologic.guardrails.core, | com.fulcrologic.guardr ...}}
+-----
+
+`:js-globals` of `&env` was:
+
+-----
+{alert {:op :js-var, :name alert, :ns js}
+ console {:op :js-var, :name console, :ns js}
+ document {:op :js-var, :name document, :ns js}
+ escape {:op :js-var, :name escape, :ns js}
+ exports {:op :js-var, :name exports, :ns js}
+ global {:op :js-var, :name global, :ns js}
+ history {:op :js-var, :name history, :ns js}
+ location {:op :js-var, :name location, :ns js}
+ module {:op :js-var, :name module, :ns js}
+ navigator {:op :js-var, :name navigator, :ns js}
+ process {:op :js-var, :name process, :ns js}
+ require {:op :js-var, :name require, :ns js}
+ screen {:op :js-var, :name screen, :ns js}
+ unescape {:op :js-var, :name unescape, :ns js}
+ window {:op :js-var, :name window, :ns js}}
+-----
+
+IMPORTANT: In CLJS, you can *ONLY* use the analyzer API to `resolve` *during the execution of the macro expansion itself*. Here's
+an example of what we capture in the above code for an `(ana/resolve &env '+)`:
+
+[source]
+-----
+{:protocol-inline nil,
+ :meta {:file "cljs/core.cljs",
+        :end-column 16,
+        :top-fn {:variadic? true,
+                 :fixed-arity 2,
+                 :max-fixed-arity 2,
+                 :method-params [[] [x] [x y]],
+                 :arglists ([] [x] [x y] [x y & more]),
+                 :arglists-meta (nil nil nil nil)},
+        :column 15,
+        :line 2614,
+        :end-line 2614,
+        :tag number,
+        :arglists (quote ([] [x] [x y] [x y & more])),
+        :doc "Returns the sum of nums. (+) returns 0."},
+ :ns cljs.core,
+ :name cljs.core/+,
+ :file "cljs/core.cljs",
+ :end-column 16,
+ :top-fn {:variadic? true,
+          :fixed-arity 2,
+          :max-fixed-arity 2,
+          :method-params [[] [x] [x y]],
+          :arglists ([] [x] [x y] [x y & more]),
+          :arglists-meta (nil nil nil nil)},
+ :method-params [[] [x] [x y]],
+ :protocol-impl nil,
+ :fixed-arity 2,
+ :op :var,
+ :arglists-meta (nil nil nil nil),
+ :column 1,
+ :variadic? true,
+ :methods [{:fixed-arity 0, :variadic? false, :tag number}
+           {:fixed-arity 1, :variadic? false}
+           {:fixed-arity 2, :variadic? false, :tag number}
+           {:fixed-arity 2, :variadic? true, :tag #{nil any}}],
+ :line 2614,
+ :ret-tag number,
+ :end-line 2614,
+ :max-fixed-arity 2,
+ :tag number,
+ :fn-var true,
+ :arglists ([] [x] [x y] [x y & more]),
+ :doc "Returns the sum of nums. (+) returns 0."}
+-----
+
+and for `(ana/resolve &env 'x)`:
+
+-----
+{:name x,
+ :binding-form? true,
+ :op :local,
+ :env {:line 11, :column 20},
+ :column 20,
+ :line 11,
+ :info {:name x, :shadow nil},
+ :tag number,
+ :shadow nil,
+ :local :let
+ :init The AST subtree, each node (i.e. '+ 1 2) containing an `:env` key at each AST node that specified the :ns, etc.
+}
+-----
+
+Note that while there is no `:meta` field, the symbol itself retains the metadata.
+
+NOTE: `ana/resolve` will simply return `nil` if it cannot resolve the symbol.
+
+There are some additional nesting things of interest. The `&env` contains a `:fn-scope` for tracking a function that
+is wrapping the macro invocation, and anything bound via args or lets in that outer context will also appear, as
+expected, in `:locals`.
+
+-----
+(defn some-fn [outer-fn]
+  (>defn some-calc [n]
+    [int? => string?]
+    (let [a (add n 23)
+          b (str "a is " a x)]
+      b)))
+-----
+
+leads to this for the `some-calc` macro's `&env`:
+
+------
+{:fn-scope [{:name some-fn, :op :binding, :local :fn, :info {:fn-self-name true, :fn-scope [], :ns com.fulcrolo ...
+ :locals {outer-fn {:name outer-fn, :binding-form? true, :op :binding, :env {:context :expr, :line 11, :colum ...
+ ... the rest as before
+------

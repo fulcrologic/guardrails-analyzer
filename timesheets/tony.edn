@@ -4,6 +4,7 @@
  {:date "2020-06-19" :description "SWOT and docs" :timespans [[910 930]]}
  {:date "2020-06-20" :description "More docs laying out things like requirements" :timespans [[2000 2030]]}
  {:date "2020-06-22" :description "GR/GRPro integration, analyzer research" :timespans [[1320 1455] [1630 1730]]}
+ {:date "2020-07-11" :description "implementation spike" :timespans [[1015 1730] [1800 1900]]}
 
  ]
 

@@ -1,0 +1,100 @@
+= Checking and Specs
+
+The purpose of guardrails pro is to analyze the flow of information through the body of a function. The vast majority of
+algorithmic expression within a function is a combination of local bindings and expression evaluations. Clojure encourages
+the use of simple data as primary carrier of information, and functions calls are the primary means of transformation.
+
+Specs of input are sufficient for checks that are trying to determine if an input is sufficient, but as the information
+flows through the body of a function this is only useful if you have an accurate picture of what the information is.
+
+Take the following example
+
+-----
+(let [a 1
+      b 2
+      c (+ a b)]
+  ...)
+-----
+
+It is trivial for an analysis tool to know that `a` and `b` are numbers, and a spec for `+` that indicates acceptable
+arguments are numbers is sufficient to indicate if the overall expression is correct.
+
+Now consider this:
+
+-----
+(let [a 1
+      b 2
+      c (+ a b)]
+  (if (> c 1) ... ...))
+-----
+
+A casual reader (or sufficiently complex checker) could indicate that the "else" branch is unreachable. Let's talk
+about *how* a static analysis tool might come to this conclusion.
+
+One obvious way is simply to hand-build checking logic into the checker that "understands" addition. While this works,
+it is certainly not very general or useful on user-written code.
+
+== Approaches with Pure Code
+
+Consider another approach: what if the original program could somehow mark `+` as a pure function? Now a checker could
+do something more interesting: it could *run* the operation using the known data and come up with an answer. It can
+see that `a` and `b` are constants, so the inference is now generalized to a wider set of cases:
+
+-----
+(let [a "this is a test"
+      b "of thing"
+      c (str a " " b)] ; assume `str` and `strlen` are known to be side-effect free
+  (if (> (strlen c) 1) ... ...))
+-----
+
+One of the strengths of Guardrails Pro is that it runs in the full runtime of the actual application. It is not
+a static analysis *before* compilation, but one that uses the source within the runtime environment to find problems.
+Therefore it can walk the expression and actually *run* the user's code.
+
+Now, let's expand this to things that have specifications. Remember that we're not running these checks during the
+execution of the real program, but instead in our own checker environment that simply has access to the user's source *and*
+compiled code.
+
+Consider this expression:
+
+-----
+(let [a (rand-int 100) ; assume spec says output is pos-int?
+      b (rand-int 10)
+      c (+ a b]
+  (if (< c 0) ... ...))
+-----
+
+There are a few things that GRP could know about `a`: First, it would know that it conforms to `pos-int?`. Next, if
+`rand-int` were known to be side-effect free it could gather one or more samples of output by running it (it has an
+input spec, so generating possible inputs is also something that can be done).
+
+So, assuming the spec of `+` was simply that it outputs a number we cannot really get enough useful information from
+*just* the specs to know how to analyze the condition of the `if`; however, if all functions are known to be pure we
+can do stochastic analysis:
+
+* Get 10 samples of `a`
+* Get 10 samples of `b`
+* Get 10 samples of `c` using combinations of the samples of `a` and `b`
+* Get 10 samples of `<` using the generated values of `c`
+
+At this point if our output from the last step always goes one direction we have an indication that the is *possibly*
+unreachable code.  Now, since this is a statement of probability (and it could end up being quite computationally
+expensive) it is a future research problem to determine how useful this *specific* analysis is; however, it becomes
+a lot more useful if we look for cases where we have things we can prove:
+
+-----
+(let [a (rand-int 100) ; assume spec says output is pos-int?
+      b (rand-int 10)
+      c (+ a b]
+  (assert (pos-int? c) ...))
+-----
+
+now the stochastic approach is *definitely* useful: if it finds even *one* false value for the assertion, then it has
+a case it can use to prove a problem.
+
+Now, this is exactly what generative testing is supposed to do for you: exercise code and tell you cases where your logic
+fails: but instead of applying it at just the functional definition boundaries we are expanding it into a tool that
+analyzes the code line-by-line to give more targeted understanding of where/why a particular expression is incorrect.
+
+== Type Flowing
+
