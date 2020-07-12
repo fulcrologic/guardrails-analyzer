@@ -67,6 +67,7 @@
         _                 (walk/postwalk (fn [f]
                                            (when (symbol? f)
                                              (when-let [extern (cljc-resolve env f)]
+                                               ;; TASK: make it so we emit code that is the ref to the real function as well, so we can call it.
                                                (swap! global-symbol-map assoc `(quote ~f) `(quote ~extern)))))
                             ;; TODO: skip through the arglist
                             (rest (rest (rest form))))]
