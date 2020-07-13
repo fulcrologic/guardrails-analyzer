@@ -2,6 +2,7 @@
   (:require
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as a]
     [com.fulcrologic.guardrails-pro.static.forms :as forms]
+    [com.fulcrologic.guardrails-pro.parser :as parser]
     [taoensso.encore :as enc]
     [clojure.walk :as walk]
     [taoensso.timbre :as log]))
@@ -74,9 +75,21 @@
                                             :return-type    ~(last resolved-signature)}}})))
 
 (defn process-defn [env form args]
-  (let [form-expression   (forms/form-expression form)
-        sym               (second form)
-        current-ns        (if (enc/compiling-cljs?) (-> env :ns :name name) (name (ns-name *ns*)))
+  (let [current-ns        (if (enc/compiling-cljs?) (-> env :ns :name name) (name (ns-name *ns*)))
+        parsed-defn       (parser/parse-defn-args args)
+        body-forms        (vec
+                            (->> (vals parsed-defn)
+                              (filter #(and (map? %) (contains? (meta %) :raw-body)))
+                              (mapcat #(-> % meta :raw-body))))
+        parsed-defn       (into {}
+                            ;; Clj side must not have the meta that cannot be resolved
+                            (map (fn [[k v]]
+                                   [k (if (map? v)
+                                        (with-meta v {})
+                                        v)]
+                                   ))
+                            parsed-defn)
+        sym               (first args)
         fqsym             `(symbol ~current-ns ~(name sym))
         expr              (symbol current-ns (name sym))
         extern-symbol-map (atom {})
@@ -84,8 +97,7 @@
                                            (when (symbol? f)
                                              (when-let [extern (cljc-resolve env f)]
                                                (swap! extern-symbol-map assoc `(quote ~f) extern))))
-                            ;; TODO: skip through the arglist
-                            (rest (rest (rest form))))
+                            body-forms)
         guard-type        (if (enc/compiling-cljs?)
                             :default
                             'Exception)]
@@ -94,10 +106,11 @@
        (try
          (a/remember! ~fqsym ~{:name           fqsym
                                :value          expr
-                               :extern-symbols @extern-symbol-map
-                               :form           form-expression})
+                               :defn           parsed-defn
+                               :extern-symbols @extern-symbol-map})
          (catch ~guard-type e#
-           (log/error e# "Cannot record function info for GRP: " ~fqsym))))))
+           (log/error e# "Cannot record function info for GRP: " ~fqsym)))
+       (var ~expr))))
 
 (defmacro >defn
   "Pro version of >defn. The non-pro version of this macro simply emits *this* macro if it is in pro mode."

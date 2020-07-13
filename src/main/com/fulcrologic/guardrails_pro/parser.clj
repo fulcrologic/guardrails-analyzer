@@ -6,13 +6,13 @@
 
 (defn function-name [[result [nm :as args]]]
   (if (simple-symbol? nm)
-    [(merge result {:name nm}) (next args)]
+    [(merge result {:name `(quote ~nm)}) (next args)]
     (throw (ex-info "Missing function name." {}))))
 
 (defn optional-docstring [[result [candidate :as args]]]
   (if (string? candidate)
     [(merge result {:docstring candidate}) (next args)]
-    [{} args]))
+    [result args]))
 
 (defn arg-specs [[result args :as env]]
   (loop [r    result
@@ -98,10 +98,11 @@
                (count arglist)))))
 
 (defn single-arity [[result [arglist spec & forms :as args]]]
-  [(assoc result (body-arity args) {:arglist  `(quote ~arglist)
-                                    :gspec    (parse-gspec spec arglist)
-                                    :raw-body `(quote ~(vec forms))
-                                    :body     (forms/form-expression (vec forms))})])
+  [(assoc result (body-arity args) (with-meta
+                                     {:arglist `(quote ~arglist)
+                                      :gspec   (parse-gspec spec arglist)
+                                      :body    (forms/form-expression (vec forms))}
+                                     {:raw-body (vec forms)}))])
 
 (defn multiple-arities [[result args]]
   (loop [r           result

@@ -96,5 +96,116 @@ Now, this is exactly what generative testing is supposed to do for you: exercise
 fails: but instead of applying it at just the functional definition boundaries we are expanding it into a tool that
 analyzes the code line-by-line to give more targeted understanding of where/why a particular expression is incorrect.
 
-== Type Flowing
+== Spec Flowing
 
+Specs work such that it is possible to combine them at runtime:
+
+-----
+(s/def :person/name string?)
+(s/def :person/id int?)
+
+(defn f [] (s/keys :req [:person/name]))
+(defn h [] (s/keys :req [:person/id]))
+
+(s/explain (s/and (f) (h)) {:person/name "boo"})
+;; => {:person/name "boo"} - failed: (contains? % :person/id)
+-----
+
+One of the primary problems with using the "return" spec from an fspec is that it does not
+indicate how the data flows *through* the function. This flow-through is important in many cases.
+
+Take `range` and `reverse` in the following code:
+
+-----
+(>defn range [a b] [int? int? => (s/coll-of int?)] ...)
+(>defn reverse [a] [seq? => seq?] ...)
+(>defn f [a] [(s/coll-of int?) => int?] ...)
+
+(let [a (range 1 10)
+      b (reverse a)]
+  (f b))
+-----
+
+The specification of `reverse` has no way to clearly indicate the relationship of the parameter input spec
+with the output spec. Thus, when we reach `f` and attempt to do analysis we find that the spec related to `b` is
+just `seq?`. This is insufficient information to correctly check `f`, and applying a generator from `b` to
+get a sample of data for `f` will result in an incorrect error.
+
+There are several ways we can deal with this:
+
+. If the functions are known to be pure, then we can use the generator of `range`'s return value to generate
+some samples, pass those through a *real* call to `reverse`, and use the resulting samples to check `f`.
+. We could allow the user to indicate the spec "flow" through the function. For example:
+
+-----
+(>defn my-reverse [s]
+  ^{:spec-flow (fn [return-spec arg1-spec] arg1-spec)}
+  [seq? => seq?]
+  ...)
+-----
+
+Now we can programmatically propagate the specs through the logic:
+
+-----
+(let [a (range 1 10) ; a's spec is (s/coll-of int?)
+      b (reverse a)] ; b's spec is now *also* (s/coll-of int?)
+  (f b)) ; f's argument is now known to be of the correct type
+-----
+
+This simple addition of metadata to the overall function signature allows a quite powerful mechanism: The
+function can now tell the type-checking system how a particular function propagates information. This is particularly
+important for collection types.
+
+For example, consider a function that combines information in a map:
+
+-----
+(>defn with-full-name [{:person/keys [first-name last-name] :as person}]
+  [(s/keys :req [:person/first-name :person/last-name]) => (s/keys :req [:person/first-name
+                                                                         :person/last-name
+                                                                         :person/full-name])]
+  (assoc person :person/full-name (str first-name " " last-name)))
+-----
+
+The open model of Clojure indicates that maps are open, and the reader of this function can clearly see
+that whatever was passed as the first argument is the same as the return value, but with
+one additional key. Unfortunately, spec only describe this vith *verification* (i.e. a :fn spec), but
+our extension easily allows it:
+
+-----
+(>defn with-full-name [{:person/keys [first-name last-name] :as person}]
+  ^{:pure?     false
+    :spec-flow (fn [return-spec real-arg1-spec] (s/and real-arg1-spec return-spec))}
+  [(s/keys :req [:person/first-name :person/last-name]) => (s/keys :req [:person/first-name
+                                                                         :person/last-name
+                                                                         :person/full-name])]
+  (assoc person :person/full-name (str first-name " " last-name)))
+-----
+
+Now anything that was known about the incoming arg is just augmented.
+
+Unfortunately, we potentially lose useful generators when we do this: the additional constraints may lead
+to a case where automatic generation fails. This can be solved by adding a generator that leverages
+the incoming spec's generator, and augments (or filters) the result. There then remain only the cases
+where the output of the function aggressively narrows an input parameter so that generation is very costly.
+At the moment we have no great solution for that.
+
+The type flow above, though, does solve a number of quite useful cases. Say we have a `logged-in?` function that
+requires `:account/id` be in the map it is passed. The following code will now properly check:
+
+-----
+(let [p {:person/id 1 :person/first-name "Bob" :person/last-name "Jones" :account/id 42}
+      ;; spec of a literal is just the base type (e.g. `map?) with a single-case generator
+      p2 (with-full-name p) ; p2 is (s/and map? (s/keys ...)), but generates value of `p` w/addl key
+      logged-in? (account/logged-in? p2) ; incoming spec is not exact match, uses generator for sample. Passes
+      ...]
+-----
+
+FIXME: This isn't good enough. The spec flow needs to be data we can interpret, since we need to combine both the
+specs and the generators.
+
+The operations needed are:
+
+* Enforcement of specified output type (i.e. `boolean` always outputs a `boolean?`).
+* Pure pass-through of type. E.g. `reverse`
+* The ability to take an input sample and refine it to an output sample. The function itself could be used to do
+that if known to be pure.
