@@ -1,6 +1,8 @@
 (ns com.fulcrologic.guardrails-pro.interpreter
   "Code to interpret expressions from a function's body to detect if there are problems."
   (:require
+    [com.fulcrologic.guardrails.core :refer [>defn => | ?]]
+    [com.fulcrologic.guardrails-pro.runtime.artifacts :as a]
     [clojure.test.check.generators]
     [clojure.spec.gen.alpha :as gen]
     [taoensso.timbre :as log]
@@ -22,24 +24,9 @@
 ;; linear data structure? Perhaps we turn the forms into something more akin to an
 ;; AST and then traverse that?
 
-(s/def ::Unknown any?)
-
-(defonce registry (atom {}))
-
-(defn register! [entry]
-  (swap! registry assoc (:name entry) entry))
-
-(defn literal? [x]
-  (or
-    (nil? x)
-    (boolean? x)
-    (string? x)
-    (double? x)
-    (int? x)))
-
 ;; ExpressionNode
 (defprotocol ExpressionNode)
-(deftype Literal [v] ExpressionNode)
+(deftype Primitive [v] ExpressionNode)
 (defprotocol ICall
   (arity [_] "Returns the arity of the call"))
 (deftype Call [form] ExpressionNode
@@ -47,6 +34,32 @@
   (arity [_] (dec (count form))))
 (deftype ASymbol [sym] ExpressionNode)
 (deftype Unknown [] ExpressionNode)
+(deftype AMap [m] ExpressionNode)
+
+(s/def ::spec (s/or
+                :spec-name qualified-keyword?
+                :spec-object #(s/spec? %)
+                :predicate fn?))
+(s/def ::type qualified-ident?)
+(s/def ::samples (s/coll-of any? :min-count 1))
+(s/def ::type-description
+  (s/keys
+    :opt [::spec ::type ::samples]))
+(s/def ::env (s/keys
+               :opt [::local-symbols
+                     ::extern-symbols]))
+(s/def ::node #(satisfies? ExpressionNode %))
+(s/def ::Unknown (s/and ::type-description empty?))
+(s/def ::local-symbols (s/map-of symbol? ::type-description))
+(s/def ::extern-symbols (s/map-of symbol? ::type-description))
+
+(defn primitive? [x]
+  (or
+    (nil? x)
+    (boolean? x)
+    (string? x)
+    (double? x)
+    (int? x)))
 
 (defmulti typecheck-call
   "Type check a call `c`, which must have type `Call`. This multimethod dispatches based on the first argument of the
@@ -63,17 +76,24 @@
   "Recognize and convert the given `expr` into an Expression node."
   [env expr]
   (cond
-    (literal? expr) (Literal. expr)
+    (map? expr) (AMap. expr)
+    (primitive? expr) (Primitive. expr)
     (or #?(:clj (instance? Cons expr)) (list? expr)) (Call. (apply list expr))
     (symbol? expr) (ASymbol. expr)
     :else (Unknown.)))
 
-(defmulti typecheck
+(defmulti typecheck-mm
   "Type check a general expression. This method dispatches on the type of `node`. Predefined node types include
-   `Literal` and `Call`."
+   `Primitive` and `Call`."
   (fn [env node] (type node)))
 
-(defmethod typecheck :default [env form] ::Unknown)
+(>defn typecheck
+  "Given the env of the node's context and a node: return the type description of that node."
+  [env node]
+  [::env ::node => ::type-description]
+  (typecheck-mm env node))
+
+(defmethod typecheck-mm :default [env form] {})
 
 (defn record-error! [env node detail-message]
   (log/debug "Recording error")
@@ -84,12 +104,18 @@
 (defn error-messages [env]
   (mapv :message (some-> env ::errors deref)))
 
-(defmethod typecheck ASymbol [env ^ASymbol s]
-  (if-let [bound-type (get-in env [::bound-symbol-types (.-sym s)])]
-    bound-type
-    ::Unknown))
+(defn extern-type [{::keys [extern-symbols] :as env} sym]
+  (let [extern-value (get-in extern-symbols [sym :value])]
+    (when-not (or (nil? extern-value) (fn? extern-value))
+      {::samples [extern-value]})))
 
-(defmethod typecheck Call [env ^Call c]
+(defmethod typecheck-mm ASymbol [env ^ASymbol s]
+  (let [sym         (.-sym s)
+        local-type  (get-in env [::local-symbols (.-sym s)])
+        extern-type (extern-type env sym)]
+    (or local-type extern-type {})))
+
+(defmethod typecheck-mm Call [env ^Call c]
   (log/debug "Checking call" (.-form c))
   (typecheck-call env c))
 
@@ -97,7 +123,7 @@
   ([]
    {:file      ""
     :line      1
-    ::registry @registry
+    ::registry @a/memory
     ::warnings (atom [])
     ::errors   (atom [])})
   ([registry]
@@ -112,10 +138,21 @@
   [env filename line]
   (assoc env :file filename :line line))
 
+(>defn try-sampling
+  "Returns a sequence of samples, or nil if the type cannot be sampled."
+  [type]
+  [::spec => (? (s/coll-of any? :min-count 1))]
+  (try
+    (gen/sample (s/gen type))
+    (catch #?(:clj Exception :cljs :default) _
+      (log/info "Cannot sample" type))))
+
 (defn bind-type
   "Returns a new `env` with the given sym bound to the known type."
   [env sym type]
-  (assoc-in env [::bound-symbol-types sym] type))
+  (let [samples (try-sampling type)]
+    (assoc-in env [::local-symbols sym] (cond-> {:type type}
+                                          (seq samples) (assoc :samples samples)))))
 
 (defn check-argument! [{:keys  [file line]
                         ::keys [context] :as env} ^Call call-node argument-ordinal]
@@ -127,7 +164,7 @@
     (if-let [registered-function (log/spy :debug (get-in env [::registry fname]))]
       (let [arg-spec              (log/spy :debug (get-in registered-function [:arity arity :argument-types (log/spy :debug argument-ordinal)]))
             recognized-expression (recognize env argument-expression)
-            literal?              (= Literal (type recognized-expression))
+            literal?              (= Primitive (type recognized-expression))
             argument-type         (log/spy :debug (typecheck env (log/spy :debug recognized-expression)))]
         (if (log/spy :debug (and argument-type (not= ::Unknown argument-type) arg-spec))
           (try
@@ -160,13 +197,13 @@
         (log/debug "Skipping argument check. Function not in registry: " fname)
         ::Unknown))))
 
-(defmethod typecheck Literal [env node & args]
+(defmethod typecheck-mm Primitive [env node & args]
   (let [literal (.-v node)]
     (cond
-      (int? literal) int?
-      (double? literal) double?
-      (string? literal) string?
-      :else ::Unknown)))
+      (int? literal) {::spec int? ::samples (try-sampling int?)}
+      (double? literal) {::spec double? ::samples (try-sampling double?)}
+      (string? literal) {::spec string? ::samples (try-sampling string?)}
+      :else {})))
 
 (defmethod typecheck-call :default [env ^Call c]
   (doseq [ordinal (range (arity c))]
@@ -233,13 +270,19 @@
         env     (assoc env ::extern-symbols extern-symbols)
         arities (filter #(str/starts-with? (name %) "arity") (keys defn))]
     (doseq [arity arities
-            :let [{:keys [arglist gspec body] :as description} (get defn arity)
+            :let [{:keys [gspec body] :as description} (get defn arity)
                   env (bind-argument-types env description)]]
       (log/info "Checking" sym arity)
       (let [result (last
                      (for [expr body
                            :let [node (recognize env expr)]]
                        ;; TASK: Continue here. I've modified the expected return type of
-                       ;; typecheck so that we expect a return :type or :samples
+                       ;; typecheck so that we expect a return with ::spec and/or ::samples, which
+                       ;; will let us better propagate data for checks.
+                       ;; PLAN: The artifact memory has the mutable bodies and such. The output
+                       ;; of warnings and markup can go into that area.
                        (typecheck env node)))]
         (check-return-type! env description result)))))
+
+;; TASK: We can implement a typecheck on literal maps that checks each key. Fully-nsed keys that have
+;; no spec can be a low-level notification. The values that fail to match specs are real errors.

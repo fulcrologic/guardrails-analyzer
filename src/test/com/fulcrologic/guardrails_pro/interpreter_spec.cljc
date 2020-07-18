@@ -4,11 +4,12 @@
     [com.fulcrologic.guardrails.core :as gr :refer [=>]]
     [com.fulcrologic.guardrails-pro.core :as grp]
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as a]
-    [com.fulcrologic.guardrails-pro.interpreter :as interpreter #?@(:cljs [:refer [Literal ASymbol Call Unknown]])]
+    [com.fulcrologic.guardrails-pro.interpreter :as interpreter #?@(:cljs [:refer [Primitive ASymbol Call Unknown]])]
+    [taoensso.timbre :as log]
     [fulcro-spec.core :refer [specification assertions behavior component]])
   #?(:clj
      (:import
-       [com.fulcrologic.guardrails_pro.interpreter Literal Call ASymbol])))
+       [com.fulcrologic.guardrails_pro.interpreter Primitive Call ASymbol])))
 
 (specification "recognize"
   (let [s (interpreter/recognize {} 'a)
@@ -23,35 +24,58 @@
       (.-form c) => '(f x y))
     (assertions
       "Strings"
-      (type (interpreter/recognize {} "")) => Literal
+      (type (interpreter/recognize {} "")) => Primitive
       "Ints"
-      (type (interpreter/recognize {} 1)) => Literal
+      (type (interpreter/recognize {} 1)) => Primitive
       "Floats"
-      (type (interpreter/recognize {} 3.6)) => Literal
+      (type (interpreter/recognize {} 3.6)) => Primitive
       "Booleans"
-      (type (interpreter/recognize {} true)) => Literal)))
+      (type (interpreter/recognize {} true)) => Primitive)))
 
-(specification "Checking literals"
-  (let [int-type    (interpreter/typecheck {} (Literal. 3))
-        double-type (interpreter/typecheck {} (Literal. 3.8))]
+(specification "Checking primitives" :focus
+  (let [int-type    (interpreter/typecheck {} (Primitive. 3))
+        double-type (interpreter/typecheck {} (Primitive. 3.8))]
     (assertions
-      "Returns a spec that will validate that type"
-      (s/valid? int-type 4) => true
-      (s/valid? int-type "hello") => false
-      (s/valid? double-type 4.4) => true)))
+      "Includes the spec"
+      (::interpreter/spec int-type) => int?
+      (::interpreter/spec double-type) => double?
+      "Includes samples"
+      (and (seq (::interpreter/samples int-type)) (every? int? (::interpreter/samples int-type))) => true
+      (and (seq (::interpreter/samples double-type)) (every? double? (::interpreter/samples double-type))) => true)))
 
 (specification "Checking a symbol"
-  (let [symbol-type  (interpreter/typecheck {::interpreter/bound-symbol-types {'x int?}} (ASymbol. 'x))
+  (let [symbol-type  (interpreter/typecheck {::interpreter/local-symbols {'x {::interpreter/samples [-1 0 1]
+                                                                              ::interpreter/spec    int?}}} (ASymbol. 'x))
+        extern-type  (interpreter/typecheck {::interpreter/extern-symbols {'x {:name  'x
+                                                                               :value 42}}}
+                       (ASymbol. 'x))
         unbound-type (interpreter/typecheck {} (ASymbol. 'x))]
     (assertions
       "Finds the type in env"
-      (identical? int? symbol-type) => true
-      "Returns ::Unknown when not in env"
-      unbound-type => ::interpreter/Unknown)))
+      (identical? int? (::interpreter/spec symbol-type)) => true
+      "Includes samples for external symbols that have no more details"
+      (::interpreter/samples extern-type) => [42]
+      "Returns Unknown when not in env"
+      unbound-type => {})))
 
-(grp/>defn f [x]
-  [int? => int?]
-  "hello")
+(let [y 2]
+  (grp/>defn f [x]
+    [int? => int?]
+    (str y "hello")))
+
+(specification "bind-argument-types"
+  (let [env           (interpreter/build-env)
+        f-description (get-in env [::interpreter/registry `f :defn :arity-1])
+        {::interpreter/keys [local-symbols]} (interpreter/bind-argument-types env f-description)
+        binding       (get local-symbols 'x)]
+    (assertions
+      "Binds local symbols to the type and samples of the argument list"
+      (map? binding) => true
+      "whose type is the spec"
+      (:type binding) => int?
+      "and includes samples that conform to the type"
+      (empty? (:samples binding)) => false
+      (every? #(s/valid? int? %) (:samples binding)) => true)))
 
 (comment
   a/memory
@@ -89,7 +113,7 @@
         "Returns ::Unknown for unregistered functions"
         (interpreter/typecheck env (Call. '(g x))) => ::interpreter/Unknown))
     (behavior "Adds an error to the env if there is a provable problem with the arguments"
-      (component "Literal argument expression"
+      (component "Primitive argument expression"
         (let [env (-> (interpreter/build-env {'f {:arity {1 {:argument-types [string?]
                                                              :return-type    int?}}}})
                     (interpreter/parsing-context "some.cljc" 33))]
