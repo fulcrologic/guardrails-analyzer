@@ -80,7 +80,9 @@
   "Given the env of the node's context and a node: return the type description of that node."
   [env node]
   [::a/env ::node => ::a/type-description]
-  (typecheck-mm env node))
+  ;; TASK: Continue here. Start adding simple typechecks for functions that have literals as return expressions.
+  {::a/type "string?" ::a/spec string? ::a/samples #{"1" "121"}}
+  #_(typecheck-mm env node))
 
 (defmethod typecheck-mm :default [env form] {})
 
@@ -109,18 +111,8 @@
   (typecheck-call env c))
 
 (defn build-env
-  ([]
-   {:file      ""
-    :line      1
-    ::registry @a/memory
-    ::warnings (atom [])
-    ::errors   (atom [])})
-  ([registry]
-   {:file      ""
-    :line      1
-    ::registry registry
-    ::warnings (atom [])
-    ::errors   (atom [])}))
+  ([] {::registry @a/memory})
+  ([registry] {::registry registry}))
 
 (defn parsing-context
   "Returns a new `env` with the file/line context set to the provided values"
@@ -138,10 +130,11 @@
 
 (defn bind-type
   "Returns a new `env` with the given sym bound to the known type."
-  [env sym type]
-  (let [samples (try-sampling type)]
-    (assoc-in env [::local-symbols sym] (cond-> {:type type}
-                                          (seq samples) (assoc :samples samples)))))
+  [env sym typename clojure-spec]
+  (let [samples (try-sampling clojure-spec)]
+    (assoc-in env [::a/local-symbols sym] (cond-> {::a/spec clojure-spec
+                                                   ::a/type typename}
+                                            (seq samples) (assoc ::a/samples samples)))))
 
 (defn check-argument! [{:keys  [file line]
                         ::keys [context] :as env} ^Call call-node argument-ordinal]
@@ -208,11 +201,11 @@
         body        (drop 2 form)
         return-type (typecheck env (recognize env (last form)))
         body-env    (reduce (fn [env [name value]]
-                              (let [type (typecheck env (recognize env value))]
+                              (let [{::a/keys [spec type]} (typecheck env (recognize env value))]
                                 ;; TODO: Process destructured syms, including if the spec of `type` says it will return
                                 ;; the keys you're expecting on map destructure?
                                 (if (symbol? name)
-                                  (bind-type env name type)
+                                  (bind-type env name type spec)
                                   env)))
                       env
                       bindings)]
@@ -224,53 +217,53 @@
 (defmethod typecheck-call 'cljs.core/let [env c] (typecheck-let env c))
 (defmethod typecheck-call 'let [env c] (typecheck-let env c))
 
-(defn bind-argument-types [{::keys [context] :as env} function-description]
-  (let [{argument-list          ::a/arglist
-         {::a/keys [arg-specs]} ::a/gspec} function-description]
-    (reduce-kv
-      (fn [env2 s t]
+(>defn bind-argument-types
+  [env arity-detail]
+  [::a/env ::a/arity-detail => ::a/env]
+  (let [{argument-list                    ::a/arglist
+         {::a/keys [arg-specs arg-types]} ::a/gspec} arity-detail]
+    (reduce
+      (fn [env2 [sym arg-type arg-spec]]
         ;; TODO: destructuring support
-        (if (symbol? s)
-          (bind-type env2 s t)
+        (if (symbol? sym)
+          (bind-type env2 sym arg-type arg-spec)
           env2))
       env
-      (zipmap argument-list arg-specs))))
+      (map vector argument-list arg-types arg-specs))))
 
-(>defn check-return-type! [env {:keys [arglist gspec body] :as description} {:keys [type samples]}]
+(>defn check-return-type! [env {::a/keys [arglist body gspec]} {::a/keys [type samples]}]
   [::a/env ::a/arity-detail ::a/type-description => any?]
-  (let [expected-return-spec (get gspec :return-spec)]
-    (when
-      (or
-        ;; TASK: this isn't quite right yet
-        (and (seq samples)
-          (some #(not (s/valid? expected-return-spec %)) samples))
-        (and
-          (empty? samples)
-          type
-          (not= type ::Unknown)
-          (not= type expected-return-spec)))
-      (record-error! env description "Return value can fail the return spec."))))
+  (let [{expected-return-spec ::a/return-spec
+         expected-return-type ::a/return-type} gspec
+        location       (meta (last body))
+        sample-failure (some #(when-not (s/valid? expected-return-spec %)
+                                [%]) samples)]
+    (when (seq sample-failure)
+      (a/record-problem! (::checking env) location
+        (str "Return value (e.g. " (pr-str (first sample-failure)) ") does not always satisfy the return spec of " expected-return-type ".")))))
 
 (defn check!
   "Run checks on the function named by the fully-qualified `sym`"
   [env sym]
-  (let [{:keys [defn extern-symbols] :as definition} (get-in env [::registry sym])
-        env     (assoc env ::extern-symbols extern-symbols)
-        arities (filter #(str/starts-with? (name %) "arity") (keys defn))]
-    (doseq [arity arities
-            :let [{:keys [gspec body] :as description} (get defn arity)
-                  env (bind-argument-types env description)]]
-      (log/info "Checking" sym arity)
+  (let [{::a/keys [arities extern-symbols]} (get-in env [::registry sym])
+        env (assoc env
+              ::checking sym
+              ::a/extern-symbols extern-symbols)
+        ks  (keys arities)]
+    (doseq [arity ks
+            :let [{::a/keys [body] :as arity-detail} (get arities arity)
+                  env (bind-argument-types env arity-detail)]]
       (let [result (last
                      (for [expr body
                            :let [node (recognize env expr)]]
-                       ;; TASK: Continue here. I've modified the expected return type of
-                       ;; typecheck so that we expect a return with ::a/spec and/or ::a/samples, which
-                       ;; will let us better propagate data for checks.
-                       ;; PLAN: The artifact memory has the mutable bodies and such. The output
-                       ;; of warnings and markup can go into that area.
                        (typecheck env node)))]
-        (check-return-type! env description result)))))
+        (check-return-type! env arity-detail result)))))
 
 ;; TASK: We can implement a typecheck on literal maps that checks each key. Fully-nsed keys that have
 ;; no spec can be a low-level notification. The values that fail to match specs are real errors.
+
+(comment
+  (a/clear-problems!)
+  (check! (build-env) 'com.fulcrologic.guardrails-pro.interpreter-spec/f)
+  @a/memory
+  )

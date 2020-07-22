@@ -9,7 +9,7 @@
  {:date "2020-07-14" :description "implementation spike" :timespans [[1800 2030]]}
  {:date "2020-07-16" :description "implementation spike" :timespans [[2200 2400]]}
  {:date "2020-07-17" :description "implementation spike" :timespans [[1730 1915]]}
- {:date "2020-07-21" :description "implementation spike" :timespans [[1815 2000]]}
+ {:date "2020-07-21" :description "implementation spike" :timespans [[1815 2055]]}
 
  ]
 

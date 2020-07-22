@@ -70,3 +70,13 @@
     (vals @memory)))
 
 (defn clear! [] (reset! memory {}))
+(defn clear-problems! []
+  (swap! memory (fn [m]
+                  (reduce-kv
+                    (fn [m k v] (assoc m k (dissoc v ::problems)))
+                    {}
+                    m))))
+
+(defn record-problem! [sym metadata description]
+  (swap! memory update-in [sym ::problems] (fnil conj []) {:metadata    metadata
+                                                           :description description}))
