@@ -79,7 +79,7 @@
 (>defn typecheck
   "Given the env of the node's context and a node: return the type description of that node."
   [env node]
-  [::env ::node => ::type-description]
+  [::a/env ::node => ::a/type-description]
   (typecheck-mm env node))
 
 (defmethod typecheck-mm :default [env form] {})
@@ -130,7 +130,7 @@
 (>defn try-sampling
   "Returns a sequence of samples, or nil if the type cannot be sampled."
   [type]
-  [::spec => (? (s/coll-of any? :min-count 1))]
+  [::a/spec => (? (s/coll-of any? :min-count 1))]
   (try
     (gen/sample (s/gen type))
     (catch #?(:clj Exception :cljs :default) _
@@ -189,9 +189,9 @@
 (defmethod typecheck-mm Primitive [env node & args]
   (let [literal (.-v node)]
     (cond
-      (int? literal) {::spec int? ::samples (try-sampling int?)}
-      (double? literal) {::spec double? ::samples (try-sampling double?)}
-      (string? literal) {::spec string? ::samples (try-sampling string?)}
+      (int? literal) {::a/spec int? ::samples (try-sampling int?)}
+      (double? literal) {::a/spec double? ::samples (try-sampling double?)}
+      (string? literal) {::a/spec string? ::samples (try-sampling string?)}
       :else {})))
 
 (defmethod typecheck-call :default [env ^Call c]
@@ -231,9 +231,7 @@
       (fn [env2 s t]
         ;; TODO: destructuring support
         (if (symbol? s)
-          (do
-            (log/debug "Binding" [s t])
-            (bind-type env2 s t))
+          (bind-type env2 s t)
           env2))
       env
       (zipmap argument-list arg-specs))))

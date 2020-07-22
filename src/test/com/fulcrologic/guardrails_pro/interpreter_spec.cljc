@@ -37,8 +37,8 @@
         double-type (interpreter/typecheck {} (Primitive. 3.8))]
     (assertions
       "Includes the spec"
-      (::interpreter/spec int-type) => int?
-      (::interpreter/spec double-type) => double?
+      (::a/spec int-type) => int?
+      (::a/spec double-type) => double?
       "Includes samples"
       (and (seq (::interpreter/samples int-type)) (every? int? (::interpreter/samples int-type))) => true
       (and (seq (::interpreter/samples double-type)) (every? double? (::interpreter/samples double-type))) => true)))
@@ -60,12 +60,13 @@
 
 (let [y 2]
   (grp/>defn f
+    ([x y]
+     [int? => int?]
+     (str y "hello" ::a))
     ([x]
      [int? => int?]
      (str y "hello" ::a))
-    ([x y]
-     [int? int? => int?]
-     (str y x "hello" ::a))))
+    ))
 
 (specification "bind-argument-types"
   (let [env           (interpreter/build-env)

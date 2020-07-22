@@ -68,3 +68,5 @@
             (when (> last-changed tm)
               name)))
     (vals @memory)))
+
+(defn clear! [] (reset! memory {}))

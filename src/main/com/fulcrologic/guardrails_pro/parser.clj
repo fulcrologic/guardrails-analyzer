@@ -132,13 +132,11 @@
 (defn parse-defn-args
   "Parses the body of a function and returns a map describing what it found."
   [args]
-  [seq? => ::a/arities]
   (first
     (-> [{} args]
       (function-name)
       (optional-docstring)
       (function-content))))
-
 
 (comment
   (parse-defn-args '(nm "hello"
