@@ -36,30 +36,18 @@
 (deftype Unknown [] ExpressionNode)
 (deftype AMap [m] ExpressionNode)
 
-(s/def ::spec (s/or
-                :spec-name qualified-keyword?
-                :spec-object #(s/spec? %)
-                :predicate fn?))
-(s/def ::type qualified-ident?)
-(s/def ::samples (s/coll-of any? :min-count 1))
-(s/def ::type-description
-  (s/keys
-    :opt [::spec ::type ::samples]))
-(s/def ::env (s/keys
-               :opt [::local-symbols
-                     ::extern-symbols]))
 (s/def ::node #(satisfies? ExpressionNode %))
-(s/def ::Unknown (s/and ::type-description empty?))
-(s/def ::local-symbols (s/map-of symbol? ::type-description))
-(s/def ::extern-symbols (s/map-of symbol? ::type-description))
 
-(defn primitive? [x]
-  (or
-    (nil? x)
-    (boolean? x)
-    (string? x)
-    (double? x)
-    (int? x)))
+(>defn primitive?
+  [x]
+  [any? => boolean?]
+  (boolean
+    (or
+      (nil? x)
+      (boolean? x)
+      (string? x)
+      (double? x)
+      (int? x))))
 
 (defmulti typecheck-call
   "Type check a call `c`, which must have type `Call`. This multimethod dispatches based on the first argument of the
@@ -67,10 +55,11 @@
    add a `defmethod` for this multimethod and define how to handle that case."
   (fn [env c] (first (.-form c))))
 
-(defn return-type [env form]
+(defn return-type
+  [env form]
   (let [sym   (first form)
         arity (dec (count form))]
-    (get-in env [::registry sym :arity arity :return-type] ::Unknown)))
+    (get-in env [::registry sym :arity arity :return-type] {})))
 
 (defn recognize
   "Recognize and convert the given `expr` into an Expression node."
@@ -236,8 +225,8 @@
 (defmethod typecheck-call 'let [env c] (typecheck-let env c))
 
 (defn bind-argument-types [{::keys [context] :as env} function-description]
-  (let [{argument-list            :arglist
-         {:keys [argument-specs]} :gspec} function-description]
+  (let [{argument-list          ::a/arglist
+         {::a/keys [arg-specs]} ::a/gspec} function-description]
     (reduce-kv
       (fn [env2 s t]
         ;; TODO: destructuring support
@@ -247,9 +236,10 @@
             (bind-type env2 s t))
           env2))
       env
-      (zipmap argument-list argument-specs))))
+      (zipmap argument-list arg-specs))))
 
-(defn check-return-type! [env {:keys [arglist gspec body] :as description} {:keys [type samples]}]
+(>defn check-return-type! [env {:keys [arglist gspec body] :as description} {:keys [type samples]}]
+  [::a/env ::a/arity-detail ::a/type-description => any?]
   (let [expected-return-spec (get gspec :return-spec)]
     (when
       (or

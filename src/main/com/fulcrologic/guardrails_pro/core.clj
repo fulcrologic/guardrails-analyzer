@@ -5,7 +5,8 @@
     [com.fulcrologic.guardrails-pro.parser :as parser]
     [taoensso.encore :as enc]
     [clojure.walk :as walk]
-    [taoensso.timbre :as log]))
+    [taoensso.timbre :as log])
+  (:import (java.util Date)))
 
 (try
   (require 'cljs.analyzer.api)
@@ -16,24 +17,24 @@
     (let [ast-node (cljs.analyzer.api/resolve env s)
           macro?   (boolean (:macro ast-node))]
       (when ast-node
-        (cond-> {:name   `(quote ~(:name ast-node))
+        (cond-> {::a/extern-name   `(quote ~(:name ast-node))
                  :op     (:op ast-node)
-                 :macro? macro?}
+                 ::a/macro? macro?}
           macro? (assoc :op :macro)
-          (not macro?) (assoc :value s))))
+          (not macro?) (assoc ::a/value s))))
     (if (contains? env s)
-      {:name   `(quote ~s)
-       :macro? false
+      {::a/extern-name   `(quote ~s)
+       ::a/macro? false
        :op     :local
-       :value  s}
+       ::a/value  s}
       (let [sym-var (ns-resolve *ns* env s)
             cls?    (class? sym-var)
             macro?  (boolean (and (not cls?) (some-> sym-var meta :macro)))]
         (when sym-var
-          (cond-> {:name   `(quote ~(symbol sym-var))
-                   :class? cls?
-                   :macro? macro?}
-            (not macro?) (assoc :value (symbol sym-var))))))))
+          (cond-> {::a/extern-name   `(quote ~(symbol sym-var))
+                   ::a/class? cls?
+                   ::a/macro? macro?}
+            (not macro?) (assoc ::a/value (symbol sym-var))))))))
 
 #_(let [specs              (remove #(= % '=>) fspec)
         current-ns         (if (enc/compiling-cljs?) (-> env** :ns :name name) (name (ns-name *ns*)))
@@ -78,19 +79,18 @@
 (defn process-defn [env form args]
   (try
     (let [current-ns        (if (enc/compiling-cljs?) (-> env :ns :name name) (name (ns-name *ns*)))
-          parsed-defn       (parser/parse-defn-args args)
+          arities           (parser/parse-defn-args args)
           body-forms        (vec
-                              (->> (vals parsed-defn)
-                                (filter #(and (map? %) (contains? (meta %) :raw-body)))
-                                (mapcat #(-> % meta :raw-body))))
-          parsed-defn       (into {}
+                              (->> (vals arities)
+                                (filter #(and (map? %) (contains? (meta %) ::a/raw-body)))
+                                (mapcat #(-> % meta ::a/raw-body))))
+          arities           (into {}
                               ;; Clj side must not have the meta that cannot be resolved
                               (map (fn [[k v]]
                                      [k (if (map? v)
                                           (with-meta v {})
-                                          v)]
-                                     ))
-                              parsed-defn)
+                                          v)]))
+                              arities)
           sym               (first args)
           fqsym             `(symbol ~current-ns ~(name sym))
           expr              (symbol current-ns (name sym))
@@ -106,10 +106,11 @@
       `(do
          (defn ~@args)
          (try
-           (a/remember! ~fqsym ~{:name           fqsym
-                                 :value          expr
-                                 :defn           parsed-defn
-                                 :extern-symbols @extern-symbol-map})
+           (a/remember! ~fqsym ~{::a/name           fqsym
+                                 ::a/last-changed   (inst-ms (Date.))
+                                 ::a/fn             expr
+                                 ::a/arities        arities
+                                 ::a/extern-symbols @extern-symbol-map})
            (catch ~guard-type e#
              (log/error e# "Cannot record function info for GRP: " ~fqsym)))
          (var ~expr)))

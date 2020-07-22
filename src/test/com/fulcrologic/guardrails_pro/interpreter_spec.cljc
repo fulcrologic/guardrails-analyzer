@@ -59,13 +59,17 @@
       unbound-type => {})))
 
 (let [y 2]
-  (grp/>defn f [x]
-    [int? => int?]
-    (str y "hello")))
+  (grp/>defn f
+    ([x]
+     [int? => int?]
+     (str y "hello" ::a))
+    ([x y]
+     [int? int? => int?]
+     (str y x "hello" ::a))))
 
 (specification "bind-argument-types"
   (let [env           (interpreter/build-env)
-        f-description (get-in env [::interpreter/registry `f :defn :arity-1])
+        f-description (get-in env [::interpreter/registry `f ::a/arities 1])
         {::interpreter/keys [local-symbols]} (interpreter/bind-argument-types env f-description)
         binding       (get local-symbols 'x)]
     (assertions
@@ -78,7 +82,7 @@
       (every? #(s/valid? int? %) (:samples binding)) => true)))
 
 (comment
-  a/memory
+  @a/memory
   (let [env (interpreter/build-env @a/memory)]
     (interpreter/check! env `f)
     (::interpreter/errors env)))

@@ -1,17 +1,22 @@
 (ns com.fulcrologic.guardrails-pro.parser
   (:require
+    [com.fulcrologic.guardrails.core :refer [>defn => ?]]
     [com.fulcrologic.guardrails-pro.static.forms :as forms]
-    [taoensso.timbre :as log])
-  (:import (clojure.lang Cons)))
+    [com.fulcrologic.guardrails-pro.runtime.artifacts :as a]
+    [taoensso.timbre :as log]
+    [clojure.spec.alpha :as s])
+  (:import (clojure.lang Cons)
+           (java.util Date)))
 
-(defn function-name [[result [nm :as args]]]
+(defn function-name
+  [[result [nm :as args]]]
   (if (simple-symbol? nm)
-    [(merge result {:name `(quote ~nm)}) (next args)]
+    [result (next args)]
     (throw (ex-info "Missing function name." {}))))
 
 (defn optional-docstring [[result [candidate :as args]]]
   (if (string? candidate)
-    [(merge result {:docstring candidate}) (next args)]
+    [result (next args)]
     [result args]))
 
 (defn arg-specs [[result args :as env]]
@@ -24,8 +29,8 @@
       (if a
         (recur
           (-> r
-            (update :argument-types (fnil conj []) `(quote ~a))
-            (update :argument-specs (fnil conj []) a))
+            (update ::a/arg-types (fnil conj []) `(quote ~a))
+            (update ::a/arg-specs (fnil conj []) a))
           as
           (first as)
           (next as))
@@ -44,7 +49,7 @@
         [r args]
         (if a
           (recur
-            (update r :argument-predicates (fnil conj []) (replace-args a arglist))
+            (update r ::a/arg-predicates (fnil conj []) (replace-args a arglist))
             as
             (first as)
             (next as))
@@ -54,8 +59,8 @@
 (defn return-type [[result [lookahead t & remainder :as args]]]
   (if (#{:ret '=>} lookahead)
     [(assoc result
-       :return-spec t
-       :return-type `(quote ~t)) remainder]
+       ::a/return-spec t
+       ::a/return-type `(quote ~t)) remainder]
     (throw (ex-info "Syntax error. Expected return type" {}))))
 
 (defn such-that [[result [lookahead & remainder :as args] :as env]]
@@ -68,7 +73,7 @@
         [r args]
         (if a
           (recur
-            (update r :return-predicates (fnil conj []) a)
+            (update r ::a/return-predicates (fnil conj []) a)
             as
             (first as)
             (next as))
@@ -77,7 +82,7 @@
 
 (defn generator [[result [lookahead & remainder :as args] :as env]]
   (if (#{:st '|} lookahead)
-    [(assoc result :generator (first remainder)) []]
+    [(assoc result ::a/generator (first remainder)) []]
     env))
 
 (defn parse-gspec [spec arglist]
@@ -91,18 +96,18 @@
 
 (defn arity-body? [b] (or (instance? Cons b) (list? b)))
 
-(defn body-arity [[arglist & _]]
-  (keyword (str "arity-"
-             (if (contains? (set arglist) '&)
-               "n"
-               (count arglist)))))
+(defn body-arity
+  [[arglist & _]]
+  (if (contains? (set arglist) '&)
+    :n
+    (count arglist)))
 
 (defn single-arity [[result [arglist spec & forms :as args]]]
   [(assoc result (body-arity args) (with-meta
-                                     {:arglist `(quote ~arglist)
-                                      :gspec   (parse-gspec spec arglist)
-                                      :body    (forms/form-expression (vec forms))}
-                                     {:raw-body (vec forms)}))])
+                                     {::a/arglist `(quote ~arglist)
+                                      ::a/gspec   (parse-gspec spec arglist)
+                                      ::a/body    (forms/form-expression (vec forms))}
+                                     {::a/raw-body (vec forms)}))])
 
 (defn multiple-arities [[result args]]
   (loop [r           result
@@ -127,6 +132,7 @@
 (defn parse-defn-args
   "Parses the body of a function and returns a map describing what it found."
   [args]
+  [seq? => ::a/arities]
   (first
     (-> [{} args]
       (function-name)
