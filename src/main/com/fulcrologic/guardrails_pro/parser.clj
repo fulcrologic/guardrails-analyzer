@@ -29,7 +29,7 @@
       (if a
         (recur
           (-> r
-            (update ::a/arg-types (fnil conj []) `(quote ~a))
+            (update ::a/arg-types (fnil conj []) (pr-str a))
             (update ::a/arg-specs (fnil conj []) a))
           as
           (first as)
@@ -60,7 +60,7 @@
   (if (#{:ret '=>} lookahead)
     [(assoc result
        ::a/return-spec t
-       ::a/return-type `(quote ~t)) remainder]
+       ::a/return-type (pr-str t)) remainder]
     (throw (ex-info "Syntax error. Expected return type" {}))))
 
 (defn such-that [[result [lookahead & remainder :as args] :as env]]

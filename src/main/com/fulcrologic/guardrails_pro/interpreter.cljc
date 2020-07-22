@@ -265,7 +265,7 @@
                      (for [expr body
                            :let [node (recognize env expr)]]
                        ;; TASK: Continue here. I've modified the expected return type of
-                       ;; typecheck so that we expect a return with ::spec and/or ::samples, which
+                       ;; typecheck so that we expect a return with ::a/spec and/or ::a/samples, which
                        ;; will let us better propagate data for checks.
                        ;; PLAN: The artifact memory has the mutable bodies and such. The output
                        ;; of warnings and markup can go into that area.

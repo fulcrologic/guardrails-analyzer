@@ -65,8 +65,7 @@
      (str y "hello" ::a))
     ([x]
      [int? => int?]
-     (str y "hello" ::a))
-    ))
+     (str y "hello" ::a))))
 
 (specification "bind-argument-types"
   (let [env           (interpreter/build-env)
