@@ -12,7 +12,13 @@
                 :predicate fn?))
 (s/def ::type string?)
 (s/def ::samples (s/coll-of any? :min-count 1))
-(s/def ::type-description (s/keys :opt [::spec ::type ::samples]))
+(s/def ::original-expression any?)
+;; TASK: Being able to track a type description's origin will be useful. I imagine a ::type-source could include
+;; details about how we came up with the type (e.g. did we run samples through the function itself?, was it from a `let` binding)
+;; Given `(let [b (f a)] ...)` we might see the following for `b` (if we knew the type of `a` was int? and had sampled it already):
+;; {::samples #{1 2 3} ::original-expression 'b ::type-source {::original-expression '(f a) ::pure? true ::sampled-arguments #{[0] [1] [2]} :result-samples #{1 2 3}}}
+(s/def ::type-source any?)
+(s/def ::type-description (s/keys :opt [::spec ::type ::samples ::original-expression ::type-source]))
 (s/def ::registry map?)
 (s/def ::env (s/keys
                :req [::registry]

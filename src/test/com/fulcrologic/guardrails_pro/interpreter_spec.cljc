@@ -42,7 +42,7 @@
       (and (seq (::a/samples int-type)) (every? int? (::a/samples int-type))) => true
       (and (seq (::a/samples double-type)) (every? double? (::a/samples double-type))) => true)))
 
-(specification "Checking a symbol" :focus
+(specification "Checking a symbol"
   (let [symbol-type  (i/typecheck (merge empty-env
                                     {::a/local-symbols {'x {::a/samples [-1 0 1]
                                                             ::a/spec    int?}}}) (i/->ASymbol 'x))
