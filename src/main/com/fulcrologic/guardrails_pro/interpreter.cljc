@@ -24,19 +24,22 @@
 ;; linear data structure? Perhaps we turn the forms into something more akin to an
 ;; AST and then traverse that?
 
-;; ExpressionNode
-(defprotocol ExpressionNode)
-(deftype Primitive [v] ExpressionNode)
-(defprotocol ICall
-  (arity [_] "Returns the arity of the call"))
-(deftype Call [form] ExpressionNode
-  ICall
-  (arity [_] (dec (count form))))
-(deftype ASymbol [sym] ExpressionNode)
-(deftype Unknown [] ExpressionNode)
-(deftype AMap [m] ExpressionNode)
+(s/def ::form list?)
+(s/def ::value any?)
+(s/def ::type #{:symbol :map :call :primitive :unknown})
+(s/def ::sym symbol?)
+(defmulti node-spec ::type)
+(defmethod node-spec :symbol [_] (s/keys :req [::type ::sym]))
+(defmethod node-spec :map [_] (s/keys :req [::type ::value]))
+(defmethod node-spec :call [_] (s/keys :req [::type ::form]))
+(defmethod node-spec :primitive [_] (s/keys :req [::type ::value]))
+(defmethod node-spec :default [_] (s/keys :req [::type]))
+(s/def ::node (s/multi-spec node-spec ::type))
 
-(s/def ::node #(satisfies? ExpressionNode %))
+(defn ->Primitive [v] {::type :primitive ::value v})
+(defn ->AMap [v] {::type :map ::value v})
+(defn ->ASymbol [v] {::type :symbol ::sym v})
+(defn ->Call [v] {::type :call ::form v})
 
 (>defn primitive?
   [x]
@@ -49,40 +52,27 @@
       (double? x)
       (int? x))))
 
-(defmulti typecheck-call
-  "Type check a call `c`, which must have type `Call`. This multimethod dispatches based on the first argument of the
-   call (the function to call). If you want to add custom handling for a particular symbol (e.g. `let`), then you can
-   add a `defmethod` for this multimethod and define how to handle that case."
-  (fn [env c] (first (.-form c))))
-
-(defn return-type
-  [env form]
-  (let [sym   (first form)
-        arity (dec (count form))]
-    (get-in env [::registry sym :arity arity :return-type] {})))
-
-(defn recognize
+(>defn recognize
   "Recognize and convert the given `expr` into an Expression node."
   [env expr]
+  [::a/env any? => ::node]
   (cond
-    (map? expr) (AMap. expr)
-    (primitive? expr) (Primitive. expr)
-    (or #?(:clj (instance? Cons expr)) (list? expr)) (Call. (apply list expr))
-    (symbol? expr) (ASymbol. expr)
-    :else (Unknown.)))
+    (map? expr) (->AMap expr)
+    (primitive? expr) (->Primitive expr)
+    (or #?(:clj (instance? Cons expr)) (list? expr)) (->Call (apply list expr))
+    (symbol? expr) (->ASymbol expr)
+    :else {::type :unknown}))
 
 (defmulti typecheck-mm
   "Type check a general expression. This method dispatches on the type of `node`. Predefined node types include
    `Primitive` and `Call`."
-  (fn [env node] (type node)))
+  (fn [env node] (::type node)))
 
 (>defn typecheck
   "Given the env of the node's context and a node: return the type description of that node."
   [env node]
   [::a/env ::node => ::a/type-description]
-  ;; TASK: Continue here. Start adding simple typechecks for functions that have literals as return expressions.
-  {::a/type "string?" ::a/spec string? ::a/samples #{"1" "121"}}
-  #_(typecheck-mm env node))
+  (typecheck-mm env node))
 
 (defmethod typecheck-mm :default [env form] {})
 
@@ -95,29 +85,26 @@
 (defn error-messages [env]
   (mapv :message (some-> env ::errors deref)))
 
-(defn extern-type [{::keys [extern-symbols] :as env} sym]
-  (let [extern-value (get-in extern-symbols [sym :value])]
+(defn extern-type [{::a/keys [extern-symbols] :as env} sym]
+  ;; TASK: need some registry action here, where we look up syms to see if we have a spec for them.
+  ;; A symbol could be a function, in which case the return type is of higher-order.
+  (let [extern-value (get-in extern-symbols [sym ::a/value])]
     (when-not (or (nil? extern-value) (fn? extern-value))
-      {::samples [extern-value]})))
+      {::a/samples [extern-value]})))
 
-(defmethod typecheck-mm ASymbol [env ^ASymbol s]
-  (let [sym         (.-sym s)
-        local-type  (get-in env [::local-symbols (.-sym s)])
+(defmethod typecheck-mm :symbol [env s]
+  (let [sym         (::sym s)
+        local-type  (get-in env [::a/local-symbols sym])
         extern-type (extern-type env sym)]
     (or local-type extern-type {})))
 
-(defmethod typecheck-mm Call [env ^Call c]
-  (log/debug "Checking call" (.-form c))
-  (typecheck-call env c))
+#_(defmethod typecheck-mm Call [env ^Call c]
+    (log/debug "Checking call" (.-form c))
+    (typecheck-call env c))
 
 (defn build-env
-  ([] {::registry @a/memory})
-  ([registry] {::registry registry}))
-
-(defn parsing-context
-  "Returns a new `env` with the file/line context set to the provided values"
-  [env filename line]
-  (assoc env :file filename :line line))
+  ([] {::a/registry @a/memory})
+  ([registry] {::a/registry registry}))
 
 (>defn try-sampling
   "Returns a sequence of samples, or nil if the type cannot be sampled."
@@ -126,7 +113,8 @@
   (try
     (gen/sample (s/gen type))
     (catch #?(:clj Exception :cljs :default) _
-      (log/info "Cannot sample" type))))
+      (log/info "Cannot sample" type)
+      nil)))
 
 (defn bind-type
   "Returns a new `env` with the given sym bound to the known type."
@@ -137,16 +125,16 @@
                                             (seq samples) (assoc ::a/samples samples)))))
 
 (defn check-argument! [{:keys  [file line]
-                        ::keys [context] :as env} ^Call call-node argument-ordinal]
-  (let [form                (.-form call-node)
+                        ::keys [context] :as env} call-node argument-ordinal]
+  (let [form                (::form call-node)
         fname               (first form)
         arity               (log/spy :debug (dec (count form)))
         argument-expression (nth form (inc argument-ordinal))
         fname               (log/spy :debug (get-in context [:global-symbols fname] fname))]
-    (if-let [registered-function (log/spy :debug (get-in env [::registry fname]))]
+    (if-let [registered-function (log/spy :debug (get-in env [::a/registry fname]))]
       (let [arg-spec              (log/spy :debug (get-in registered-function [:arity arity :argument-types (log/spy :debug argument-ordinal)]))
             recognized-expression (recognize env argument-expression)
-            literal?              (= Primitive (type recognized-expression))
+            literal?              (= :primitive (::type recognized-expression))
             argument-type         (log/spy :debug (typecheck env (log/spy :debug recognized-expression)))]
         (if (log/spy :debug (and argument-type (not= ::Unknown argument-type) arg-spec))
           (try
@@ -179,24 +167,30 @@
         (log/debug "Skipping argument check. Function not in registry: " fname)
         ::Unknown))))
 
-(defmethod typecheck-mm Primitive [env node & args]
-  (let [literal (.-v node)]
+(defmethod typecheck-mm :primitive [env node]
+  (let [literal (::value node)]
     (cond
-      (int? literal) {::a/spec int? ::samples (try-sampling int?)}
-      (double? literal) {::a/spec double? ::samples (try-sampling double?)}
-      (string? literal) {::a/spec string? ::samples (try-sampling string?)}
+      (int? literal) {::a/spec    int?
+                      ::a/type    "int?"
+                      ::a/samples (try-sampling int?)}
+      (double? literal) {::a/spec    double?
+                         ::a/type    "double?"
+                         ::a/samples (try-sampling double?)}
+      (string? literal) {::a/spec    string?
+                         ::a/type    "string?"
+                         ::a/samples (try-sampling string?)}
       :else {})))
 
-(defmethod typecheck-call :default [env ^Call c]
-  (doseq [ordinal (range (arity c))]
-    (log/debug "Checking argument" ordinal)
-    (check-argument! env c ordinal))
-  (if-let [t (log/spy :info (return-type env (.-form c)))]
-    t
-    ::Unknown))
+#_(defmethod typecheck-call :default [env c]
+    (doseq [ordinal (range (arity c))]
+      (log/debug "Checking argument" ordinal)
+      (check-argument! env c ordinal))
+    (if-let [t (log/spy :info (return-type env (.-form c)))]
+      t
+      ::Unknown))
 
-(defn typecheck-let [env ^Call c]
-  (let [form        (.-form c)
+(defn typecheck-let [env c]
+  (let [form        (::form c)
         bindings    (partition 2 (second form))
         body        (drop 2 form)
         return-type (typecheck env (recognize env (last form)))
@@ -213,9 +207,9 @@
       (typecheck body-env (recognize body-env expr)))
     return-type))
 
-(defmethod typecheck-call 'clojure.core/let [env c] (typecheck-let env c))
-(defmethod typecheck-call 'cljs.core/let [env c] (typecheck-let env c))
-(defmethod typecheck-call 'let [env c] (typecheck-let env c))
+;(defmethod typecheck-call 'clojure.core/let [env c] (typecheck-let env c))
+;(defmethod typecheck-call 'cljs.core/let [env c] (typecheck-let env c))
+;(defmethod typecheck-call 'let [env c] (typecheck-let env c))
 
 (>defn bind-argument-types
   [env arity-detail]
@@ -245,7 +239,7 @@
 (defn check!
   "Run checks on the function named by the fully-qualified `sym`"
   [env sym]
-  (let [{::a/keys [arities extern-symbols]} (get-in env [::registry sym])
+  (let [{::a/keys [arities extern-symbols]} (get-in env [::a/registry sym])
         env (assoc env
               ::checking sym
               ::a/extern-symbols extern-symbols)

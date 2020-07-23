@@ -13,7 +13,10 @@
 (s/def ::type string?)
 (s/def ::samples (s/coll-of any? :min-count 1))
 (s/def ::type-description (s/keys :opt [::spec ::type ::samples]))
-(s/def ::env (s/keys :opt [::local-symbols ::extern-symbols]))
+(s/def ::registry map?)
+(s/def ::env (s/keys
+               :req [::registry]
+               :opt [::local-symbols ::extern-symbols]))
 (s/def ::Unknown (s/and ::type-description empty?))
 (s/def ::local-symbols (s/map-of symbol? ::type-description))
 (s/def ::extern-symbols (s/map-of symbol? ::extern))
