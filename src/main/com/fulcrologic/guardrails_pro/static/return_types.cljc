@@ -22,6 +22,19 @@
 
    The :default return type calculation trusts the literal spec (which can have a generator for samples).
 
+   Higher-order function use and collection manipulation can then be described. For example:
+
+   ```
+   (>defn map
+     [f coll]
+     ^{::rt/return-type [:sequence-of-HOF 0 [1]]} [fn? seq? => seq?]
+     ...)
+   ```
+
+   can be used to say \"The return type of this function is a sequence of calls to the higher-order function
+   at arg index 0 using argment(s) at index 1 as the sequence\". Allowing the return type to be a vector or map allows
+   any amount of custom detail that the multimethod can use to generate return samples from input samples.
+
    The :pure return type calculate indicates that the function itself can be safely called with sample input
    parameters to generate sample return values which should be considered authoritative coverage of the types of
    things expected from the function. The spec of the return type is still applied to these values to ensure that
