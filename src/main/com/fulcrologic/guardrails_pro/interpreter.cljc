@@ -1,5 +1,5 @@
 (ns com.fulcrologic.guardrails-pro.interpreter
-  "Code to interpret expressions from a function's body to detect if there are problems."
+  "DEPRECATED. KEEPING AROUND TO STEAL IDEAS FROM."
   (:require
     [com.fulcrologic.guardrails.core :refer [>defn => | ?]]
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as a]
@@ -102,9 +102,7 @@
     (log/debug "Checking call" (.-form c))
     (typecheck-call env c))
 
-(defn build-env
-  ([] {::a/registry @a/memory})
-  ([registry] {::a/registry registry}))
+(def build-env a/build-env)
 
 (>defn try-sampling
   "Returns a sequence of samples, or nil if the type cannot be sampled."
@@ -250,7 +248,8 @@
       (let [result (last
                      (for [expr body
                            :let [node (recognize env expr)]]
-                       (typecheck env node)))]
+                       (do (log/spy :info node)
+                           (typecheck env node))))]
         (check-return-type! env arity-detail result)))))
 
 ;; TASK: We can implement a typecheck on literal maps that checks each key. Fully-nsed keys that have
@@ -260,4 +259,14 @@
   (a/clear-problems!)
   (check! (build-env) 'com.fulcrologic.guardrails-pro.interpreter-spec/f)
   @a/memory
+
+
+  (f (h (j 2)))
+
+  ; Calculate the type description of 2
+  ; Is td:2 a good arg for j? --> side-effect any problems to problem store
+  ; What td:j (j's return type description)?
+  ; Is td:j ok for h arg 1? --> side-effect any problems to problem store
+  ; ...
+  ;; So, to get the type of an arbitrary expression I have to *check* all nested expressions
   )

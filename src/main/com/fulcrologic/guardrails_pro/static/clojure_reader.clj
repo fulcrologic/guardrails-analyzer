@@ -14,7 +14,7 @@
 
 (defn read-form
   "Read the form that starts on `starting-line` of the given `namespace` from the source file, and returns that
-  form. The returned form will be augmented so that *everthing* that
+  form. The returned form will be augmented so that *everything* that
   *can* have metadata will include file/line/start column/ending column information. `lang` can be `:clj` or `:cljs`
   to indicate which feature of conditional reads should be used. Defaults to `:clj`."
   ([namespace starting-line] (read-form namespace starting-line :clj))

@@ -62,11 +62,14 @@
 (let [y 2]
   (grp/>defn f
     ([x y]
-     [int? => int?]
-     (str y "hello" ::a))
+     ^::a/pure? [int? => int?]
+     x)
     ([x]
-     [int? => int?]
-     (str y "hello" ::a))))
+     ^{::a/typecalc {::a/dispatch :adds-person-name}} [map? => map?]
+     y)))
+
+(comment
+  (a/function-detail `f))
 
 (specification "bind-argument-types"
   (let [env           (i/build-env)

@@ -1,4 +1,5 @@
 (ns com.fulcrologic.guardrails-pro.parser
+  "Implementation of reading >defn for macro expansion."
   (:require
     [com.fulcrologic.guardrails.core :refer [>defn => ?]]
     [com.fulcrologic.guardrails-pro.static.forms :as forms]
@@ -86,13 +87,14 @@
     env))
 
 (defn parse-gspec [spec arglist]
-  (first
-    (-> [{} spec]
-      (arg-specs)
-      (arg-predicates arglist)
-      (return-type)
-      (such-that)
-      (generator))))
+  (let [md (or (meta spec) {})]
+    (first
+      (-> [md spec]
+        (arg-specs)
+        (arg-predicates arglist)
+        (return-type)
+        (such-that)
+        (generator)))))
 
 (defn arity-body? [b] (or (instance? Cons b) (list? b)))
 
