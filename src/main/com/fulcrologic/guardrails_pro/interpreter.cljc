@@ -104,6 +104,7 @@
 
 (def build-env a/build-env)
 
+;; LANDMARK: make this general util somewhere
 (>defn try-sampling
   "Returns a sequence of samples, or nil if the type cannot be sampled."
   [type]
