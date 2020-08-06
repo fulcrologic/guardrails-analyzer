@@ -14,13 +14,13 @@
 (s/def ::samples (s/coll-of any? :min-count 1))
 (s/def ::original-expression any?)
 (s/def ::message string?)
-(s/def ::expected ::type-description)
-(s/def ::found ::type-description)
 (s/def ::error (s/keys :req [::original-expression ::expected ::found ::message]))
 (s/def ::errors (s/coll-of ::error))
 (s/def ::type-description (s/or
                             :function ::gspec
                             :value (s/keys :opt [::spec ::type ::samples ::original-expression ::errors])))
+(s/def ::expected ::type-description)
+(s/def ::found ::type-description)
 (s/def ::registry map?)
 (s/def ::env (s/keys
                :req [::registry]

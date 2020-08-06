@@ -82,7 +82,7 @@
     env))
 
 (defn generator [[result [lookahead & remainder :as args] :as env]]
-  (if (#{:st '|} lookahead)
+  (if (#{:gen '<-} lookahead)
     [(assoc result ::a/generator (first remainder)) []]
     env))
 

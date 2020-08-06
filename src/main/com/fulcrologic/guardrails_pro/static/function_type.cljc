@@ -1,10 +1,12 @@
 (ns com.fulcrologic.guardrails-pro.static.function-type
   "Extensible mechanism for calculating the type description of a function call."
   (:require
+    [clojure.spec.alpha :as s]
+    [clojure.spec.gen.alpha :as gen]
+    [com.fulcrologic.guardrails-pro.interpreter :as grp.i]
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as a]
     [com.fulcrologic.guardrails.core :refer [>defn => |]]
-    [taoensso.timbre :as log]
-    [clojure.spec.alpha :as s]))
+    [taoensso.timbre :as log]))
 
 (defmulti calculate-function-type
   "Use `get-calculate-function-type`. This is a multimethod that you use defmethod on to extend the type recognition system."
@@ -30,12 +32,11 @@
         {::a/keys [fn gspec] :as function-description} (get arities nargs (get arities :n))
         ;; TODO: check predicates
         {::a/keys [return-type return-spec generator]} gspec]
-    ;; TASK: Make general function for making these...the sampling should use generators when possible
-    ;; TASK: We could do spec checking or argtypes here, and include in ::a/errors
     {::a/spec return-spec
      ::a/type return-type
-     ;; TODO
-     ;;::a/samples             samples
+     ::a/samples (or (and generator (gen/sample generator))
+                   (grp.i/try-sampling return-spec))
+     ;; TASK: We could do spec checking or argtypes here, and include in ::a/errors
      ;; ::a/errors [...]  argument list problems based on arity specs
      }))
 
