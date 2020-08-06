@@ -2,4 +2,7 @@
  {:date "2020-06-17" :description "Planning with tony" :timespans [[1345 1430]]}
  {:date "2020-06-18" :description "Research into reader" :timespans [[1130 1245]]}
  {:date "2020-06-18" :description "AOT research" :timespans [[1950 2020]]}
+ {:date "2020-08-05" :description "Planning with tony" :timespans [[1245 1400]]}
+ {:date "2020-08-05" :description "calculate-function-type" :timespans [[1915 2015]]}
+ {:date "2020-08-06" :description "calculate-function-type" :timespans [[1500 1630]]}
  ]
