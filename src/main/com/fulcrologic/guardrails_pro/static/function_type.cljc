@@ -48,17 +48,25 @@
         samples))
     (map vector arg-specs argtypes)))
 
+(defn try-sampling [{::a/keys [return-spec generator return-predicates]}]
+  (try
+    (gen/sample
+      (reduce #(gen/such-that %2 %1)
+        (or generator (s/gen return-spec))
+        return-predicates))
+    (catch #?(:clj Exception :cljs :default) _
+      (log/info "Cannot sample from:" (or generator return-spec))
+      nil)))
+
 (defmethod calculate-function-type :default [env sym argtypes]
   (let [{::a/keys [arities]} (a/function-detail env sym)
         {::a/keys [gspec]} (get arities (count argtypes) :n)
-        {::a/keys [return-type return-spec generator]} gspec]
+        {::a/keys [return-type return-spec ]} gspec]
     {::a/spec return-spec
      ::a/type return-type
      ;; TODO: such-that return-predicates
-     ::a/samples (or (and generator (gen/sample generator))
-                   (grp.i/try-sampling return-spec))
-     ::a/errors (validate-argtypes gspec argtypes)
-     }))
+     ::a/samples (try-sampling gspec)
+     ::a/errors (validate-argtypes gspec argtypes)}))
 
 (defmethod calculate-function-type :pure [env sym argtypes]
   ;; TASK: Use env to find the argument samples and the artifact repository to find the function value (which is callable),

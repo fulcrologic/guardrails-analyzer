@@ -20,6 +20,10 @@
   [int? | #(pos? x) => int?]
   (inc x))
 
+(grp/>defn n [x]
+  [int? => int? | #(neg? %)]
+  (if (pos? x) (- x) x))
+
 (gr/>defn type-description
   "Generate a type description for a given spec"
   [name expr spec samples]
@@ -40,7 +44,7 @@
         type => "int?"
         "Has samples generated from that spec"
         (boolean (seq samples)) => true
-        (every? int? samples) => true)))
+        samples =fn=> #(every? int? %))))
   (behavior "If spec'ed to have a custom generator"
     (let [arg-type-description (type-description "int?" 42 int? #{42})
           env                  (a/build-env)
@@ -48,7 +52,15 @@
       (assertions
         "Has samples generated from the custom generator"
         (boolean (seq samples)) => true
-        (every? neg-int? samples) => true)))
+        samples =fn=> #(every? neg-int? %))))
+  (behavior "If the return type gspec as a such that clause"
+    (behavior "It is used to restrict the generated samples"
+      (let [arg-type-description (type-description "int?" 42 int? #{42})
+            env                  (a/build-env)
+            {::a/keys [samples]} (calculate-function-type env `n [arg-type-description])]
+        (assertions
+          (boolean (seq samples)) => true
+          samples =fn=> #(every? neg-int? %)))))
   (behavior "Verifies the argtypes based on the arglist specs"
     (let [arg-type-description (type-description "int?" 'x int? #{"3" 22})
           env                  (a/build-env)
