@@ -26,18 +26,38 @@
                            :default))
         :else :default))))
 
+(defn validate-argtypes [{::a/keys [arg-specs arg-predicates]} argtypes]
+  (mapcat
+    (fn [[arg-spec {::a/keys [samples original-expression]}]]
+      (mapcat
+        (fn [sample]
+          (concat
+            (some->>
+              (s/explain-data arg-spec sample)
+              ::s/problems
+              (map (fn [e]
+                     {::a/original-expression original-expression
+                      ::a/expected (:pred e)
+                      ::a/actual (:val e)})))
+            (keep (fn [pred]
+                    (or (pred sample)
+                      {::a/original-expression original-expression
+                       ::a/expected pred
+                       ::a/actual sample}))
+              arg-predicates)))
+        samples))
+    (map vector arg-specs argtypes)))
+
 (defmethod calculate-function-type :default [env sym argtypes]
-  (let [{::a/keys [fn arities]} (a/function-detail env sym)
-        nargs (count argtypes)
-        {::a/keys [fn gspec] :as function-description} (get arities nargs (get arities :n))
-        ;; TODO: check predicates
+  (let [{::a/keys [arities]} (a/function-detail env sym)
+        {::a/keys [gspec]} (get arities (count argtypes) :n)
         {::a/keys [return-type return-spec generator]} gspec]
     {::a/spec return-spec
      ::a/type return-type
+     ;; TODO: such-that return-predicates
      ::a/samples (or (and generator (gen/sample generator))
                    (grp.i/try-sampling return-spec))
-     ;; TASK: We could do spec checking or argtypes here, and include in ::a/errors
-     ;; ::a/errors [...]  argument list problems based on arity specs
+     ::a/errors (validate-argtypes gspec argtypes)
      }))
 
 (defmethod calculate-function-type :pure [env sym argtypes]
