@@ -20,6 +20,10 @@
   [int? | #(pos? x) => int?]
   (inc x))
 
+(grp/>defn h2 [x y]
+  [int? string? | #(and (pos? x) (seq y)) => int?]
+  (str x ":" y))
+
 (grp/>defn n [x]
   [int? => int? | #(neg? %)]
   (if (pos? x) (- x) x))
@@ -81,10 +85,18 @@
             {::a/keys [errors]} (calculate-function-type env `h [arg-type-description])
             error (first errors)]
         (assertions
-          (::a/original-expression error) => 'x
-          (::a/actual error) => -42
+          (::a/original-expression error) => '(x)
+          (::a/actual error) => '(-42)
           ;;TODO: should be more explanatory than just a fn ref
-          (::a/expected error) =fn=> fn?)))))
+          (::a/expected error) =fn=> fn?))
+      (let [arg1-td (type-description "int?" 'x int? #{3 -42})
+            arg2-td (type-description "string?" 'y string? #{"77" "88"})
+            env     (a/build-env)
+            {::a/keys [errors]} (calculate-function-type env `h2 [arg1-td arg2-td])
+            error (first errors)]
+        (assertions
+          (::a/original-expression error) => '(x y)
+          (::a/actual error) => '(-42 "88"))))))
 
 (specification "calculate-function-type (pure)"
   (behavior "Uses the function itself to generate type information"

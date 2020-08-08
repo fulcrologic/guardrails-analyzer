@@ -26,26 +26,28 @@
         :else :default))))
 
 (defn validate-argtypes [{::a/keys [arg-specs arg-predicates]} argtypes]
-  (mapcat
-    (fn [[arg-spec {::a/keys [samples original-expression]}]]
-      (mapcat
-        (fn [sample]
-          (concat
+  (concat
+    (mapcat
+      (fn [[arg-spec {::a/keys [samples original-expression]}]]
+        (mapcat
+          (fn [sample]
             (some->>
               (s/explain-data arg-spec sample)
               ::s/problems
               (map (fn [e]
                      {::a/original-expression original-expression
                       ::a/expected (:pred e)
-                      ::a/actual (:val e)})))
-            (keep (fn [pred]
-                    (or (pred sample)
-                      {::a/original-expression original-expression
-                       ::a/expected pred
-                       ::a/actual sample}))
-              arg-predicates)))
-        samples))
-    (map vector arg-specs argtypes)))
+                      ::a/actual (:val e)}))))
+          samples))
+      (map vector arg-specs argtypes))
+    (apply mapcat (fn [& sample-arglist]
+                    (keep (fn [pred]
+                            (or (apply pred sample-arglist)
+                              {::a/original-expression (map ::a/original-expression argtypes)
+                               ::a/expected pred
+                               ::a/actual sample-arglist}))
+                      arg-predicates))
+      (map ::a/samples argtypes))))
 
 (defn try-sampling [{::a/keys [return-spec generator return-predicates]}]
   (try
