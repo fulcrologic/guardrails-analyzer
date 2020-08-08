@@ -10,15 +10,25 @@
    2. Clojure does macro expansion.
    3. `>defn`, when being macroexpanded (run), calls *this* reader to re-read just the function (itself)
    4. We use that newly read form instead of `&form` in order to capture better source location info.
-   ")
+   "
+  (:require
+    [clojure.tools.reader :as reader])
+  (:import
+    (java.io FileReader BufferedReader PushbackReader)))
 
-(defn read-form
-  "Read the form that starts on `starting-line` of the given `namespace` from the source file, and returns that
-  form. The returned form will be augmented so that *everything* that
-  *can* have metadata will include file/line/start column/ending column information. `lang` can be `:clj` or `:cljs`
-  to indicate which feature of conditional reads should be used. Defaults to `:clj`."
-  ([namespace starting-line] (read-form namespace starting-line :clj))
-  ([namespace starting-line lang])
-  ;; TASK: Implement this. Might need to steal original Clojure reader source and just augment it??? Tools reader might work.
-  ;; NOTE: It is OK to drop the `lang` argument. We really only need this to fix Clojure.
-  )
+(defn ^:WIP read-form
+  "Read and return the form specified by the passed in var.
+   The returned form will be augmented so that *everything* that
+   *can* have metadata will include file/line/start column/ending column information."
+  [form-var]
+  (let [{:keys [file line]} (meta form-var)
+        r (new BufferedReader
+            (new FileReader file))]
+    (dotimes [_ (dec line)]
+      (.readLine r))
+    (reader/read
+      (new PushbackReader r))))
+
+(comment
+  (com.fulcrologic.guardrails-pro.static.forms/form-expression
+    (read-form #'read-form)))
