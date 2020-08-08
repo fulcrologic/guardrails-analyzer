@@ -24,6 +24,10 @@
   [int? => int? | #(neg? %)]
   (if (pos? x) (- x) x))
 
+(grp/>defn p [x]
+  ^::a/pure? [int? => int?]
+  (if (neg? x) (- x) x))
+
 (gr/>defn type-description
   "Generate a type description for a given spec"
   [name expr spec samples]
@@ -81,3 +85,21 @@
           (::a/actual error) => -42
           ;;TODO: should be more explanatory than just a fn ref
           (::a/expected error) =fn=> fn?)))))
+
+(specification "calculate-function-type (pure)"
+  (behavior "Uses the function itself to generate type information"
+    (let [arg-type-description (type-description "int?" 42 int? #{42 -32})
+          env                  (a/build-env)
+          {::a/keys [samples]} (calculate-function-type env `p [arg-type-description])]
+      (assertions
+        (boolean (seq samples)) => true
+        samples =fn=> #(every? pos? %))))
+  (behavior "Still checks its arguments based on their specs"
+    (let [arg-type-description (type-description "int?" 'x int? #{"3" 22})
+          env                  (a/build-env)
+          {::a/keys [errors]} (calculate-function-type env `p [arg-type-description])
+          error (first errors)]
+      (assertions
+        (::a/original-expression error) => 'x
+        (::a/actual error) => "3"
+        (::a/expected error) => `int?))))

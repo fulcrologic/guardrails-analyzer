@@ -10,10 +10,9 @@
 
 (defmulti calculate-function-type
   "Use `get-calculate-function-type`. This is a multimethod that you use defmethod on to extend the type recognition system."
-  (fn [env sym argument-type-descriptions]
-    (let [{::a/keys [fn arities]} (a/function-detail env sym)
-          nargs (count argument-type-descriptions)
-          {::a/keys [gspec] :as function-description} (get arities nargs (get arities :n))
+  (fn [env sym argtypes]
+    (let [{::a/keys [arities]} (a/function-detail env sym)
+          {::a/keys [gspec]} (get arities (count argtypes) :n)
           {::a/keys [pure? typecalc]} gspec]
       (cond
         pure? :pure
@@ -61,19 +60,17 @@
 (defmethod calculate-function-type :default [env sym argtypes]
   (let [{::a/keys [arities]} (a/function-detail env sym)
         {::a/keys [gspec]} (get arities (count argtypes) :n)
-        {::a/keys [return-type return-spec ]} gspec]
+        {::a/keys [return-type return-spec]} gspec]
     {::a/spec return-spec
      ::a/type return-type
-     ;; TODO: such-that return-predicates
      ::a/samples (try-sampling gspec)
      ::a/errors (validate-argtypes gspec argtypes)}))
 
 (defmethod calculate-function-type :pure [env sym argtypes]
-  ;; TASK: Use env to find the argument samples and the artifact repository to find the function value (which is callable),
-  ;; and generate a ::a/calculate-function-type by calling the function on the argument samples.
-
-  ;; probably can just return ::a/samples and ::a/errors
-  )
+  (let [{::a/keys [arities fn-ref]} (a/function-detail env sym)
+        {::a/keys [gspec]} (get arities (count argtypes) :n)]
+    {::a/samples (apply map fn-ref (map ::a/samples argtypes))
+     ::a/errors (validate-argtypes gspec argtypes)}))
 
 (defmethod calculate-function-type :HOF [env sym argtypes]
   ;; TASK: This one dispatches on [:HOF arg-number]. The arg number indicates which argument of the function

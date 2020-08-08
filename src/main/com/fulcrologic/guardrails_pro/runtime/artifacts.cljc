@@ -35,7 +35,7 @@
                   :opt [::class? ::macro? ::type-description]))
 (s/def ::name qualified-symbol?)
 (s/def ::extern-name symbol?)
-(s/def ::fn fn?)
+(s/def ::fn-ref fn?)
 (s/def ::value any?)
 (s/def ::arglist vector?)
 (s/def ::arg-types (s/coll-of ::type :kind vector?))
@@ -60,8 +60,7 @@
 (s/def ::arity-detail (s/keys :req [::arglist ::gspec ::body]))
 (s/def ::arity #{1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 :n})
 (s/def ::arities (s/map-of ::arity ::arity-detail))
-;; TODO: rename ::fn so it destructures in a sane way
-(s/def ::function (s/keys :req [::name ::last-changed ::fn ::arities ::extern-symbols]))
+(s/def ::function (s/keys :req [::name ::last-changed ::fn-ref ::arities ::extern-symbols]))
 (s/def ::last-changed pos-int?)
 
 (defonce memory (atom {}))

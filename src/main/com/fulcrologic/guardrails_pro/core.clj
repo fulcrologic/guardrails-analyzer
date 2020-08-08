@@ -108,7 +108,7 @@
          (try
            (a/remember! ~fqsym ~{::a/name           fqsym
                                  ::a/last-changed   (inst-ms (Date.))
-                                 ::a/fn             expr
+                                 ::a/fn-ref         expr
                                  ::a/arities        arities
                                  ::a/extern-symbols @extern-symbol-map})
            (catch ~guard-type e#
