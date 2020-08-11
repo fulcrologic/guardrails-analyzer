@@ -27,12 +27,12 @@
 (defmulti analyze (fn [env sexpr]))
 
 (defmethod analyze :literal [env sexpr]
-  ::a/type-description)
-
-(let [a {::person/name 42}])
+  ;::a/type-description
+  )
 
 (defmethod analyze :function-call [env sexpr]
-  (function-type ...))
+  ;(function-type ...)
+  )
 
 (defmethod analyze :do [env sexpr])
 
@@ -40,16 +40,17 @@
   ;; Walk each binding, recursively calling analyze, while adding bindings to env
 
   ;; collect type description errors from all bindings and "floating" expressions
-  (let [a 1                                                 ; Add type description for 1 to env -> env'
-        ;; TODO: handle destructuring...
-        {::person/keys [name]} ^{::a/spec int?} (<! some-channel)                        ; bind `name` into env with spec ::person/name
-        b (f 2)]                                            ; call analyze on `(f 2)` and bind type-desc to b in env''
-    (do
-      (j) ; errors
-      (k) ; errors
-      ;; cumulative errors need to be returned from do
-      (l))                                                    ;; results in type description we "lost"...need to capture
-    (g b))                                                  ; grand return of `let` is the type description of the LAST expression, but with cumulative ::errors
+  (comment
+    (let [a 1                                                 ; Add type description for 1 to env -> env'
+          ;; TODO: handle destructuring...
+          {::person/keys [name]} ^{::a/spec int?} (<! some-channel)                        ; bind `name` into env with spec ::person/name
+          b (f 2)]                                            ; call analyze on `(f 2)` and bind type-desc to b in env''
+      (do
+        (j) ; errors
+        (k) ; errors
+        ;; cumulative errors need to be returned from do
+        (l))                                                    ;; results in type description we "lost"...need to capture
+      (g b)))                                                  ; grand return of `let` is the type description of the LAST expression, but with cumulative ::errors
   )
 
 ;; (analyze env `(let [a 2] (f a)))
