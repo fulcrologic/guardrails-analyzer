@@ -26,28 +26,30 @@
         :else :default))))
 
 (defn validate-argtypes [{::a/keys [arg-specs arg-predicates]} argtypes]
-  (concat
-    (mapcat
-      (fn [[arg-spec {::a/keys [samples original-expression]}]]
-        (mapcat
-          (fn [sample]
-            (some->>
-              (s/explain-data arg-spec sample)
-              ::s/problems
-              (map (fn [e]
-                     {::a/original-expression original-expression
-                      ::a/expected (:pred e)
-                      ::a/actual (:val e)}))))
-          samples))
-      (map vector arg-specs argtypes))
-    (apply mapcat (fn [& sample-arglist]
-                    (keep (fn [pred]
-                            (or (apply pred sample-arglist)
-                              {::a/original-expression (map ::a/original-expression argtypes)
-                               ::a/expected pred
-                               ::a/actual sample-arglist}))
-                      arg-predicates))
-      (map ::a/samples argtypes))))
+  (let [spec-arg-errors (mapcat
+                          (fn [[arg-spec {::a/keys [samples original-expression]}]]
+                            (mapcat
+                              (fn [sample]
+                                (some->>
+                                  (s/explain-data arg-spec sample)
+                                  ::s/problems
+                                  (map (fn [e]
+                                         {::a/original-expression original-expression
+                                          ::a/expected (:pred e)
+                                          ::a/actual (:val e)}))))
+                              samples))
+                          (map vector arg-specs argtypes))
+        arg-pred-errors (apply mapcat (fn [& sample-arglist]
+                                        (keep (fn [pred]
+                                                (or (apply pred sample-arglist)
+                                                  {::a/original-expression (map ::a/original-expression argtypes)
+                                                   ::a/expected pred
+                                                   ::a/actual sample-arglist}))
+                                          arg-predicates))
+                          (map ::a/samples argtypes))]
+    (concat
+      spec-arg-errors
+      arg-pred-errors)))
 
 (defn try-sampling [{::a/keys [return-spec generator return-predicates]}]
   (try
