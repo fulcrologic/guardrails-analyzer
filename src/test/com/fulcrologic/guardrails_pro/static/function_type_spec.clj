@@ -24,10 +24,6 @@
   [int? string? | #(and (pos? x) (seq y)) => int?]
   (str x ":" y))
 
-(grp/>defn n [x]
-  [int? => int? | #(neg? %)]
-  (if (pos? x) (- x) x))
-
 (grp/>defn p [x]
   ^::a/pure? [int? => int?]
   (if (neg? x) (- x) x))
@@ -61,14 +57,6 @@
         "Has samples generated from the custom generator"
         (boolean (seq samples)) => true
         samples =fn=> #(every? neg-int? %))))
-  (behavior "If the return type gspec as a such that clause"
-    (behavior "It is used to restrict the generated samples"
-      (let [arg-type-description (type-description "int?" 42 int? #{42})
-            env                  (a/build-env)
-            {::a/keys [samples]} (calculate-function-type env `n [arg-type-description])]
-        (assertions
-          (boolean (seq samples)) => true
-          samples =fn=> #(every? neg-int? %)))))
   (behavior "Verifies the argtypes based on the arglist specs"
     (let [arg-type-description (type-description "int?" 'x int? #{"3" 22})
           env                  (a/build-env)

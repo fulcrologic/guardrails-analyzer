@@ -52,9 +52,7 @@
 (defn try-sampling [{::a/keys [return-spec generator return-predicates]}]
   (try
     (gen/sample
-      (reduce #(gen/such-that %2 %1)
-        (or generator (s/gen return-spec))
-        return-predicates))
+      (or generator (s/gen return-spec)))
     (catch #?(:clj Exception :cljs :default) _
       (log/info "Cannot sample from:" (or generator return-spec))
       nil)))
