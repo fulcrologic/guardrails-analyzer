@@ -13,5 +13,6 @@
  {:date "2020-07-22" :description "implementation spike" :timespans [[2110 2310]]}
  {:date "2020-07-31" :description "numerous new ideas. added task markers and docs" :timespans [[545 730]]}
  {:date "2020-08-03" :description "getting an initial check working" :timespans [[1050 1400]]}
+ {:date "2020-08-11" :description "design with Anthony" :timespans [[1550 1635]]}
  ]
 
