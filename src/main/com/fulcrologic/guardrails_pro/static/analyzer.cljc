@@ -24,8 +24,10 @@
    ** The end result is a type-description (which can include nested errors)
    "
   (:require
+    [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as a]
-    [com.fulcrologic.guardrails-pro.static.function-type :as grp.fnt])
+    [com.fulcrologic.guardrails-pro.static.function-type :as grp.fnt]
+    [com.fulcrologic.guardrails-pro.utils :as grp.u])
   (:import
     (java.util.regex Pattern)))
 
@@ -77,11 +79,24 @@
   (let [{::a/keys [arities]} (a/function-detail env function)
         {::a/keys [gspec]} (get arities (count arguments) :n)
         {::a/keys [arg-specs]} gspec
-        args-type-desc (mapv (fn [[spec arg]]
-                               ;;TODO: validate arg (? samples) with spec (? and pred)
-                               (analyze env arg))
-                         (map vector arg-specs arguments))]
-    (grp.fnt/calculate-function-type env function args-type-desc)))
+        args-type-desc (mapv (partial analyze env) arguments)
+        errors (mapcat
+                 (fn [[arg-spec arg]]
+                   (let [{::a/keys [spec]} (analyze env arg)]
+                     (->> (grp.u/try-sampling {::a/return-spec spec})
+                       (map (fn [sample]
+                              (some->>
+                                (s/explain-data arg-spec sample)
+                                ::s/problems
+                                (map (fn [e]
+                                       {::a/original-expression arg
+                                        ::a/expected (:pred e)
+                                        ::a/actual (:val e)
+                                        ::a/spec arg-spec})))))
+                       (first))))
+                 (map vector arg-specs arguments))]
+    (cond-> (grp.fnt/calculate-function-type env function args-type-desc)
+      (seq errors) (update ::a/errors concat errors))))
 
 (defmethod analyze :do [env [_ & body]]
   (analyze
