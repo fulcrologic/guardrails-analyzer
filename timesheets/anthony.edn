@@ -7,5 +7,6 @@
  {:date "2020-08-06" :description "calculate-function-type" :timespans [[1500 1630]]}
  {:date "2020-08-07" :description "calculate-function-type" :timespans [[1130 1310] [1630 1820] [1900 1930]]}
  {:date "2020-08-10" :description "calculate-function-type" :timespans [[2030 2130]]}
- {:date "2020-08-11" :description "calculate-function-type" :timespans [[1600 1645]]}
+ {:date "2020-08-11" :description "Planning with tony" :timespans [[1600 1645]]}
+ {:date "2020-08-12" :description "analyze" :timespans [[1000 1300] [1720 1920]]}
  ]

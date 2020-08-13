@@ -3,6 +3,7 @@
   (:require
     [com.fulcrologic.guardrails.core :refer [>defn => | ?]]
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as a]
+    [com.fulcrologic.guardrails-pro.utils :as grp.u]
     [clojure.test.check.generators]
     [clojure.spec.gen.alpha :as gen]
     [taoensso.timbre :as log]
@@ -104,21 +105,10 @@
 
 (def build-env a/build-env)
 
-;; LANDMARK: make this general util somewhere
-(>defn try-sampling
-  "Returns a sequence of samples, or nil if the type cannot be sampled."
-  [type]
-  [::a/spec => (? (s/coll-of any? :min-count 1))]
-  (try
-    (gen/sample (s/gen type))
-    (catch #?(:clj Exception :cljs :default) _
-      (log/info "Cannot sample" type)
-      nil)))
-
 (defn bind-type
   "Returns a new `env` with the given sym bound to the known type."
   [env sym typename clojure-spec]
-  (let [samples (try-sampling clojure-spec)]
+  (let [samples (grp.u/try-sampling {::a/return-spec clojure-spec})]
     (assoc-in env [::a/local-symbols sym] (cond-> {::a/spec clojure-spec
                                                    ::a/type typename}
                                             (seq samples) (assoc ::a/samples samples)))))
@@ -171,13 +161,13 @@
     (cond
       (int? literal) {::a/spec    int?
                       ::a/type    "int?"
-                      ::a/samples (try-sampling int?)}
+                      ::a/samples (grp.u/try-sampling {::a/return-spec int?})}
       (double? literal) {::a/spec    double?
                          ::a/type    "double?"
-                         ::a/samples (try-sampling double?)}
+                         ::a/samples (grp.u/try-sampling {::a/return-spec double?})}
       (string? literal) {::a/spec    string?
                          ::a/type    "string?"
-                         ::a/samples (try-sampling string?)}
+                         ::a/samples (grp.u/try-sampling {::a/return-spec string?})}
       :else {})))
 
 #_(defmethod typecheck-call :default [env c]

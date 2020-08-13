@@ -22,43 +22,89 @@
       will need to ask for the `type-description` of each binding value.
       NOTE: There can be any number of errors detected during this analysis.
    ** The end result is a type-description (which can include nested errors)
-   ")
+   "
+  (:require
+    [com.fulcrologic.guardrails-pro.runtime.artifacts :as a]
+    [com.fulcrologic.guardrails-pro.static.function-type :as grp.fnt])
+  (:import
+    (java.util.regex Pattern)))
 
-(defmulti analyze (fn [env sexpr]))
+(defn regex? [x]
+  (= (type x) Pattern))
+
+(defn list-dispatch-type [sexpr]
+  (if (symbol? (first sexpr))
+    (case (str (first sexpr))
+      "do"  :do
+      ("let" "clojure.core/let") :let
+      :function-call)
+    :function-call))
+
+(defmulti analyze
+  (fn [env sexpr]
+    (cond
+      (seq? sexpr)    (list-dispatch-type sexpr)
+      (symbol? sexpr)  :symbol
+
+      (char?    sexpr) :literal
+      (number?  sexpr) :literal
+      (string?  sexpr) :literal
+      (keyword? sexpr) :literal
+      (regex?   sexpr) :literal
+      (nil?     sexpr) :literal
+
+      (vector?  sexpr) :collection
+      (set?     sexpr) :collection
+      (map?     sexpr) :collection
+
+      :else :unknown)))
 
 (defmethod analyze :literal [env sexpr]
-  ;::a/type-description
-  )
+  (let [spec (cond
+               (char?    sexpr) char?
+               (number?  sexpr) number?
+               (string?  sexpr) string?
+               (keyword? sexpr) keyword?
+               (regex?   sexpr) regex?
+               (nil?     sexpr) nil?)]
+    {::a/spec spec
+     ::a/original-expression sexpr}))
 
-(defmethod analyze :function-call [env sexpr]
-  ;(function-type ...)
-  )
+(defmethod analyze :symbol [env sym]
+  (or (a/symbol-detail env sym) {}))
 
-(defmethod analyze :do [env sexpr])
+(defmethod analyze :function-call [env [function & arguments]]
+  (let [{::a/keys [arities]} (a/function-detail env function)
+        {::a/keys [gspec]} (get arities (count arguments) :n)
+        {::a/keys [arg-specs]} gspec
+        args-type-desc (mapv (fn [[spec arg]]
+                               ;;TODO: validate arg (? samples) with spec (? and pred)
+                               (analyze env arg))
+                         (map vector arg-specs arguments))]
+    (grp.fnt/calculate-function-type env function args-type-desc)))
 
-(defmethod analyze :let-like [env sexpr]
-  ;; Walk each binding, recursively calling analyze, while adding bindings to env
+(defmethod analyze :do [env [_ & body]]
+  (analyze
+    (reduce (fn [env sexpr]
+              (merge env (::a/errors (analyze env sexpr))))
+      env (butlast body))
+    (last body)))
 
-  ;; collect type description errors from all bindings and "floating" expressions
-  (comment
-    (let [a 1                                                 ; Add type description for 1 to env -> env'
-          ;; TODO: handle destructuring...
-          {::person/keys [name]} ^{::a/spec int?} (<! some-channel)                        ; bind `name` into env with spec ::person/name
-          b (f 2)]                                            ; call analyze on `(f 2)` and bind type-desc to b in env''
-      (do
-        (j) ; errors
-        (k) ; errors
-        ;; cumulative errors need to be returned from do
-        (l))                                                    ;; results in type description we "lost"...need to capture
-      (g b)))                                                  ; grand return of `let` is the type description of the LAST expression, but with cumulative ::errors
-  )
+(defmethod analyze :let [env [_ bindings & body]]
+  (analyze (reduce (fn [env [bind-sym sexpr]]
+                     (assoc-in env [::a/local-symbols bind-sym]
+                       (analyze env sexpr)))
+             env (partition 2 bindings))
+    `(do ~@body)))
 
-;; (analyze env `(let [a 2] (f a)))
-;; 1. dispatch to `let` analyzer, which:
-;;   a. binds a to type-descrip for 2
-;;   b. runs (analyze env `(f a)) (w/a bound in env)
-;;      i. analyze does not recognize `f` as special (uses :default), so it calls `(function-type `f [type-description-a])`
+;; analyze :let
+;; Walk each binding, recursively calling analyze, while adding bindings to env
+;; collect type description errors from all bindings and "floating" expressions
+;(let [a 1 ;; Add type description for 1 to env -> env'
+;      b (f 2)] ; call analyze on `(f 2)` and bind type-desc to b in env''
+;  (g b)) ; grand return of `let` is the type description of the LAST expression, but with cumulative ::errors
 
+;; HOF case
 ;; (analyze env `(let [a (map + [1 2 3])] (f a)))
 ;; 1. dispatch to `let` analyzer, which:
 ;;   a. recursively calls (analyze env `(map + [1 2 3]))

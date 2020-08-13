@@ -80,6 +80,12 @@
    [qualified-symbol? => (? ::function)]
    (get @memory sym)))
 
+(>defn symbol-detail [env sym]
+  [::env qualified-symbol? => (? ::type-description)]
+  (or
+    (get-in env [::local-symbols sym])
+    (get-in env [::extern-symbols sym ::type-description])))
+
 (>defn changed-since
   "Get a set of all symbols that have changed since tm (inst-ms)."
   [tm]

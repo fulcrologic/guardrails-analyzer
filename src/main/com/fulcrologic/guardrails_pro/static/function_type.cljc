@@ -2,14 +2,11 @@
   "Extensible mechanism for calculating the type description of a function call."
   (:require
     [clojure.spec.alpha :as s]
-    [clojure.spec.gen.alpha :as gen]
-    [com.fulcrologic.guardrails-pro.interpreter :as grp.i]
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as a]
-    [com.fulcrologic.guardrails.core :refer [>defn => |]]
+    [com.fulcrologic.guardrails-pro.utils :as grp.u]
     [taoensso.timbre :as log]))
 
 (defmulti calculate-function-type
-  "Use `get-calculate-function-type`. This is a multimethod that you use defmethod on to extend the type recognition system."
   (fn [env sym argtypes]
     (let [{::a/keys [arities]} (a/function-detail env sym)
           {::a/keys [gspec]} (get arities (count argtypes) :n)
@@ -51,21 +48,13 @@
       spec-arg-errors
       arg-pred-errors)))
 
-(defn try-sampling [{::a/keys [return-spec generator return-predicates]}]
-  (try
-    (gen/sample
-      (or generator (s/gen return-spec)))
-    (catch #?(:clj Exception :cljs :default) _
-      (log/info "Cannot sample from:" (or generator return-spec))
-      nil)))
-
 (defmethod calculate-function-type :default [env sym argtypes]
   (let [{::a/keys [arities]} (a/function-detail env sym)
         {::a/keys [gspec]} (get arities (count argtypes) :n)
         {::a/keys [return-type return-spec]} gspec]
     {::a/spec return-spec
      ::a/type return-type
-     ::a/samples (try-sampling gspec)
+     ::a/samples (grp.u/try-sampling gspec)
      ::a/errors (validate-argtypes gspec argtypes)}))
 
 (defmethod calculate-function-type :pure [env sym argtypes]
