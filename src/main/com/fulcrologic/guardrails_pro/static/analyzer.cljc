@@ -84,6 +84,7 @@
                  (fn [[arg-spec arg]]
                    (let [{::a/keys [spec]} (analyze env arg)]
                      (->> (grp.u/try-sampling {::a/return-spec spec})
+                       ;; TODO: extract to utils?
                        (map (fn [sample]
                               (some->>
                                 (s/explain-data arg-spec sample)

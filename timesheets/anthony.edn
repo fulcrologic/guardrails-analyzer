@@ -11,4 +11,5 @@
  {:date "2020-08-12" :description "analyze" :timespans [[1000 1300] [1720 1920]]}
  {:date "2020-08-13" :description "analyze" :timespans [[1420 1515]]}
  {:date "2020-08-13" :description "clojure reader" :timespans [[1630 1715]]}
+ {:date "2020-08-14" :description "research into linters" :timespans [[1200 1300]]}
  ]
