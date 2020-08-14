@@ -10,4 +10,5 @@
  {:date "2020-08-11" :description "Planning with tony" :timespans [[1600 1645]]}
  {:date "2020-08-12" :description "analyze" :timespans [[1000 1300] [1720 1920]]}
  {:date "2020-08-13" :description "analyze" :timespans [[1420 1515]]}
+ {:date "2020-08-13" :description "clojure reader" :timespans [[1630 1715]]}
  ]
