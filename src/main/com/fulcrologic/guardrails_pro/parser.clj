@@ -109,7 +109,7 @@
                                      {::a/arglist `(quote ~arglist)
                                       ::a/gspec   (parse-gspec spec arglist)
                                       ::a/body    (forms/form-expression (vec forms))}
-                                     {::a/raw-body (vec forms)}))])
+                                     {::a/raw-body `(quote ~(vec forms))}))])
 
 (defn multiple-arities [[result args]]
   (loop [r           result

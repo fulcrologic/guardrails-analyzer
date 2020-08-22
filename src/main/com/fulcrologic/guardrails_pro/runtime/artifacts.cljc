@@ -72,13 +72,9 @@
   (swap! memory assoc s function-description)
   nil)
 
-(>defn function-detail
-  ([env sym]
-   [::env qualified-symbol? => (? ::function)]
-   (get-in env [::registry sym]))
-  ([sym]
-   [qualified-symbol? => (? ::function)]
-   (get @memory sym)))
+(>defn function-detail [env sym]
+  [::env qualified-symbol? => (? ::function)]
+  (get-in env [::registry sym]))
 
 (>defn symbol-detail [env sym]
   [::env qualified-symbol? => (? ::type-description)]
@@ -105,10 +101,15 @@
                     m))))
 
 (defn record-problem! [sym metadata description]
-  (swap! memory update-in [sym ::problems] (fnil conj []) {:metadata    metadata
-                                                           :description description}))
+  (swap! memory update-in [sym ::problems]
+    (fnil conj [])
+    {:metadata    metadata
+     :description description}))
 
 (defn build-env
   ([] {::registry @memory})
   ([registry] {::registry registry}))
 
+(comment
+  (-> (get @memory 'com.fulcrologic.guardrails-pro.core/env-test)
+    ::extern-symbols))

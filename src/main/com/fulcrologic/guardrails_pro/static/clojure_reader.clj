@@ -13,7 +13,8 @@
    "
   (:require
     [clojure.tools.reader :as reader]
-    [clojure.tools.reader.impl.utils :as reader.utils])
+    [clojure.tools.reader.impl.utils :as reader.utils]
+    [clojure.java.io :as io])
   (:import
     (java.io FileReader BufferedReader PushbackReader)
     (clojure.tools.reader.reader_types SourceLoggingPushbackReader)))
@@ -22,20 +23,21 @@
   "Read and return the form specified by the passed in var.
    The returned form will be augmented so that *everything* that
    *can* have metadata will include file/line/start column/ending column information."
-  [form-var]
-  (let [{:keys [file line]} (meta form-var)
-        r (new BufferedReader
-            (new FileReader file))
-        pbr (new PushbackReader r)]
+  [{:keys [file line resource]}]
+  (let [r (new BufferedReader
+            (if resource
+              (io/reader resource)
+              (new FileReader file)))]
     (doseq [_ (range (dec line))]
       (.readLine r))
     (reader/read
       (new SourceLoggingPushbackReader
-        pbr line 1 true nil 0 file
+        (new PushbackReader r)
+        line 1 true nil 0 file
         (doto (reader.utils/make-var)
           (alter-var-root (constantly {:buffer (StringBuilder.) :offset 0})))
         false))))
 
 (comment
   ((requiring-resolve 'com.fulcrologic.guardrails-pro.static.forms/form-expression)
-   (read-form #'read-form)))
+   (read-form (meta #'read-form))))
