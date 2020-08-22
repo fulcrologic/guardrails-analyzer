@@ -4,6 +4,7 @@
     [com.fulcrologic.guardrails-pro.static.analyzer :as src]
     [com.fulcrologic.guardrails.core :as gr :refer [=>]]
     [com.fulcrologic.guardrails-pro.core :as grp]
+    [clojure.java.io :as io]
     [fulcro-spec.core :refer [specification assertions behavior =fn=>]]))
 
 (grp/>defn f [x]
