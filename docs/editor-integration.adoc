@@ -1,0 +1,17 @@
+= Notes on Editor Integration
+
+CLJ Kondo has a binary (clj-kondo). It gets passed a filename as a command line argument. It outputs lines with problems
+to stdout. The IDE can then put the markup on lines based on that stdout.
+
+So, our checker will be high-overhead, and potentially running in browser. So, the exe above is just an interface to
+reading errors that are kept by GRP.
+
+Suggested implementation:
+
+* Write a daemon that is started when you want to use GRP (perhaps automatically by the above exe if it isn't running)
+** The daemon keeps a stateful list of problems.
+** Daemon is super stupid simple: Just an atom holding errors with three API calls: save-errors, get-errors (sync call
+   that triggers server push to connected checkers), clear-errors
+* The runtime checkers connect via websockets and report problems.
+** Checker is run by file watcher or shadow reload started by user of GRP.
+* The exe just asks the daemon for problems (by filename), and reports back the response to stdout
