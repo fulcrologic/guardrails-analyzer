@@ -24,7 +24,7 @@
   [int? string? | #(and (pos? x) (seq y)) => int?]
   (str x ":" y))
 
-(grp/>defn p [x]
+(grp/>defn absolute-value [x]
   ^::a/pure? [int? => int?]
   (if (neg? x) (- x) x))
 
@@ -61,7 +61,7 @@
     (let [arg-type-description (type-description "int?" 'x int? #{"3" 22})
           env                  (a/build-env)
           {::a/keys [errors]} (calculate-function-type env `h [arg-type-description])
-          error (first errors)]
+          error                (first errors)]
       (assertions
         (::a/original-expression error) => 'x
         (::a/actual error) => "3"
@@ -71,7 +71,7 @@
       (let [arg-type-description (type-description "int?" 'x int? #{3 -42})
             env                  (a/build-env)
             {::a/keys [errors]} (calculate-function-type env `h [arg-type-description])
-            error (first errors)]
+            error                (first errors)]
         (assertions
           (::a/original-expression error) => '(x)
           (::a/actual error) => '(-42)
@@ -81,24 +81,28 @@
             arg2-td (type-description "string?" 'y string? #{"77" "88"})
             env     (a/build-env)
             {::a/keys [errors]} (calculate-function-type env `h2 [arg1-td arg2-td])
-            error (first errors)]
+            error   (first errors)]
         (assertions
           (::a/original-expression error) => '(x y)
           (::a/actual error) => '(-42 "88"))))))
 
 (specification "calculate-function-type (pure)"
   (behavior "Uses the function itself to generate type information"
-    (let [arg-type-description (type-description "int?" 42 int? #{42 -32})
+    (let [input-samples        #{42 -32}
+          arg-type-description (type-description "int?" 42 int? input-samples)
           env                  (a/build-env)
-          {::a/keys [samples]} (calculate-function-type env `p [arg-type-description])]
+          {::a/keys [samples]} (calculate-function-type env `absolute-value [arg-type-description])]
       (assertions
+        "The return type has new samples"
+        (not= samples input-samples) => true
         (boolean (seq samples)) => true
+        "The samples are transformed by the real function"
         samples =fn=> #(every? pos? %))))
   (behavior "Still checks its arguments based on their specs"
     (let [arg-type-description (type-description "int?" 'x int? #{"3" 22})
           env                  (a/build-env)
-          {::a/keys [errors]} (calculate-function-type env `p [arg-type-description])
-          error (first errors)]
+          {::a/keys [errors]} (calculate-function-type env `absolute-value [arg-type-description])
+          error                (first errors)]
       (assertions
         (::a/original-expression error) => 'x
         (::a/actual error) => "3"

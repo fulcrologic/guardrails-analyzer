@@ -9,30 +9,34 @@
 (s/def ::spec (s/or
                 :spec-name qualified-keyword?
                 :spec-object #(s/spec? %)
-                :predicate fn?))
+                :predicate ifn?))
 (s/def ::type string?)
 (s/def ::samples (s/coll-of any? :min-count 1))
 (s/def ::original-expression any?)
 (s/def ::message string?)
-(s/def ::error (s/keys :req [::original-expression ::expected ::found ::message]))
-(s/def ::errors (s/coll-of ::error))
+(s/def ::error (s/keys :opt [::original-expression ::expected ::actual ::message]))
 (s/def ::type-description (s/or
+                            ;; NOTE: A gspec CAN be returned if an argument is a LAMBDA. HOF.
                             :function ::gspec
-                            :value (s/keys :opt [::spec ::type ::samples ::original-expression ::errors])))
-(s/def ::expected ::type-description)
-(s/def ::found ::type-description)
+                            :value (s/keys :opt [::spec ::type ::samples ::original-expression])))
+;; TASK: Expected should be type description, and actual might just need to be a value...
+(s/def ::expected any?)
+(s/def ::actual any?)
 (s/def ::registry map?)
+(s/def ::current-form any?)
 (s/def ::env (s/keys
                :req [::registry]
-               :opt [::local-symbols ::extern-symbols]))
+               :opt [::local-symbols
+                     ::current-form
+                     ::extern-symbols]))
 (s/def ::Unknown (s/and ::type-description empty?))
 (s/def ::local-symbols (s/map-of symbol? ::type-description))
 (s/def ::extern-symbols (s/map-of symbol? ::extern))
 (s/def ::class? boolean?)
 (s/def ::macro? boolean?)
 (s/def ::pure? boolean?)
-(s/def ::extern (s/keys :req [::extern-name ::value]
-                  :opt [::class? ::macro? ::type-description]))
+(s/def ::extern (s/keys :req [::extern-name]
+                  :opt [::class? ::macro? ::type-description ::value]))
 (s/def ::name qualified-symbol?)
 (s/def ::extern-name symbol?)
 (s/def ::fn-ref fn?)
@@ -72,15 +76,24 @@
   (swap! memory assoc s function-description)
   nil)
 
-(>defn function-detail [env sym]
-  [::env qualified-symbol? => (? ::function)]
-  (get-in env [::registry sym]))
-
 (>defn symbol-detail [env sym]
-  [::env qualified-symbol? => (? ::type-description)]
+  [::env symbol? => (? ::type-description)]
   (or
     (get-in env [::local-symbols sym])
     (get-in env [::extern-symbols sym ::type-description])))
+
+(>defn qualify-extern
+  "Attempt to find a qualified symbol that goes with the given simple symbol. Returns unaltered sym if it isn't an extern."
+  [env sym]
+  [::env symbol? => symbol?]
+  (get-in env [::extern-symbols sym ::extern-name] sym))
+
+(>defn function-detail [env sym]
+  [::env symbol? => (? ::function)]
+  (let [sym (if (qualified-symbol? sym)
+              sym
+              (qualify-extern env sym))]
+    (get-in env [::registry sym])))
 
 (>defn changed-since
   "Get a set of all symbols that have changed since tm (inst-ms)."
@@ -100,11 +113,12 @@
                     {}
                     m))))
 
-(defn record-problem! [sym metadata description]
-  (swap! memory update-in [sym ::problems]
-    (fnil conj [])
-    {:metadata    metadata
-     :description description}))
+(defn record-problem! [env problem]
+  ;; TASK: Make this right...
+  #_(swap! memory update-in [sym ::problems]
+      (fnil conj [])
+      {:metadata    metadata
+       :description description}))
 
 (defn build-env
   ([] {::registry @memory})

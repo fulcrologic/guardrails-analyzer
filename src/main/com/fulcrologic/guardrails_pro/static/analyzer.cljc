@@ -13,6 +13,7 @@
    "
   (:require
     [clojure.spec.alpha :as s]
+    [com.fulcrologic.guardrails.core :refer [>defn => ?]]
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as a]
     [com.fulcrologic.guardrails-pro.static.function-type :as grp.fnt]
     [com.fulcrologic.guardrails-pro.utils :as grp.u]
@@ -23,90 +24,103 @@
 (defn regex? [x]
   (= (type x) Pattern))
 
-(defn fn-call-dispatch-type [env function]
-  (or (when (a/function-detail env function)
-        :function-call)
-    :unknown))
+(defn list-dispatch-type [env [f :as sexpr]]
+  (cond
+    (a/function-detail env f) :function-call
+    (symbol? f) f
+    :else :unknown))
 
-(defn list-dispatch-type [env sexpr]
-  (or (when (symbol? (first sexpr))
-        (case (str (first sexpr))
-          "do"  :do
-          ("let" "clojure.core/let") :let
-          false))
-    (fn-call-dispatch-type env (first sexpr))))
-
-(defmulti analyze
+(defmulti analyze-mm
   (fn [env sexpr]
-    (cond
-      (seq? sexpr)    (list-dispatch-type env sexpr)
-      (symbol? sexpr)  :symbol
+    (let [dispatch (cond
+                     (seq? sexpr) (list-dispatch-type env sexpr)
+                     (symbol? sexpr) :symbol
 
-      (char?    sexpr) :literal
-      (number?  sexpr) :literal
-      (string?  sexpr) :literal
-      (keyword? sexpr) :literal
-      (regex?   sexpr) :literal
-      (nil?     sexpr) :literal
+                     (char? sexpr) :literal
+                     (number? sexpr) :literal
+                     (string? sexpr) :literal
+                     (keyword? sexpr) :literal
+                     (regex? sexpr) :literal
+                     (nil? sexpr) :literal
 
-      (vector?  sexpr) :collection
-      (set?     sexpr) :collection
-      (map?     sexpr) :collection
+                     (vector? sexpr) :collection
+                     (set? sexpr) :collection
+                     (map? sexpr) :collection
 
-      :else :unknown)))
+                     :else :unknown)]
+      (log/spy :info dispatch))))
 
-(defmethod analyze :unknown [env sexpr]
+(>defn analyze!
+  [env sexpr]
+  [::a/env any? => ::a/type-description]
+  (analyze-mm env sexpr))
+
+(defmethod analyze-mm :default [env sexpr]
   (log/warn "Could not analyze:" sexpr)
   {})
 
-(defmethod analyze :literal [env sexpr]
+(defmethod analyze-mm :literal [env sexpr]
+  (log/info "Analyze literal " sexpr)
   (let [spec (cond
-               (char?    sexpr) char?
-               (number?  sexpr) number?
-               (string?  sexpr) string?
+               (char? sexpr) char?
+               (number? sexpr) number?
+               (string? sexpr) string?
                (keyword? sexpr) keyword?
-               (regex?   sexpr) regex?
-               (nil?     sexpr) nil?)]
-    {::a/spec spec
+               (regex? sexpr) regex?
+               (nil? sexpr) nil?)]
+    {::a/spec                spec
+     ::a/samples             #{sexpr}
      ::a/original-expression sexpr}))
 
-(defmethod analyze :symbol [env sym]
-  (or (a/symbol-detail env sym) {}))
+(defmethod analyze-mm :symbol [env sym]
+  (log/spy :info ["analyze symbol" sym])
+  (log/spy :info (or (a/symbol-detail env sym) {})))
 
-(defmethod analyze :function-call [env [function & arguments]]
+(defmethod analyze-mm :function-call [env [function & arguments :as call]]
   (let [{::a/keys [arities]} (a/function-detail env function)
-        {::a/keys [gspec]} (get arities (count arguments) :n)
+        {::a/keys [gspec]} (get arities (count arguments) (get arities :n))
         {::a/keys [arg-specs]} gspec
-        args-type-desc (mapv (partial analyze env) arguments)
-        errors (mapcat
-                 (fn [[arg-spec arg]]
-                   (let [{::a/keys [spec]} (analyze env arg)]
-                     (->> (grp.u/try-sampling {::a/return-spec spec})
-                       ;; TODO: extract to utils?
-                       (map (fn [sample]
-                              (some->>
-                                (s/explain-data arg-spec sample)
-                                ::s/problems
-                                (map (fn [e]
-                                       {::a/original-expression arg
-                                        ::a/expected (:pred e)
-                                        ::a/actual (:val e)
-                                        ::a/spec arg-spec})))))
-                       (first))))
-                 (map vector arg-specs arguments))]
-    (cond-> (grp.fnt/calculate-function-type env function args-type-desc)
-      (seq errors) (update ::a/errors concat errors))))
+        arg-value-descriptions (mapv (partial analyze! env) arguments)]
+    (doseq [[raw-argument
+             argument-spec
+             {::a/keys [samples] :as real-argument-type-descriptor}] (map vector arguments arg-specs arg-value-descriptions)]
+      (log/info "Analyzing argument:" [raw-argument argument-spec real-argument-type-descriptor])
+      ;; TASK: Careful...type descr can be a gspec for HOF
+      (let [checkable?   (and argument-spec (seq samples))
+            failing-case (and checkable? (some (fn [sample] (when-not (s/valid? argument-spec sample) sample)) samples))]
+        ;; TASK: send location estimate in env???
+        ;; TASK: when (not checkable?) (a/record-weakness! env ) so we can highlight where we cannot check
+        (when failing-case
+          (a/record-problem! env {::a/original-expression raw-argument
+                                  ::a/expected            argument-spec
+                                  ;; TASK: decide how to report other details
+                                  ::a/actual              failing-case
+                                  ::a/message             (str "Argument " (pr-str raw-argument) " in the call  " call
+                                                            " could have the value "
+                                                            failing-case
+                                                            ", which fails for the declared type of that argument.")}))))
+    (grp.fnt/calculate-function-type env function arg-value-descriptions)))
 
-(defmethod analyze :do [env [_ & body]]
-  (analyze
-    (reduce (fn [env sexpr]
-              (merge env (::a/errors (analyze env sexpr))))
-      env (butlast body))
-    (last body)))
+(defn analyze-statements! [env body]
+  (doseq [expr (butlast body)]
+    (analyze! env expr))
+  (analyze! env (last body)))
 
-(defmethod analyze :let [env [_ bindings & body]]
-  (analyze (reduce (fn [env [bind-sym sexpr]]
-                     (assoc-in env [::a/local-symbols bind-sym]
-                       (analyze env sexpr)))
-             env (partition 2 bindings))
+(defmethod analyze-mm 'do [env [_ & body]]
+  (log/info "Analyzing a sequence of statements")
+  (analyze-statements! env body))
+
+(defn analyze-let-like-form [env [_ bindings & body]]
+  (log/info "Analyzing a let")
+  (analyze!
+    (reduce (fn [env [bind-sym sexpr]]
+              ;; TASK: Handle destructuring
+              (assoc-in env [::a/local-symbols bind-sym]
+                (analyze! env sexpr)))
+      env (partition 2 bindings))
     `(do ~@body)))
+
+(defmethod analyze-mm 'let [env sexpr] (analyze-let-like-form env sexpr))
+(defmethod analyze-mm 'clojure.core/let [env sexpr] (analyze-let-like-form env sexpr))
+(defmethod analyze-mm 'cljs.core/let [env sexpr] (analyze-let-like-form env sexpr))
+(defmethod analyze-mm 'taoensso.encore/when-let [env sexpr] (analyze-let-like-form env sexpr))
