@@ -13,4 +13,5 @@
  {:date "2020-08-13" :description "clojure reader" :timespans [[1630 1715]]}
  {:date "2020-08-14" :description "research into linters" :timespans [[1200 1300]]}
  {:date "2020-08-14" :description "refactoring, research, clojure reader integration" :timespans [[1515 1900]]}
+ {:date "2020-08-22" :description "pairing on implementation spike" :timespans [[1600 1845]]}
  ]
