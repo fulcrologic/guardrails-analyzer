@@ -16,9 +16,10 @@
   [env sym typename clojure-spec]
   (let [samples (grp.u/try-sampling {::a/return-spec clojure-spec})]
     (log/info "Binding samples: " sym (vec samples))
-    (assoc-in env [::a/local-symbols sym] (cond-> {::a/spec clojure-spec
-                                                   ::a/type typename}
-                                            (seq samples) (assoc ::a/samples samples)))))
+    (assoc-in env [::a/local-symbols sym]
+      (cond-> {::a/spec clojure-spec
+               ::a/type typename}
+        (seq samples) (assoc ::a/samples samples)))))
 
 
 (>defn bind-argument-types

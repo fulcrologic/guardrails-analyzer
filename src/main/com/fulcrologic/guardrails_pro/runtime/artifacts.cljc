@@ -88,6 +88,10 @@
   [::env symbol? => symbol?]
   (get-in env [::extern-symbols sym ::extern-name] sym))
 
+(>defn remember-local [env sym td]
+  [::env symbol? ::type-description => ::env]
+  (assoc-in env [::local-symbols sym] td))
+
 (>defn function-detail [env sym]
   [::env symbol? => (? ::function)]
   (let [sym (if (qualified-symbol? sym)

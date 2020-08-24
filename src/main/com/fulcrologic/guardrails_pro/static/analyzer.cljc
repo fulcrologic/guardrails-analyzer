@@ -113,10 +113,10 @@
 (defn analyze-let-like-form [env [_ bindings & body]]
   (log/info "Analyzing a let")
   (analyze!
-    (reduce (fn [env [bind-sym sexpr]]
-              ;; TASK: Handle destructuring
-              (assoc-in env [::a/local-symbols bind-sym]
-                (analyze! env sexpr)))
+    (reduce (fn [env [bind-sexpr sexpr]]
+              (reduce-kv a/remember-local
+                env (grp.u/destructure* env bind-sexpr
+                      (analyze! env sexpr))))
       env (partition 2 bindings))
     `(do ~@body)))
 
