@@ -15,5 +15,6 @@
  {:date "2020-08-03" :description "getting an initial check working" :timespans [[1050 1400]]}
  {:date "2020-08-11" :description "design with Anthony" :timespans [[1550 1635]]}
  {:date "2020-08-22" :description "implementation spike" :timespans [[1600 1900]]}
+ {:date "2020-08-24" :description "pairing" :timespans [[900 1030]]}
  ]
 
