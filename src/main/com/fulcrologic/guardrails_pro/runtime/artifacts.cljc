@@ -11,17 +11,22 @@
                 :spec-object #(s/spec? %)
                 :predicate ifn?))
 (s/def ::type string?)
+;; samples is for generated data only
 (s/def ::samples (s/coll-of any? :min-count 1))
+(s/def ::failing-samples ::samples)
 (s/def ::original-expression any?)
+(s/def ::literal-value ::original-expression)
 (s/def ::message string?)
-(s/def ::error (s/keys :opt [::original-expression ::expected ::actual ::message]))
+(s/def ::error (s/keys
+                 :req [::original-expression ::message ::line-number]
+                 :opt [::expected ::actual
+                       ::column-start ::column-end]))
 (s/def ::type-description (s/or
                             ;; NOTE: A gspec CAN be returned if an argument is a LAMBDA. HOF.
                             :function ::gspec
-                            :value (s/keys :opt [::spec ::type ::samples ::original-expression])))
-;; TASK: Expected should be type description, and actual might just need to be a value...
-(s/def ::expected any?)
-(s/def ::actual any?)
+                            :value (s/keys :opt [::spec ::type ::samples ::literal-value ::original-expression])))
+(s/def ::expected ::type-description)
+(s/def ::actual (s/keys :opt [::type-description ::failing-samples]))
 (s/def ::registry map?)
 (s/def ::current-form any?)
 (s/def ::env (s/keys
