@@ -19,26 +19,21 @@
   (s/or
     :symbol symbol?
     :vector vector?
-    :map    map?))
+    :map map?))
 
 (>defn destructure* [env bind-sexpr value-type-desc]
   [::grp.art/env ::destructurable ::grp.art/type-description
    => (s/map-of symbol? ::grp.art/type-description)]
   (letfn [(MAP* [[k v]]
             (cond
-              (and (keyword? v) (namespace v))
+              (qualified-keyword? v)
               #_=> (when-let [spec (s/get-spec v)]
                      (let [samples (try-sampling {::grp.art/return-spec spec})]
                        [[k (cond-> {::grp.art/spec spec}
                              samples (assoc ::grp.art/samples samples))]]))
-              (and (keyword? k)
-                (= (name k) "keys")
-                (namespace k))
+              (and (qualified-keyword? k) (= (name k) "keys"))
               #_=> (map (fn [sym]
-                          (when-let [spec (s/get-spec
-                                            (cond->> (str sym)
-                                              (namespace k)
-                                              (keyword (namespace k))))]
+                          (when-let [spec (s/get-spec (keyword (namespace k) (str sym)))]
                             (let [samples (try-sampling {::grp.art/return-spec spec})]
                               [sym (cond-> {::grp.art/spec spec}
                                      samples (assoc ::grp.art/samples samples))])))
@@ -52,6 +47,6 @@
                                           (partition 2 1 bind-sexpr))]
                              (cond-> {}
                                as-sym (assoc as-sym value-type-desc)))
-      (map? bind-sexpr)    (into {}
-                             (mapcat MAP*)
-                             bind-sexpr))))
+      (map? bind-sexpr) (into {}
+                          (mapcat MAP*)
+                          bind-sexpr))))
