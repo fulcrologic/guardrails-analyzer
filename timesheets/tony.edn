@@ -16,5 +16,6 @@
  {:date "2020-08-11" :description "design with Anthony" :timespans [[1550 1635]]}
  {:date "2020-08-22" :description "implementation spike" :timespans [[1600 1900]]}
  {:date "2020-08-24" :description "pairing, got basic IntelliJ plugin highlighting stuff in prototype plugin" :timespans [[900 1030] [1900 2100]]}
+ {:date "2020-08-25" :description "pairing, design of error reporting" :timespans [[900 1100]]}
  ]
 

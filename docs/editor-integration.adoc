@@ -15,3 +15,53 @@ Suggested implementation:
 * The runtime checkers connect via websockets and report problems.
 ** Checker is run by file watcher or shadow reload started by user of GRP.
 * The exe just asks the daemon for problems (by filename), and reports back the response to stdout
+
+[ditaa]
+-----
+             Same process in IntelliJ
+
+  +--------------------------------------------+
+  |                                            |
+  |  +-----------+   JSON      +-----------+   |               +-----------+
+  |  | LSP Client+<----------->+ LSP Server+<----------------->+ GRP Daemon| (cache of errors)
+  |  |           |             | LVL1 CACHE|   |               | LVL2 CACHE|
+  |  +----+------+             +-----------+   |               +-----+-----+
+  |       |                                    |                     ^
+  |       v                                    |                     |
+  |   editor                                   |                     |
+  |                                            |                     |
+  |                                            |                     |
+  +--------------------------------------------+                     |
+                                                                 +---+--------+
+                                                                 |            |
+                                                                 |            |
+                                                          +-----------+   +-----------+
+                                                          | GRP CHKR  |   | GRP CHKR  |
+                                                          | JVM       |   | JS        |
+                                                          +-----------+   +-----------+
+-----
+
+[ditaa]
+-----
+             External Executable Model
+
+  +--------------------------------------------+
+  |                                            |
+  |  +-----------+   JSON      +-----------+   |               +-----------+
+  |  | LSP Client+<----------->+ LSP Server+<------EXE-------->+ GRP Daemon| (cache of errors)
+  |  |           |             | LVL1 CACHE|   |               | LVL2 CACHE|
+  |  +----+------+             +-----------+   |               +-----+-----+
+  |       |                                    |                     ^
+  |       v                                    |                     |
+  |   editor                                   |                     |
+  |                                            |                     |
+  |                                            |                     |
+  +--------------------------------------------+                     |
+                                                                 +---+--------+
+                                                                 |            |
+                                                                 v            v
+                                                          +-----------+   +-----------+
+                                                          | GRP CHKR  |   | GRP CHKR  |
+                                                          | JVM       |   | JS        |
+                                                          +-----------+   +-----------+
+-----
