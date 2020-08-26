@@ -5,7 +5,7 @@
 
 (defonce app (app/fulcro-app))
 
-(defn reload []
+(defn ^:export refresh []
   (app/mount! app root/Root "checker"))
 
 (defn ^:export init []
