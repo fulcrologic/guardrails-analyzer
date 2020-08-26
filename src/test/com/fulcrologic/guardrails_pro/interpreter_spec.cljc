@@ -19,7 +19,7 @@
 #_(specification "Checking a function"
   (let [errors (atom [])]
     (when-mocking!
-      (a/record-problem! e p) => (swap! errors conj p)
+      (a/record-error! _ _ problem) => (swap! errors conj problem)
 
       (check! (a/build-env) `f))
     (assertions

@@ -1,39 +1,22 @@
 (ns com.fulcrologic.guardrails-pro.static.analyzer-spec
   (:require
-    [com.fulcrologic.guardrails-pro.runtime.artifacts :as a]
-    [com.fulcrologic.guardrails-pro.static.analyzer :as src]
+    [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
+    [com.fulcrologic.guardrails-pro.static.analyzer :as grp.ana]
     [com.fulcrologic.guardrails.core :as gr :refer [=>]]
     [com.fulcrologic.guardrails-pro.core :as grp]
-    [clojure.java.io :as io]
-    [fulcro-spec.core :refer [specification component assertions behavior =fn=> when-mocking!]]))
+    [fulcro-spec.core :refer [specification component assertions when-mocking!]]))
 
-(grp/>defn f [x]
+(grp/>defn test_int->int [x]
   [int? => int?]
-  (inc x)
-  "hello world")
+  (inc x))
 
 (specification "analyze"
-  (component "Function return type"
-    (let [errors (atom [])]
-     (when-mocking!
-       (a/record-problem! env problem) => (swap! errors conj problem)
-
-       (let [env (a/build-env)]
-
-         (src/analyze! env `(let [~'a :a-kw] (f ~'a)))
-
-         (assertions
-           "It finds an error"
-           (count @errors) => 1)))))
   (component "A simple let"
     (let [errors (atom [])]
       (when-mocking!
-        (a/record-problem! env problem) => (swap! errors conj problem)
-
-        (let [env (a/build-env)]
-
-          (src/analyze! env `(let [~'a :a-kw] (f ~'a)))
-
+        (grp.art/record-error! _ problem) => (swap! errors conj problem)
+        (let [env (grp.art/build-env)]
+          (grp.ana/analyze! env `(let [a# :a-kw] (test_int->int a#)))
           (assertions
             "It finds an error"
             (count @errors) => 1))))))

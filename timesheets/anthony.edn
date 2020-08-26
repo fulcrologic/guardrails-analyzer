@@ -16,4 +16,9 @@
  {:date "2020-08-22" :description "pairing on implementation spike" :timespans [[1600 1900]]}
  {:date "2020-08-24" :description "design with tony" :timespans [[900 1030]]}
  {:date "2020-08-24" :description "destructuring" :timespans [[1030 1230] [1330 1630]]}
+ {:date "2020-08-24" :description "review with tony" :timespans [[1700 1730]]}
+ {:date "2020-08-25" :description "design with tony" :timespans [[900 1130]]}
+ {:date "2020-08-25" :description "error reporting refactoring" :timespans [[1345 1745]]}
+ {:date "2020-08-26" :description "planning with tony" :timespans [[900 1000]]}
+ {:date "2020-08-26" :description "location tracking" :timespans [[1000 1200]]}
  ]

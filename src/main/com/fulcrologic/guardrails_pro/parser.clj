@@ -1,19 +1,16 @@
 (ns com.fulcrologic.guardrails-pro.parser
   "Implementation of reading >defn for macro expansion."
   (:require
-    [com.fulcrologic.guardrails.core :refer [>defn => ?]]
     [com.fulcrologic.guardrails-pro.static.forms :as forms]
-    [com.fulcrologic.guardrails-pro.runtime.artifacts :as a]
-    [taoensso.timbre :as log]
-    [clojure.spec.alpha :as s])
-  (:import (clojure.lang Cons)
-           (java.util Date)))
+    [com.fulcrologic.guardrails-pro.runtime.artifacts :as a])
+  (:import
+    (clojure.lang Cons)))
 
 (defn function-name
   [[result [nm :as args]]]
   (if (simple-symbol? nm)
     [result (next args)]
-    (throw (ex-info "Missing function name." {}))))
+    (throw (ex-info (format "%s is missing function name." nm) {}))))
 
 (defn optional-docstring [[result [candidate :as args]]]
   (if (string? candidate)
@@ -105,11 +102,12 @@
     (count arglist)))
 
 (defn single-arity [[result [arglist spec & forms :as args]]]
-  [(assoc result (body-arity args) (with-meta
-                                     {::a/arglist `(quote ~arglist)
-                                      ::a/gspec   (parse-gspec spec arglist)
-                                      ::a/body    (forms/form-expression (vec forms))}
-                                     {::a/raw-body `(quote ~(vec forms))}))])
+  [(assoc result (body-arity args)
+     (with-meta
+       {::a/arglist `(quote ~arglist)
+        ::a/gspec   (parse-gspec spec arglist)
+        ::a/body    (forms/form-expression (vec forms))}
+       {::a/raw-body `(quote ~(vec forms))}))])
 
 (defn multiple-arities [[result args]]
   (loop [r           result
@@ -119,11 +117,10 @@
       (do
         (when-not (arity-body? next-body)
           (throw (ex-info "Syntax error. Multi-arity function body expected." {})))
-        (let []
-          (recur
-            (first (single-arity [r next-body]))
-            (first addl-bodies)
-            (next addl-bodies))))
+        (recur
+          (first (single-arity [r next-body]))
+          (first addl-bodies)
+          (next addl-bodies)))
       [r []])))
 
 (defn function-content [[result [lookahead :as args] :as env]]

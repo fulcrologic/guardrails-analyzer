@@ -3,8 +3,9 @@
   and acts as the central control for finding, caching, renewing and expiring things from the runtime. These routines
   must work in CLJ and CLJS, and should typically not be hot reloaded during updates."
   (:require
-    [com.fulcrologic.guardrails.core :refer [>defn => | ?]]
-    [clojure.spec.alpha :as s]))
+    [clojure.spec.alpha :as s]
+    [com.fulcrologic.guardrails.core :refer [>defn => ?]]
+    [taoensso.timbre :as log]))
 
 (s/def ::spec (s/or
                 :spec-name qualified-keyword?
@@ -17,10 +18,13 @@
 (s/def ::original-expression any?)
 (s/def ::literal-value ::original-expression)
 (s/def ::message string?)
+(s/def ::column-start pos-int?)
+(s/def ::column-end pos-int?)
 (s/def ::error (s/keys
                  :req [::original-expression ::message ::line-number]
                  :opt [::expected ::actual
                        ::column-start ::column-end]))
+(s/def ::warning ::error)
 (s/def ::type-description (s/or
                             ;; NOTE: A gspec CAN be returned if an argument is a LAMBDA. HOF.
                             :function ::gspec
@@ -28,12 +32,13 @@
 (s/def ::expected ::type-description)
 (s/def ::actual (s/keys :opt [::type-description ::failing-samples]))
 (s/def ::registry map?)
+(s/def ::checking-sym qualified-symbol?)
 (s/def ::current-form any?)
+(s/def ::location map?)
 (s/def ::env (s/keys
                :req [::registry]
-               :opt [::local-symbols
-                     ::current-form
-                     ::extern-symbols]))
+               :opt [::local-symbols ::extern-symbols
+                     ::current-form ::checking-sym ::location]))
 (s/def ::Unknown (s/and ::type-description empty?))
 (s/def ::local-symbols (s/map-of symbol? ::type-description))
 (s/def ::extern-symbols (s/map-of symbol? ::extern))
@@ -71,14 +76,21 @@
 (s/def ::arities (s/map-of ::arity ::arity-detail))
 (s/def ::function (s/keys :req [::name ::last-changed ::fn-ref ::arities ::extern-symbols]))
 (s/def ::last-changed pos-int?)
+(s/def ::errors (s/coll-of ::error))
+(s/def ::warnings (s/coll-of ::warnings))
 
-(defonce memory (atom {}))
+(>defn get-arity
+  [arities argtypes]
+  [::arities (s/coll-of ::type-description) => ::arity-detail]
+  (get arities (count argtypes) (get arities :n)))
+
+(defonce registry (atom {}))
 
 (>defn remember!
   "Remember the given `form` under key `s` (typically the function's FQ sym)."
   [s function-description]
   [qualified-symbol? ::function => nil?]
-  (swap! memory assoc s function-description)
+  (swap! registry assoc s function-description)
   nil)
 
 (>defn symbol-detail [env sym]
@@ -112,27 +124,54 @@
     (keep (fn [{::keys [name last-changed]}]
             (when (> last-changed tm)
               name)))
-    (vals @memory)))
+    (vals @registry)))
 
-(defn clear! [] (reset! memory {}))
-(defn clear-problems! []
-  (swap! memory (fn [m]
-                  (reduce-kv
-                    (fn [m k v] (assoc m k (dissoc v ::problems)))
-                    {}
-                    m))))
-
-(defn record-problem! [env problem]
-  ;; TASK: Make this right...
-  #_(swap! memory update-in [sym ::problems]
-      (fnil conj [])
-      {:metadata    metadata
-       :description description}))
+(defn clear-registry! [] (reset! registry {}))
 
 (defn build-env
-  ([] {::registry @memory})
+  ([] {::registry @registry})
   ([registry] {::registry registry}))
 
+(>defn update-location
+  [env location]
+  [::env (? map?) => ::env]
+  (log/info :update-location (::checking-sym env) location)
+  (cond-> env location
+    (assoc ::location
+      (select-keys location [:source :file :line :column]))))
+
+(defonce problems (atom {}))
+
+(>defn record-error!
+  [env error]
+  [::env (s/keys :req [::message ::original-expression]) => any?]
+  (log/info :record-error! error (::checking-sym env) (::location env))
+  (swap! problems update-in
+    [(::checking-sym env) ::errors]
+    (fnil conj [])
+    (merge error
+      (::location env))))
+
+(>defn record-warning!
+  [env warning]
+  [::env (s/keys :req [::message ::original-expression]) => any?]
+  (swap! problems update-in
+    [(::checking-sym env) ::warnings]
+    (fnil conj [])
+    (merge warning
+      (::location env))))
+
+(defn clear-problems! []
+  (swap! problems
+    (partial reduce-kv
+      (fn [m k v] (assoc m k (dissoc v ::errors ::warnings)))
+      {})))
+
 (comment
-  (-> (get @memory 'com.fulcrologic.guardrails-pro.core/env-test)
-    ::extern-symbols))
+  (-> (build-env)
+    (function-detail 'com.fulcrologic.guardrails-pro.core/env-test)
+    ::arities (get 1)
+    ::body first meta)
+
+  (deref problems)
+  )

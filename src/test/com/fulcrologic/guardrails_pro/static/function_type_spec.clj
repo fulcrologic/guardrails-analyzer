@@ -2,46 +2,52 @@
   (:require
     [clojure.spec.alpha :as s]
     [clojure.spec.gen.alpha :as gen]
-    [com.fulcrologic.guardrails-pro.runtime.artifacts :as a]
-    [com.fulcrologic.guardrails-pro.static.function-type :refer [calculate-function-type]]
+    [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
+    [com.fulcrologic.guardrails-pro.static.function-type :as grp.fnt]
     [com.fulcrologic.guardrails.core :as gr :refer [=> | <-]]
     [com.fulcrologic.guardrails-pro.core :as grp]
-    [fulcro-spec.core :refer [specification assertions behavior =fn=>]]))
+    [fulcro-spec.core :refer [specification assertions behavior =fn=> when-mocking!]]))
 
-(grp/>defn f [x]
+(grp/>defn test_int->int [x]
   [int? => int?]
   (inc x))
 
-(grp/>defn g [x]
+(grp/>defn test_int->int_with-gen [x]
   [int? => int? <- (gen/fmap #(- % 1000) (gen/int))]
   (inc x))
 
-(grp/>defn h [x]
+(grp/>defn test_pos-int->int [x]
   [int? | #(pos? x) => int?]
   (inc x))
 
-(grp/>defn h2 [x y]
-  [int? string? | #(and (pos? x) (seq y)) => int?]
+(grp/>defn test_pos-int-string->string [x y]
+  [int? string? | #(and (pos? x) (seq y)) => string?]
   (str x ":" y))
 
-(grp/>defn absolute-value [x]
-  ^::a/pure? [int? => int?]
+(grp/>defn test_abs-val_pure [x]
+  ^::grp.art/pure? [int? => int?]
   (if (neg? x) (- x) x))
 
 (gr/>defn type-description
   "Generate a type description for a given spec"
   [name expr spec samples]
-  [string? any? any? any? => ::a/type-description]
-  {::a/spec                spec
-   ::a/type                name
-   ::a/samples             samples
-   ::a/original-expression expr})
+  [string? any? any? any? => ::grp.art/type-description]
+  {::grp.art/spec                spec
+   ::grp.art/type                name
+   ::grp.art/samples             samples
+   ::grp.art/original-expression expr})
+
+(defn with-mocked-errors [cb]
+  (let [errors (atom [])]
+    (when-mocking!
+      (grp.art/record-error! _ error) => (swap! errors conj error)
+      (cb errors))))
 
 (specification "calculate-function-type (non-special)"
   (behavior "Uses the function's return spec to generate the type description"
     (let [arg-type-description (type-description "int?" 42 int? #{42})
-          env                  (a/build-env)
-          {::a/keys [spec type samples]} (calculate-function-type env `f [arg-type-description])]
+          env                  (grp.art/build-env)
+          {::grp.art/keys [spec type samples]} (grp.fnt/calculate-function-type env `test_int->int [arg-type-description])]
       (assertions
         "Has the return type described in the function"
         spec => int?
@@ -51,47 +57,51 @@
         samples =fn=> #(every? int? %))))
   (behavior "If spec'ed to have a custom generator"
     (let [arg-type-description (type-description "int?" 42 int? #{42})
-          env                  (a/build-env)
-          {::a/keys [samples]} (calculate-function-type env `g [arg-type-description])]
+          env                  (grp.art/build-env)
+          {::grp.art/keys [samples]} (grp.fnt/calculate-function-type env `test_int->int_with-gen [arg-type-description])]
       (assertions
         "Has samples generated from the custom generator"
         (boolean (seq samples)) => true
         samples =fn=> #(every? neg-int? %))))
   (behavior "Verifies the argtypes based on the arglist specs"
-    (let [arg-type-description (type-description "int?" 'x int? #{"3" 22})
-          env                  (a/build-env)
-          {::a/keys [errors]} (calculate-function-type env `h [arg-type-description])
-          error                (first errors)]
-      (assertions
-        (::a/original-expression error) => 'x
-        (::a/actual error) => "3"
-        (::a/expected error) => `int?)))
+    (with-mocked-errors
+      (fn [errors]
+        (grp.fnt/calculate-function-type (grp.art/build-env) `test_pos-int->int
+          [(type-description "int?" 'x int? #{"3" 22})])
+        (let [error (first @errors)]
+          (assertions
+            (count @errors) => 1
+            (::grp.art/original-expression error) => 'x
+            (::grp.art/actual error) => {::grp.art/failing-samples ["3"]}
+            (-> error ::grp.art/expected ::grp.art/arg-types) => ["int?"])))))
   (behavior "If spec'ed to have argument predicates"
     (behavior "Returns any errors"
-      (let [arg-type-description (type-description "int?" 'x int? #{3 -42})
-            env                  (a/build-env)
-            {::a/keys [errors]} (calculate-function-type env `h [arg-type-description])
-            error                (first errors)]
-        (assertions
-          (::a/original-expression error) => '(x)
-          (::a/actual error) => '(-42)
-          ;;TODO: should be more explanatory than just a fn ref
-          (::a/expected error) =fn=> fn?))
-      (let [arg1-td (type-description "int?" 'x int? #{3 -42})
-            arg2-td (type-description "string?" 'y string? #{"77" "88"})
-            env     (a/build-env)
-            {::a/keys [errors]} (calculate-function-type env `h2 [arg1-td arg2-td])
-            error   (first errors)]
-        (assertions
-          (::a/original-expression error) => '(x y)
-          (::a/actual error) => '(-42 "88"))))))
+      (with-mocked-errors
+        (fn [errors]
+          (grp.fnt/calculate-function-type (grp.art/build-env) `test_pos-int->int
+            [(type-description "int?" 'x int? #{3 -42})])
+          (let [error (first @errors)]
+            (assertions
+              (count @errors) => 1
+              (::grp.art/original-expression error) => '(x)
+              (::grp.art/actual error) => {::grp.art/failing-samples [-42]}))))
+      (with-mocked-errors
+        (fn [errors]
+          (grp.fnt/calculate-function-type (grp.art/build-env) `test_pos-int-string->string
+            [(type-description "int?" 'x int? #{3 -42})
+             (type-description "string?" 'y string? #{"77" "88"})])
+          (let [error (first @errors)]
+            (assertions
+              (count @errors) => 1
+              (::grp.art/original-expression error) => '(x y)
+              (::grp.art/actual error) => {::grp.art/failing-samples [-42 "88"]})))))))
 
 (specification "calculate-function-type (pure)"
   (behavior "Uses the function itself to generate type information"
     (let [input-samples        #{42 -32}
           arg-type-description (type-description "int?" 42 int? input-samples)
-          env                  (a/build-env)
-          {::a/keys [samples]} (calculate-function-type env `absolute-value [arg-type-description])]
+          env                  (grp.art/build-env)
+          {::grp.art/keys [samples]} (grp.fnt/calculate-function-type env `test_abs-val_pure [arg-type-description])]
       (assertions
         "The return type has new samples"
         (not= samples input-samples) => true
@@ -99,11 +109,12 @@
         "The samples are transformed by the real function"
         samples =fn=> #(every? pos? %))))
   (behavior "Still checks its arguments based on their specs"
-    (let [arg-type-description (type-description "int?" 'x int? #{"3" 22})
-          env                  (a/build-env)
-          {::a/keys [errors]} (calculate-function-type env `absolute-value [arg-type-description])
-          error                (first errors)]
-      (assertions
-        (::a/original-expression error) => 'x
-        (::a/actual error) => "3"
-        (::a/expected error) => `int?))))
+    (with-mocked-errors
+      (fn [errors]
+        (grp.fnt/calculate-function-type (grp.art/build-env) `test_abs-val_pure
+          [(type-description "int?" 'x int? #{"3" 22})])
+        (let [error (first @errors)]
+          (assertions
+            (::grp.art/original-expression error) => 'x
+            (::grp.art/actual error) => {::grp.art/failing-samples ["3"]}
+            (-> error ::grp.art/expected ::grp.art/arg-types) => ["int?"]))))))

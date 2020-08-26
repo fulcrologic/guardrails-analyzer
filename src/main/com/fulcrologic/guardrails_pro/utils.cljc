@@ -4,7 +4,13 @@
     [clojure.spec.gen.alpha :as gen]
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
     [com.fulcrologic.guardrails.core :refer [>defn => ?]]
-    [taoensso.timbre :as log]))
+    [taoensso.timbre :as log])
+  (:import (clojure.lang IMeta)))
+
+(>defn ?meta [sexpr]
+  [any? => (? map?)]
+  (when (instance? IMeta sexpr)
+    (meta sexpr)))
 
 (>defn try-sampling [{::grp.art/keys [return-spec generator]}]
   [::grp.art/spec => (? (s/coll-of any? :min-count 1))]
@@ -24,18 +30,19 @@
 (>defn destructure* [env bind-sexpr value-type-desc]
   [::grp.art/env ::destructurable ::grp.art/type-description
    => (s/map-of symbol? ::grp.art/type-description)]
+  (log/info :destructure* bind-sexpr value-type-desc)
   (letfn [(MAP* [[k v]]
             (cond
               (qualified-keyword? v)
               #_=> (when-let [spec (s/get-spec v)]
                      (let [samples (try-sampling {::grp.art/return-spec spec})]
-                       [[k (cond-> {::grp.art/spec spec}
+                       [[k (cond-> {::grp.art/spec spec ::grp.art/type (pr-str v)}
                              samples (assoc ::grp.art/samples samples))]]))
               (and (qualified-keyword? k) (= (name k) "keys"))
               #_=> (map (fn [sym]
                           (when-let [spec (s/get-spec (keyword (namespace k) (str sym)))]
                             (let [samples (try-sampling {::grp.art/return-spec spec})]
-                              [sym (cond-> {::grp.art/spec spec}
+                              [sym (cond-> {::grp.art/spec spec ::grp.art/type (pr-str sym)}
                                      samples (assoc ::grp.art/samples samples))])))
                      v)
               (= :as k)
@@ -47,6 +54,7 @@
                                           (partition 2 1 bind-sexpr))]
                              (cond-> {}
                                as-sym (assoc as-sym value-type-desc)))
-      (map? bind-sexpr) (into {}
-                          (mapcat MAP*)
-                          bind-sexpr))))
+      ;; TODO: might need to return for :keys [x ...] an empty type desc
+      (map? bind-sexpr)    (into {}
+                             (mapcat MAP*)
+                             bind-sexpr))))

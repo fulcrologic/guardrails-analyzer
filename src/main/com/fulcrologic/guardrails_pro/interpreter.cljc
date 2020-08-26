@@ -1,65 +1,63 @@
 (ns com.fulcrologic.guardrails-pro.interpreter
-  "DEPRECATED. KEEPING AROUND TO STEAL IDEAS FROM."
   (:require
-    [com.fulcrologic.guardrails.core :refer [>defn => | ?]]
-    [com.fulcrologic.guardrails-pro.runtime.artifacts :as a]
+    [com.fulcrologic.guardrails.core :refer [>defn =>]]
+    [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.utils :as grp.u]
-    [com.fulcrologic.guardrails-pro.static.analyzer :as analyze]
+    [com.fulcrologic.guardrails-pro.static.analyzer :as grp.ana]
     [clojure.test.check.generators]
     [taoensso.timbre :as log]
-    [clojure.spec.alpha :as s])
-  #?(:clj
-     (:import [clojure.lang Cons])))
+    [clojure.spec.alpha :as s]))
 
-(defn bind-type
-  "Returns a new `env` with the given sym bound to the known type."
-  [env sym typename clojure-spec]
-  (let [samples (grp.u/try-sampling {::a/return-spec clojure-spec})]
-    (log/info "Binding samples: " sym (vec samples))
-    (assoc-in env [::a/local-symbols sym]
-      (cond-> {::a/spec clojure-spec
-               ::a/type typename}
-        (seq samples) (assoc ::a/samples samples)))))
-
+(>defn bind-type-desc
+  [typename clojure-spec]
+  [::grp.art/type ::grp.art/spec => ::grp.art/type-description]
+  (let [samples (grp.u/try-sampling {::grp.art/return-spec clojure-spec})]
+    (cond-> {::grp.art/spec clojure-spec
+             ::grp.art/type typename}
+      (seq samples) (assoc ::grp.art/samples samples))))
 
 (>defn bind-argument-types
   [env arity-detail]
-  [::a/env ::a/arity-detail => ::a/env]
-  (let [{argument-list                    ::a/arglist
-         {::a/keys [arg-specs arg-types]} ::a/gspec} arity-detail]
+  [::grp.art/env ::grp.art/arity-detail => ::grp.art/env]
+  (let [{::grp.art/keys [gspec arglist]} arity-detail
+        {::grp.art/keys [arg-specs arg-types]} gspec]
     (reduce
-      (fn [env2 [sym arg-type arg-spec]]
-        ;; TODO: destructuring support
-        (if (symbol? sym)
-          (bind-type env2 sym arg-type arg-spec)
-          env2))
+      (fn [env [bind-sexpr arg-type arg-spec]]
+        (reduce-kv grp.art/remember-local
+          env (log/spy (grp.u/destructure* env bind-sexpr
+                (bind-type-desc arg-type arg-spec)))))
       env
-      (map vector argument-list arg-types arg-specs))))
+      (map vector arglist arg-types arg-specs))))
 
-(>defn check-return-type! [env {::a/keys [body gspec]} {::a/keys [samples]}]
-  [::a/env ::a/arity-detail ::a/type-description => any?]
-  (let [{expected-return-spec ::a/return-spec
-         expected-return-type ::a/return-type} gspec
-        ;; TASK: integrate location into errors
+(>defn check-return-type! [env {::grp.art/keys [gspec]} {::grp.art/keys [samples]}]
+  [::grp.art/env ::grp.art/arity-detail ::grp.art/type-description => any?]
+  (let [{expected-return-spec ::grp.art/return-spec
+         expected-return-type ::grp.art/return-type} gspec
         sample-failure (some #(when-not (s/valid? expected-return-spec %) [%]) samples)]
     (when (seq sample-failure)
-      (a/record-problem! env
-        (str "Return value (e.g. " (pr-str (first sample-failure)) ") does not always satisfy the return spec of " expected-return-type ".")))))
+      (grp.art/record-error! env
+        {::grp.art/actual (first sample-failure)
+         ::grp.art/expected expected-return-type
+         ::grp.art/message (str "Return value (e.g. " (pr-str (first sample-failure)) ") does not always satisfy the return spec of " expected-return-type ".")}))))
 
-(defn check!
-  "Run checks on the function named by the fully-qualified `sym`"
-  [env sym]
-  (let [{::a/keys [arities extern-symbols]} (get-in env [::a/registry sym])
+(>defn check! [env sym]
+  [::env qualified-symbol? => any?]
+  (log/info :check! sym (grp.art/function-detail env sym))
+  (let [{::grp.art/keys [arities extern-symbols]} (grp.art/function-detail env sym)
         env (assoc env
-              ;; TASK: track position ::a/checking sym
-              ::a/extern-symbols extern-symbols)
-        ks  (keys arities)]
-    (doseq [arity ks
-            :let [{::a/keys [body] :as arity-detail} (get arities arity)
-                  env (bind-argument-types env arity-detail)]]
-      (log/info "Locals" (::a/local-symbols env))
-      (let [result (analyze/analyze-statements! env body)]
+              ::grp.art/extern-symbols extern-symbols
+              ::grp.art/checking-sym sym)]
+    (doseq [arity (keys arities)]
+      (let [{::grp.art/keys [body] :as arity-detail} (get arities arity)
+            env (bind-argument-types env arity-detail)
+            ;; FIXME: should be metadata of the sym itself (not its arity)
+            env (grp.art/update-location env (::grp.art/gspec arity-detail))
+            result (grp.ana/analyze-statements! env body)]
+        (log/info :arity-detail arity-detail)
+        (log/info "Locals" (::grp.art/local-symbols env))
         (check-return-type! env arity-detail result)))))
 
 (comment
+  (do (grp.art/clear-problems!)
+    (check! (grp.art/build-env) 'com.fulcrologic.guardrails-pro.core/env-test))
   )
