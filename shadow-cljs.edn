@@ -1,4 +1,4 @@
-{:deps     {:aliases [:test :dev :tooling]}
+{:deps     {:aliases [:dev :gr-dev]}
  :nrepl    {:port 9000}
  :dev-http {9001 "resources/public"}
  :builds   {:guardrailspro {:target           :browser
@@ -12,6 +12,15 @@
                                                                 com.fulcrologic.guardrails-pro.ui.main-ui]}}
                             :devtools         {:preloads   [com.fulcrologic.fulcro.inspect.preload]
                                                :after-load com.fulcrologic.guardrails-pro.ui.main-ui/reload}}
+
+            :daemon-ui     {:target     :browser
+                            :output-dir "resources/public/js/daemon-ui"
+                            :asset-path "/js/daemon-ui"
+                            :modules    {:main {:init-fn com.fulcrologic.guardrails-pro.ui.main-ui/init}}
+                            :dev        {:compiler-options
+                                         {:external-config {:guardrails {:throw? false}}}}
+                            :devtools   {:after-load com.fulcrologic.guardrails-pro.ui.main-ui/refresh
+                                         :preloads   [com.fulcrologic.fulcro.inspect.preload]}}
 
             :test          {:target           :browser-test
                             :test-dir         "resources/public/js/test"

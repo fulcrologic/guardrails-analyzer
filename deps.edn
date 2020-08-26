@@ -9,8 +9,6 @@
            ;; tooling only...should be movable later
            org.clojure/test.check                 {:mvn/version "0.9.0"}
            com.fulcrologic/fulcro                 {:mvn/version "3.2.10"}
-           com.fulcrologic/fulcro-rad             {:mvn/version "0.0.14-alpha"}
-           com.fulcrologic/fulcro-rad-semantic-ui {:mvn/version "0.0.10-alpha"}
            com.wsscode/pathom                     {:mvn/version "2.2.30"}}
 
  :aliases {:test      {:extra-paths ["src/test"]
