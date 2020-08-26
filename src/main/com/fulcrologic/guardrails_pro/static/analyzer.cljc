@@ -101,11 +101,3 @@
 (defmethod analyze-mm 'let [env sexpr] (analyze-let-like-form env sexpr))
 (defmethod analyze-mm 'clojure.core/let [env sexpr] (analyze-let-like-form env sexpr))
 (defmethod analyze-mm 'cljs.core/let [env sexpr] (analyze-let-like-form env sexpr))
-
-(comment
-  (com.fulcrologic.guardrails-pro.core/>defn foo [x]
-    [int? => int?]
-    (inc x))
-
-  (grp.art/function-detail (grp.art/build-env) `foo)
-  )

@@ -12,13 +12,13 @@
   (when (instance? IMeta sexpr)
     (meta sexpr)))
 
-(>defn try-sampling [{::grp.art/keys [return-spec generator]}]
+(>defn try-sampling [{::grp.art/keys [return-spec generator] :as sampler}]
   [::grp.art/spec => (? (s/coll-of any? :min-count 1))]
   (try
     (gen/sample
       (or generator (s/gen return-spec)))
-    (catch #?(:clj Exception :cljs :default) _
-      (log/info "Cannot sample from:" (or generator return-spec))
+    (catch #?(:clj Exception :cljs :default) e
+      (log/info "Cannot sample from:" sampler)
       nil)))
 
 (s/def ::destructurable
@@ -35,15 +35,17 @@
             (cond
               (qualified-keyword? v)
               #_=> (when-let [spec (s/get-spec v)]
-                     (let [samples (try-sampling {::grp.art/return-spec spec})]
+                     (let [samples (try-sampling {::grp.art/return-spec spec :keyword v})]
                        [[k (cond-> {::grp.art/spec spec ::grp.art/type (pr-str v)}
                              samples (assoc ::grp.art/samples samples))]]))
               (and (qualified-keyword? k) (= (name k) "keys"))
               #_=> (map (fn [sym]
-                          (when-let [spec (s/get-spec (keyword (namespace k) (str sym)))]
-                            (let [samples (try-sampling {::grp.art/return-spec spec})]
-                              [sym (cond-> {::grp.art/spec spec ::grp.art/type (pr-str sym)}
-                                     samples (assoc ::grp.art/samples samples))])))
+                          (let [spec-kw (keyword (namespace k) (str sym))]
+                            (when-let [spec (s/get-spec spec-kw)]
+                              (let [samples (try-sampling {::grp.art/return-spec spec
+                                                           :keyword spec-kw})]
+                                [sym (cond-> {::grp.art/spec spec ::grp.art/type (pr-str sym)}
+                                       samples (assoc ::grp.art/samples samples))]))))
                      v)
               (= :as k)
               #_=> [[v value-type-desc]]))]

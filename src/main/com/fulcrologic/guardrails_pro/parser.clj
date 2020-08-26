@@ -1,8 +1,10 @@
 (ns com.fulcrologic.guardrails-pro.parser
   "Implementation of reading >defn for macro expansion."
   (:require
+    [clojure.spec.alpha :as s]
+    [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.static.forms :as forms]
-    [com.fulcrologic.guardrails-pro.runtime.artifacts :as a])
+    [com.fulcrologic.guardrails.core :refer [>defn =>]])
   (:import
     (clojure.lang Cons)))
 
@@ -27,8 +29,8 @@
       (if a
         (recur
           (-> r
-            (update ::a/arg-types (fnil conj []) (pr-str a))
-            (update ::a/arg-specs (fnil conj []) a))
+            (update ::grp.art/arg-types (fnil conj []) (pr-str a))
+            (update ::grp.art/arg-specs (fnil conj []) a))
           as
           (first as)
           (next as))
@@ -47,7 +49,7 @@
         [r args]
         (if a
           (recur
-            (update r ::a/arg-predicates (fnil conj []) (replace-args a arglist))
+            (update r ::grp.art/arg-predicates (fnil conj []) (replace-args a arglist))
             as
             (first as)
             (next as))
@@ -57,8 +59,8 @@
 (defn return-type [[result [lookahead t & remainder :as args]]]
   (if (#{:ret '=>} lookahead)
     [(assoc result
-       ::a/return-spec t
-       ::a/return-type (pr-str t)) remainder]
+       ::grp.art/return-spec t
+       ::grp.art/return-type (pr-str t)) remainder]
     (throw (ex-info "Syntax error. Expected return type" {}))))
 
 (defn such-that [[result [lookahead & remainder :as args] :as env]]
@@ -71,7 +73,7 @@
         [r args]
         (if a
           (recur
-            (update r ::a/return-predicates (fnil conj []) a)
+            (update r ::grp.art/return-predicates (fnil conj []) a)
             as
             (first as)
             (next as))
@@ -80,7 +82,7 @@
 
 (defn generator [[result [lookahead & remainder :as args] :as env]]
   (if (#{:gen '<-} lookahead)
-    [(assoc result ::a/generator (first remainder)) []]
+    [(assoc result ::grp.art/generator (first remainder)) []]
     env))
 
 (defn parse-gspec [spec arglist]
@@ -104,10 +106,10 @@
 (defn single-arity [[result [arglist spec & forms :as args]]]
   [(assoc result (body-arity args)
      (with-meta
-       {::a/arglist `(quote ~arglist)
-        ::a/gspec   (parse-gspec spec arglist)
-        ::a/body    (forms/form-expression (vec forms))}
-       {::a/raw-body `(quote ~(vec forms))}))])
+       {::grp.art/arglist `(quote ~arglist)
+        ::grp.art/gspec   (parse-gspec spec arglist)
+        ::grp.art/body    (forms/form-expression (vec forms))}
+       {::grp.art/raw-body `(quote ~(vec forms))}))])
 
 (defn multiple-arities [[result args]]
   (loop [r           result
@@ -128,14 +130,17 @@
     (multiple-arities env)
     (single-arity env)))
 
-(defn parse-defn-args
-  "Parses the body of a function and returns a map describing what it found."
-  [args]
-  (first
-    (-> [{} args]
-      (function-name)
-      (optional-docstring)
-      (function-content))))
+(>defn parse-defn-args
+  "Takes the body of a defn and returns parsed arities and top level location information."
+  [[defn-sym :as args]]
+  [seq? => (s/keys :req [::grp.art/arities ::grp.art/location])]
+  (let [arities (first
+                  (-> [{} args]
+                    (function-name)
+                    (optional-docstring)
+                    (function-content)))]
+    {::grp.art/arities arities
+     ::grp.art/location (grp.art/new-location (meta defn-sym))}))
 
 (comment
   (parse-defn-args '(nm "hello"

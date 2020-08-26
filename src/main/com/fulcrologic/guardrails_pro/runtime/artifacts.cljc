@@ -3,9 +3,15 @@
   and acts as the central control for finding, caching, renewing and expiring things from the runtime. These routines
   must work in CLJ and CLJS, and should typically not be hot reloaded during updates."
   (:require
+    [clojure.set :as set]
     [clojure.spec.alpha :as s]
+    [clojure.spec.gen.alpha :as gen]
     [com.fulcrologic.guardrails.core :refer [>defn => ?]]
     [taoensso.timbre :as log]))
+
+(def posint?
+  (s/with-gen pos-int?
+    #(gen/such-that pos? (gen/int))))
 
 (s/def ::spec (s/or
                 :spec-name qualified-keyword?
@@ -18,11 +24,15 @@
 (s/def ::original-expression any?)
 (s/def ::literal-value ::original-expression)
 (s/def ::message string?)
-(s/def ::column-start pos-int?)
-(s/def ::column-end pos-int?)
+(s/def ::file string?)
+(s/def ::source string?)
+(s/def ::line-number posint?)
+(s/def ::column-start posint?)
+(s/def ::column-end posint?)
 (s/def ::error (s/keys
-                 :req [::original-expression ::message ::line-number]
-                 :opt [::expected ::actual
+                 :req [::original-expression ::message
+                       ::file ::line-number]
+                 :opt [::expected ::actual ::source
                        ::column-start ::column-end]))
 (s/def ::warning ::error)
 (s/def ::type-description (s/or
@@ -34,7 +44,10 @@
 (s/def ::registry map?)
 (s/def ::checking-sym qualified-symbol?)
 (s/def ::current-form any?)
-(s/def ::location map?)
+(s/def ::location (s/keys
+                    :req [::source ::line-number
+                          ::column-start ::column-end]
+                    :opt [::file]))
 (s/def ::env (s/keys
                :req [::registry]
                :opt [::local-symbols ::extern-symbols
@@ -51,7 +64,7 @@
 (s/def ::extern-name symbol?)
 (s/def ::fn-ref fn?)
 (s/def ::value any?)
-(s/def ::arglist vector?)
+(s/def ::arglist (s/or :vector vector? :quoted-vector (s/and seq? #(vector? (second %)))))
 (s/def ::arg-types (s/coll-of ::type :kind vector?))
 (s/def ::arg-predicates vector?)
 (s/def ::arg-specs (s/coll-of ::spec :kind vector?))
@@ -74,10 +87,12 @@
 (s/def ::arity-detail (s/keys :req [::arglist ::gspec ::body]))
 (s/def ::arity #{1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 :n})
 (s/def ::arities (s/map-of ::arity ::arity-detail))
-(s/def ::function (s/keys :req [::name ::last-changed ::fn-ref ::arities ::extern-symbols]))
-(s/def ::last-changed pos-int?)
+(s/def ::function (s/keys :req [::name ::fn-ref
+                                ::arities ::extern-symbols
+                                ::last-changed ::location]))
+(s/def ::last-changed posint?)
 (s/def ::errors (s/coll-of ::error))
-(s/def ::warnings (s/coll-of ::warnings))
+(s/def ::warnings (s/coll-of ::warning))
 
 (>defn get-arity
   [arities argtypes]
@@ -86,11 +101,10 @@
 
 (defonce registry (atom {}))
 
-(>defn remember!
-  "Remember the given `form` under key `s` (typically the function's FQ sym)."
-  [s function-description]
+(>defn register-function!
+  [fn-sym function-description]
   [qualified-symbol? ::function => nil?]
-  (swap! registry assoc s function-description)
+  (swap! registry assoc fn-sym function-description)
   nil)
 
 (>defn symbol-detail [env sym]
@@ -100,7 +114,8 @@
     (get-in env [::extern-symbols sym ::type-description])))
 
 (>defn qualify-extern
-  "Attempt to find a qualified symbol that goes with the given simple symbol. Returns unaltered sym if it isn't an extern."
+  "Attempt to find a qualified symbol that goes with the given simple symbol.
+   Returns unaltered sym if it isn't an extern."
   [env sym]
   [::env symbol? => symbol?]
   (get-in env [::extern-symbols sym ::extern-name] sym))
@@ -132,13 +147,25 @@
   ([] {::registry @registry})
   ([registry] {::registry registry}))
 
+(>defn new-location
+  [location]
+  [map? => ::location]
+  (let [location-remap {:source     ::source
+                        :file       ::file
+                        :line       ::line-number
+                        :column     ::column-start
+                        :end-column ::column-end}]
+    (-> location
+      (select-keys (keys location-remap))
+      (set/rename-keys location-remap))))
+
 (>defn update-location
   [env location]
   [::env (? map?) => ::env]
   (log/info :update-location (::checking-sym env) location)
   (cond-> env location
     (assoc ::location
-      (select-keys location [:source :file :line :column]))))
+      (new-location location))))
 
 (defonce problems (atom {}))
 

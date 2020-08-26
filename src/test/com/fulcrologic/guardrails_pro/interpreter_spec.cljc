@@ -1,31 +1,29 @@
 (ns com.fulcrologic.guardrails-pro.interpreter-spec
   (:require
-    [com.fulcrologic.guardrails-pro.runtime.artifacts :as a]
-    [com.fulcrologic.guardrails.core :as gr :refer [=>]]
-    [com.fulcrologic.guardrails-pro.core :as grp :refer [>defn]]
+    [com.fulcrologic.guardrails-pro.core :as grp]
     [com.fulcrologic.guardrails-pro.interpreter :refer [check!]]
-    [clojure.java.io :as io]
+    [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
+    [com.fulcrologic.guardrails.core :as gr :refer [=>]]
     [fulcro-spec.core :refer [specification component assertions behavior =fn=> when-mocking!]]))
 
-(>defn g [x]
+(grp/>defn g [x]
   [string? => string?]
   "hello")
 
-(>defn f [x]
+(grp/>defn f [x]
   [int? => int?]
   (let [a x]
     (g a)))
 
 #_(specification "Checking a function"
-  (let [errors (atom [])]
-    (when-mocking!
-      (a/record-error! _ _ problem) => (swap! errors conj problem)
+    (let [errors (atom [])]
+      (when-mocking!
+        (grp.art/record-error! _ problem) => (swap! errors conj problem)
 
-      (check! (a/build-env) `f))
-    (assertions
-      "finds errors"
-      @errors => ["boo"])))
+        (check! (grp.art/build-env) `f))
+      (assertions
+        "finds errors"
+        @errors => ["boo"])))
 
 (comment
   )
-
