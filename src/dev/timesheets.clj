@@ -3,7 +3,7 @@
     [clojure.java.io :as io]
     [clojure.test :refer :all]
     [clojure.edn :as edn])
-  (:gen-class)
+  ;(:gen-class)
   (:import (java.io File)))
 
 (defn military->decimal
