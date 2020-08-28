@@ -19,15 +19,21 @@
     (java.io FileReader BufferedReader PushbackReader)
     (clojure.tools.reader.reader_types SourceLoggingPushbackReader)))
 
+(defn- file->reader [file]
+  (new BufferedReader
+    (if (.startsWith file "/")
+      (new FileReader file)
+      (-> file io/resource io/reader))))
+
+;; ? - with-redefs on symbol resolution?
+;; ? - missing a require?
+
 (defn read-form
   "Read and return the form specified by the passed in var.
    The returned form will be augmented so that *everything* that
    *can* have metadata will include file/line/start column/ending column information."
-  [{:keys [file line resource]}]
-  (let [r (new BufferedReader
-            (if resource
-              (io/reader resource)
-              (new FileReader file)))]
+  [file line]
+  (let [r (file->reader file)]
     (doseq [_ (range (dec line))]
       (.readLine r))
     (reader/read

@@ -53,11 +53,11 @@
 (defn parse-defn [form file]
   (parser/parse-defn-args
     (rest
-      (clj-reader/read-form
-        (merge (meta form)
-          (if (.startsWith file "/")
-            {:file file}
-            {:resource (io/resource file)}))))))
+      (if (enc/compiling-cljs?)
+        form
+        (clj-reader/read-form
+          ;; FIXME: might be broken (not tested yet)
+          file (:line (meta form)))))))
 
 (defn process-defn [env form [defn-sym :as args]]
   (try

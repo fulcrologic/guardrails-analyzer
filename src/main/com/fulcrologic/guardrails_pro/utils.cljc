@@ -4,21 +4,15 @@
     [clojure.spec.gen.alpha :as gen]
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
     [com.fulcrologic.guardrails.core :refer [>defn => ?]]
-    [taoensso.timbre :as log])
-  (:import (clojure.lang IMeta)))
-
-(>defn ?meta [sexpr]
-  [any? => (? map?)]
-  (when (instance? IMeta sexpr)
-    (meta sexpr)))
+    [taoensso.timbre :as log]))
 
 (>defn try-sampling [{::grp.art/keys [return-spec generator] :as sampler}]
   [::grp.art/spec => (? (s/coll-of any? :min-count 1))]
   (try
     (gen/sample
       (or generator (s/gen return-spec)))
-    (catch #?(:clj Exception :cljs :default) e
-      (log/info "Cannot sample from:" sampler)
+    (catch #?(:clj Throwable :cljs :default) _
+      (log/warn "Cannot sample from:" sampler)
       nil)))
 
 (s/def ::destructurable
@@ -27,6 +21,7 @@
     :vector vector?
     :map map?))
 
+;; TODO: check for errors => destructure!
 (>defn destructure* [env bind-sexpr value-type-desc]
   [::grp.art/env ::destructurable ::grp.art/type-description
    => (s/map-of symbol? ::grp.art/type-description)]

@@ -18,10 +18,11 @@
     [com.fulcrologic.guardrails-pro.utils :as grp.u]
     [taoensso.timbre :as log])
   (:import
-    (java.util.regex Pattern)))
+    #?@(:clj [(java.util.regex Pattern)])))
 
 (defn regex? [x]
-  (= (type x) Pattern))
+  #?(:clj (= (type x) Pattern)
+     :cljs (regexp? x)))
 
 (defn list-dispatch-type [env [f :as _sexpr]]
   (cond
@@ -54,7 +55,7 @@
   [::grp.art/env any? => ::grp.art/type-description]
   (log/info "analyzing:" (pr-str sexpr))
   (-> env
-    (grp.art/update-location (grp.u/?meta sexpr))
+    (grp.art/update-location (meta sexpr))
     (analyze-mm sexpr)))
 
 (defmethod analyze-mm :default [_ sexpr]

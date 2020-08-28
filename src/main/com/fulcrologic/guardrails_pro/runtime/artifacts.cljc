@@ -13,10 +13,14 @@
   (s/with-gen pos-int?
     #(gen/such-that pos? (gen/int))))
 
-(s/def ::spec (s/or
-                :spec-name qualified-keyword?
-                :spec-object #(s/spec? %)
-                :predicate ifn?))
+(def fn-gen #(gen/elements [string? int? keyword? symbol?]))
+
+(s/def ::spec (s/with-gen
+                (s/or
+                  :spec-name qualified-keyword?
+                  :spec-object #(s/spec? %)
+                  :predicate ifn?)
+                fn-gen))
 (s/def ::type string?)
 ;; samples is for generated data only
 (s/def ::samples (s/coll-of any? :min-count 1))
@@ -45,9 +49,8 @@
 (s/def ::checking-sym qualified-symbol?)
 (s/def ::current-form any?)
 (s/def ::location (s/keys
-                    :req [::source ::line-number
-                          ::column-start ::column-end]
-                    :opt [::file]))
+                    :req [::line-number ::column-start ::column-end]
+                    :opt [::source ::file]))
 (s/def ::env (s/keys
                :req [::registry]
                :opt [::local-symbols ::extern-symbols
@@ -62,7 +65,7 @@
                   :opt [::class? ::macro? ::type-description ::value]))
 (s/def ::name qualified-symbol?)
 (s/def ::extern-name symbol?)
-(s/def ::fn-ref fn?)
+(s/def ::fn-ref (s/with-gen fn? fn-gen))
 (s/def ::value any?)
 (s/def ::arglist (s/or :vector vector? :quoted-vector (s/and seq? #(vector? (second %)))))
 (s/def ::arg-types (s/coll-of ::type :kind vector?))
@@ -70,7 +73,7 @@
 (s/def ::arg-specs (s/coll-of ::spec :kind vector?))
 (s/def ::return-type string?)
 (s/def ::return-spec ::spec)
-(s/def ::return-predicates (s/coll-of fn? :kind vector?))
+(s/def ::return-predicates (s/with-gen (s/coll-of fn? :kind vector?) fn-gen))
 (s/def ::generator any?)
 (s/def ::pure? boolean?)
 (s/def ::dispatch keyword?)

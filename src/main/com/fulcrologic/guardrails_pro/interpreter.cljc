@@ -3,10 +3,16 @@
     [clojure.spec.alpha :as s]
     [clojure.test.check.generators]
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
+    [com.fulcrologic.guardrails-pro.runtime.reporter :as grp.rpt]
     [com.fulcrologic.guardrails-pro.static.analyzer :as grp.ana]
     [com.fulcrologic.guardrails-pro.utils :as grp.u]
     [com.fulcrologic.guardrails.core :refer [>defn =>]]
+    [com.fulcrologic.guardrails-pro.core :as grp]
     [taoensso.timbre :as log]))
+
+(grp/>defn foobar [x]
+  [int? => int?]
+  "FOOBAR")
 
 (>defn bind-type-desc
   [typename clojure-spec]
@@ -24,9 +30,8 @@
     (reduce
       (fn [env [bind-sexpr arg-type arg-spec]]
         (reduce-kv grp.art/remember-local
-          env (log/spy
-                (grp.u/destructure* env bind-sexpr
-                  (bind-type-desc arg-type arg-spec)))))
+          env (grp.u/destructure* env bind-sexpr
+                (bind-type-desc arg-type arg-spec))))
       env
       (map vector arglist arg-types arg-specs))))
 
@@ -40,20 +45,31 @@
          ::grp.art/expected return-type
          ::grp.art/message (str "Return value (e.g. " (pr-str sample-failure) ") does not always satisfy the return spec of " return-type ".")}))))
 
-(>defn check! [env sym]
-  [::env qualified-symbol? => any?]
-  (let [{::grp.art/keys [arities extern-symbols location]} (grp.art/function-detail env sym)
-        env (-> env
-              (assoc
-                ::grp.art/extern-symbols extern-symbols
-                ::grp.art/checking-sym sym)
-              (grp.art/update-location location))]
-    (doseq [arity (keys arities)]
-      (let [{::grp.art/keys [body] :as arity-detail} (get arities arity)
-            env (bind-argument-types env arity-detail)
-            result (grp.ana/analyze-statements! env body)]
-        (log/info "Locals for " sym ":" (::grp.art/local-symbols env))
-        (check-return-type! env arity-detail result)))))
+(>defn check!
+  ([sym]
+   [qualified-symbol? => any?]
+   (check! (grp.art/build-env) sym))
+  ([env sym]
+   [::grp.art/env qualified-symbol? => any?]
+   (let [{::grp.art/keys [arities extern-symbols location]} (grp.art/function-detail env sym)
+         env (-> env
+               (assoc
+                 ::grp.art/extern-symbols extern-symbols
+                 ::grp.art/checking-sym sym)
+               (grp.art/update-location location))]
+     (grp.art/clear-problems!) ;; TODO: will need to be selective (ie: only changed)
+     (doseq [arity (keys arities)]
+       (let [{::grp.art/keys [body] :as arity-detail} (get arities arity)
+             env (bind-argument-types env arity-detail)
+             result (grp.ana/analyze-statements! env body)]
+         (log/info "DBG:6 | Locals for " sym ":" (::grp.art/local-symbols env))
+         (check-return-type! env arity-detail result))))))
+
+(defn check-all! []
+  (let [env (grp.art/build-env)]
+    (doseq [f (keys @grp.art/registry)]
+      (check! env f))
+    (grp.rpt/report-problems! @grp.art/problems)))
 
 (comment
   (do (grp.art/clear-problems!)

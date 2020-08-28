@@ -3,5 +3,3 @@
   (:require
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as a]
     [taoensso.timbre :as log]))
-
-

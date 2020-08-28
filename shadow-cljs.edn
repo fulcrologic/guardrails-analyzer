@@ -17,10 +17,16 @@
                             :output-dir "resources/public/js/daemon-ui"
                             :asset-path "/js/daemon-ui"
                             :modules    {:main {:init-fn com.fulcrologic.guardrails-pro.daemon.ui.main-ui/init}}
-                            :dev        {:compiler-options
-                                         {:external-config {:guardrails {:throw? false}}}}
+                            :dev        {:compiler-options {:external-config {:guardrails {:throw? false}}}}
                             :devtools   {:after-load com.fulcrologic.guardrails-pro.daemon.ui.main-ui/refresh
                                          :preloads   [com.fulcrologic.fulcro.inspect.preload]}}
+
+            :self-checker  {:target     :browser
+                            :output-dir "resources/public/js/self-checker"
+                            :asset-path "js/self-checker"
+                            :modules    {:main {:init-fn self-checker/init}}
+                            :dev        {:compiler-options {:external-config {:guardrails {:throw? false}}}}
+                            :devtools   {:after-load self-checker/refresh}}
 
             :test          {:target           :browser-test
                             :test-dir         "resources/public/js/test"
