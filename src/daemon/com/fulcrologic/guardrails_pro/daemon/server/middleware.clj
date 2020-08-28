@@ -1,7 +1,8 @@
-(ns com.fulcrologic.guardrails-pro.daemon.middleware
+(ns com.fulcrologic.guardrails-pro.daemon.server.middleware
   (:require
+    ;[com.fulcrologic.fulcro.server.api-middleware :as f.api]
+    [com.fulcrologic.guardrails-pro.daemon.server.config :refer [config]]
     [mount.core :refer [defstate]]
-    [com.fulcrologic.fulcro.server.api-middleware :as f.api]
     [ring.middleware.defaults :refer [wrap-defaults]]))
 
 (def ^:private not-found-handler
@@ -20,7 +21,7 @@
 
 (defstate middleware
   :start
-  (let [defaults-config {:static {:resources "public"}}]
+  (let [defaults-config (:ring.middleware/defaults-config config)]
     (-> not-found-handler
       ;(wrap-api "/api")
       ;f.api/wrap-transit-params

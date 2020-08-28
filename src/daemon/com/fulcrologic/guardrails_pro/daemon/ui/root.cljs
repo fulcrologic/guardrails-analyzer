@@ -1,4 +1,4 @@
-(ns com.fulcrologic.guardrails-pro.ui.root
+(ns com.fulcrologic.guardrails-pro.daemon.ui.root
   (:require
     [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
     [com.fulcrologic.fulcro.dom :as dom]))

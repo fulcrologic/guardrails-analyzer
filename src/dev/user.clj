@@ -1,11 +1,10 @@
 (ns user
   (:require
     [clojure.tools.namespace.repl :as tools-ns :refer [set-refresh-dirs]]
-    [com.fulcrologic.guardrails-pro.daemon.http-server]
-    [com.fulcrologic.guardrails.core :refer [>defn >def => | ?]]
+    [com.fulcrologic.guardrails-pro.daemon.server.http-server]
     [mount.core :as mount]))
 
-(set-refresh-dirs "src/main" "src/dev")
+(set-refresh-dirs "src/main" "src/daemon" "src/dev")
 
 (defn start [] (mount/start))
 

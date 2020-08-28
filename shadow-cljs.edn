@@ -16,10 +16,10 @@
             :daemon-ui     {:target     :browser
                             :output-dir "resources/public/js/daemon-ui"
                             :asset-path "/js/daemon-ui"
-                            :modules    {:main {:init-fn com.fulcrologic.guardrails-pro.ui.main-ui/init}}
+                            :modules    {:main {:init-fn com.fulcrologic.guardrails-pro.daemon.ui.main-ui/init}}
                             :dev        {:compiler-options
                                          {:external-config {:guardrails {:throw? false}}}}
-                            :devtools   {:after-load com.fulcrologic.guardrails-pro.ui.main-ui/refresh
+                            :devtools   {:after-load com.fulcrologic.guardrails-pro.daemon.ui.main-ui/refresh
                                          :preloads   [com.fulcrologic.fulcro.inspect.preload]}}
 
             :test          {:target           :browser-test
