@@ -1,17 +1,11 @@
 (ns user
   (:require
-    [clojure.tools.namespace.repl :as tools-ns :refer [set-refresh-dirs]]
-    [com.fulcrologic.guardrails-pro.daemon.server.http-server]
-    [mount.core :as mount]))
+    [clojure.tools.namespace.repl :as tools-ns]
+    [taoensso.timbre :as log]))
 
-(set-refresh-dirs "src/main" "src/daemon" "src/dev")
-
-(defn start [] (mount/start))
-
-(defn stop [] (mount/stop))
-
-(defn restart [] (stop) (tools-ns/refresh :after 'user/start))
-
-(comment
-  (restart)
-  )
+(apply tools-ns/set-refresh-dirs
+  (log/spy :info :refresh-dirs
+    (cond-> ["src/main"]
+      (System/getProperty "daemon") (conj "src/daemon")
+      (System/getProperty "dev")    (conj "src/dev")
+      (System/getProperty "test")   (conj "src/test"))))

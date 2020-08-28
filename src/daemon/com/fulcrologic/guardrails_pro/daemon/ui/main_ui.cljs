@@ -1,6 +1,6 @@
 (ns com.fulcrologic.guardrails-pro.daemon.ui.main-ui
   (:require
-    [com.fulcrologic.guardrails-pro.ui.root :as root]
+    [com.fulcrologic.guardrails-pro.daemon.ui.root :as root]
     [com.fulcrologic.fulcro.application :as app]))
 
 (defonce app (app/fulcro-app))
