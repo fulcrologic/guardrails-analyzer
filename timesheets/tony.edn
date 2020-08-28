@@ -18,6 +18,7 @@
  {:date "2020-08-24" :description "pairing, got basic IntelliJ plugin highlighting stuff in prototype plugin" :timespans [[900 1030] [1900 2100]]}
  {:date "2020-08-25" :description "pairing, design of error reporting" :timespans [[900 1100]]}
  {:date "2020-08-26" :description "pairing" :timespans [[850 945]]}
- {:date "2020-08-26" :description "pairing" :timespans [[930 1045]]}
+ {:date "2020-08-27" :description "pairing, contact accountant, look for legal help" :timespans [[930 1045] [1315 1330]]}
+ {:date "2020-08-28" :description "planning" :timespans [[900 930]]}
  ]
 
