@@ -9,17 +9,17 @@
 
  :aliases {:test      {:extra-paths ["src/test"]
                        :extra-deps  {fulcrologic/fulcro-spec {:mvn/version "3.1.6"}}
-                       :jvm-opts ["-Dtest"]}
+                       :jvm-opts    ["-Dtest"]}
 
            :daemon    {:extra-paths ["src/daemon" "resources"]
-                       :extra-deps {com.fulcrologic/fulcro {:mvn/version "3.2.10"}
-                                    ring/ring-core         {:mvn/version "1.8.1"}
-                                    ring/ring-defaults     {:mvn/version "0.3.2"}
-                                    http-kit               {:mvn/version "2.3.0"}
-                                    mount                  {:mvn/version "0.1.12"}
-                                    bidi                   {:mvn/version "2.1.6"}
-                                    com.wsscode/pathom     {:mvn/version "2.2.30"}}
-                       :jvm-opts ["-Ddaemon"]}
+                       :extra-deps  {com.fulcrologic/fulcro {:mvn/version "3.2.10"}
+                                     ring/ring-core         {:mvn/version "1.8.1"}
+                                     ring/ring-defaults     {:mvn/version "0.3.2"}
+                                     http-kit               {:mvn/version "2.3.0"}
+                                     mount                  {:mvn/version "0.1.12"}
+                                     bidi                   {:mvn/version "2.1.6"}
+                                     com.wsscode/pathom     {:mvn/version "2.2.30"}}
+                       :jvm-opts    ["-Ddaemon"]}
 
            :hours     {:extra-paths ["src/dev"]
                        :main-opts   ["-m" "timesheets"]}

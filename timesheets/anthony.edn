@@ -21,6 +21,6 @@
  {:date "2020-08-25" :description "error reporting refactoring" :timespans [[1345 1745]]}
  {:date "2020-08-26" :description "planning with tony" :timespans [[900 1000]]}
  {:date "2020-08-26" :description "location tracking" :timespans [[1000 1200] [1245 1600]]}
- {:date "2020-08-26" :description "daemon ui build & server" :timespans [2100 2200]}
+ {:date "2020-08-26" :description "daemon ui build & server" :timespans [[2100 2200]]}
  {:date "2020-08-27" :description "planning with tony" :timespans [[930 1045]]}
  ]
