@@ -1,13 +1,23 @@
 (ns com.fulcrologic.guardrails-pro.daemon.server.problems
   (:require
     [clojure.set :as set]
-    [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]))
+    [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
+    [com.fulcrologic.guardrails-pro.static.clojure-reader :as clj-reader]
+    [taoensso.timbre :as log]))
 
 (defonce problems (atom {}))
 
 (defn get!
   ([] @problems)
-  ([_file] (get!))) ;; TODO
+  ([file]
+   (or (when-let [file-ns (clj-reader/read-ns-decl file)]
+         (log/debug "get! problems for:" file-ns)
+         (into {}
+           (filter (fn [[fn-sym _]]
+                     (= (namespace fn-sym)
+                       (str file-ns))))
+           (get!)))
+     {})))
 
 (defn set! [new-problems]
   (reset! problems new-problems))

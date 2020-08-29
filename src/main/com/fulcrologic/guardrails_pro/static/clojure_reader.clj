@@ -14,10 +14,22 @@
   (:require
     [clojure.tools.reader :as reader]
     [clojure.tools.reader.impl.utils :as reader.utils]
-    [clojure.java.io :as io])
+    [clojure.java.io :as io]
+    [taoensso.timbre :as log])
   (:import
     (java.io FileReader BufferedReader PushbackReader)
     (clojure.tools.reader.reader_types SourceLoggingPushbackReader)))
+
+(defn read-ns-decl [file]
+  (try
+    (let [ns-decl (reader/read
+                    (new PushbackReader
+                      (new FileReader file)))]
+      (assert (= 'ns (first ns-decl)))
+      (second ns-decl))
+    (catch Throwable _
+      (log/debug "Failed to read ns decl from:" file)
+      nil)))
 
 (defn- file->reader [file]
   (new BufferedReader
@@ -25,8 +37,8 @@
       (new FileReader file)
       (-> file io/resource io/reader))))
 
-;; ? - with-redefs on symbol resolution?
-;; ? - missing a require?
+;; NOTE: ? - with-redefs on symbol resolution?
+;; NOTE: ? - missing a require?
 
 (defn read-form
   "Read and return the form specified by the passed in var.
