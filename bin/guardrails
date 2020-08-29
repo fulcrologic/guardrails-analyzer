@@ -4,4 +4,5 @@
 curl --get \
   --data-urlencode "file=$1" \
   --data-urlencode "editor=$2" \
-  localhost:3000/problems
+  localhost:3000/problems \
+  || echo '[]'
