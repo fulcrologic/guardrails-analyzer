@@ -1,0 +1,3 @@
+#!/usr/bin/env sh
+
+echo '{"lnum": 1, "col": 1, "text": "fake error message", "type": "E"}'
