@@ -1,3 +1,4 @@
 {:org.httpkit.server/config       {:port 3000}
- :ring.middleware/defaults-config {:static {:resources "public"}}
+ :ring.middleware/defaults-config {:static {:resources "public"}
+                                   :params {:urlencoded true}}
  :taoensso.timbre/logging-config  {:level :info}}

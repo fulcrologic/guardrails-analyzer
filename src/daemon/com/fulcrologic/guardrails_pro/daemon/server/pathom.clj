@@ -2,21 +2,20 @@
   (:require
     [clojure.core.async :as async]
     [com.fulcrologic.guardrails-pro.daemon.server.config :refer [config]]
+    [com.fulcrologic.guardrails-pro.daemon.server.problems :as problems]
     [com.wsscode.pathom.connect :as pc]
     [com.wsscode.pathom.core :as p]
     [mount.core :refer [defstate]]
     [taoensso.timbre :as log]))
 
-(defonce problems (atom {}))
-
 (pc/defresolver all-problems [_env _params]
   {::pc/output [:all-problems]}
-  {:all-problems @problems})
+  {:all-problems (problems/get!)})
 
-(pc/defmutation set-problems [_env new-problems]
+(pc/defmutation set-problems [_env problems]
   {::pc/sym    'daemon/set-problems
    ::pc/output [:result]}
-  (reset! problems new-problems)
+  (problems/set! problems)
   {:result :ok})
 
 (def all-resolvers [all-problems set-problems])

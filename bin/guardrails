@@ -1,3 +1,7 @@
 #!/usr/bin/env sh
 
-echo '{"lnum": 1, "col": 1, "text": "fake error message", "type": "E"}'
+# TODO: read port file
+curl --get \
+  --data-urlencode "file=$1" \
+  --data-urlencode "editor=$2" \
+  localhost:3000/problems
