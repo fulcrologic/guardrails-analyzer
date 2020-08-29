@@ -52,17 +52,16 @@
   ([env sym]
    [::grp.art/env qualified-symbol? => any?]
    (let [{::grp.art/keys [arities extern-symbols location]} (grp.art/function-detail env sym)
-         env (-> env
-               (assoc
-                 ::grp.art/extern-symbols extern-symbols
-                 ::grp.art/checking-sym sym)
-               (grp.art/update-location location))]
+         env (assoc env
+               ::grp.art/location location
+               ::grp.art/checking-sym sym
+               ::grp.art/extern-symbols extern-symbols)]
      (grp.art/clear-problems!) ;; TODO: will need to be selective (ie: only changed)
      (doseq [arity (keys arities)]
        (let [{::grp.art/keys [body] :as arity-detail} (get arities arity)
              env (bind-argument-types env arity-detail)
              result (grp.ana/analyze-statements! env body)]
-         (log/info "DBG:6 | Locals for " sym ":" (::grp.art/local-symbols env))
+         (log/info "Locals for " sym ":" (::grp.art/local-symbols env))
          (check-return-type! env arity-detail result))))))
 
 (defn check-all! []

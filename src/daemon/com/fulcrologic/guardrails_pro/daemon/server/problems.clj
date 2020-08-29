@@ -24,11 +24,11 @@
   (mapcat
     (fn [[_fn-sym {::grp.art/keys [errors warnings]}]]
       (let [vim-remap #::grp.art{:message      "text"
+                                 :line-number  "lnum"
                                  :column-start "col"
-                                 :line         "lnum"}
+                                 :column-end   "end_col"}
             format-problem (fn [problem]
                              (-> problem
-                               (merge #::grp.art{:line 1}) ;FIXME
                                (set/rename-keys vim-remap)
                                (select-keys (vals vim-remap))))
             error #(assoc % "type" "E")

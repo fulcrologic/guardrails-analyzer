@@ -158,9 +158,10 @@
                         :line       ::line-number
                         :column     ::column-start
                         :end-column ::column-end}]
-    (-> location
-      (select-keys (keys location-remap))
-      (set/rename-keys location-remap))))
+    (log/spy :debug :new-location
+      (-> location
+        (set/rename-keys location-remap)
+        (select-keys (vals location-remap))))))
 
 (>defn update-location
   [env location]
