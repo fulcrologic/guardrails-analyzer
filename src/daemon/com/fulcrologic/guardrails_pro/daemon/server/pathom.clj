@@ -24,6 +24,7 @@
 
 (pc/defmutation self-check [{:keys [request] :as env} {:keys [on?]}]
   {::pc/sym 'daemon/self-check}
+  (log/info "Self check called")
   (when-not on?
     (swap! cmgmt/daemon-cids conj (:cid env)))
   {})
