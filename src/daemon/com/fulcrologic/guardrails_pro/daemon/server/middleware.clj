@@ -5,6 +5,8 @@
     [com.fulcrologic.guardrails-pro.daemon.server.config :refer [config]]
     [com.fulcrologic.guardrails-pro.daemon.server.pathom :refer [parser]]
     [com.fulcrologic.guardrails-pro.daemon.server.problems :as problems]
+    [com.fulcrologic.guardrails-pro.daemon.server.websockets :refer [websockets]]
+    [com.fulcrologic.fulcro.networking.websockets :as fws]
     [mount.core :refer [defstate]]
     [ring.middleware.defaults :refer [wrap-defaults]]
     [taoensso.timbre :as log]))
@@ -43,6 +45,7 @@
     (log/info "Starting with ring defaults config" defaults-config)
     (-> not-found-handler
       (wrap-api "/api")
+      (fws/wrap-api websockets)
       f.api/wrap-transit-params
       f.api/wrap-transit-response
       wrap-problems

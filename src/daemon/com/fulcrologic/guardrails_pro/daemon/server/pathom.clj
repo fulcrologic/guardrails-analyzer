@@ -34,10 +34,12 @@
   req)
 
 (defn build-parser []
-  (let [real-parser (p/parallel-parser
-                      {::p/mutate  pc/mutate-async
-                       ::p/env     {::p/reader               [p/map-reader pc/parallel-reader
-                                                              pc/open-ident-reader p/env-placeholder-reader]
+  (let [real-parser (p/parser
+                      {::p/mutate  pc/mutate
+                       ::p/env     {::p/reader               [p/map-reader
+                                                              pc/reader2
+                                                              pc/open-ident-reader
+                                                              p/env-placeholder-reader]
                                     ::p/placeholder-prefixes #{">"}}
                        ::p/plugins [(pc/connect-plugin {::pc/register all-resolvers})
                                     (p/env-wrap-plugin (fn [env]
@@ -50,8 +52,8 @@
                                     p/trace-plugin]})
         trace?      (not (nil? (System/getProperty "trace")))]
     (fn wrapped-parser [env tx]
-      (async/<!! (real-parser env
-                   (cond-> tx trace? (conj :com.wsscode.pathom/trace)))))))
+      (real-parser env
+        (cond-> tx trace? (conj :com.wsscode.pathom/trace))))))
 
 (defstate parser
   :start (build-parser))

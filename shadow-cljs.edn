@@ -26,7 +26,8 @@
                             :asset-path "js/self-checker"
                             :modules    {:main {:init-fn self-checker/init}}
                             :dev        {:compiler-options {:external-config {:guardrails {:throw? false}}}}
-                            :devtools   {:after-load self-checker/refresh}}
+                            :devtools   {:after-load self-checker/refresh
+                                         :preloads   [com.fulcrologic.fulcro.inspect.preload]}}
 
             :test          {:target           :browser-test
                             :test-dir         "resources/public/js/test"

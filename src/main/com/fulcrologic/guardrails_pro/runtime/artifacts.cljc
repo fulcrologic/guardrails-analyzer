@@ -169,7 +169,7 @@
   (log/info :update-location (::checking-sym env) location)
   (cond-> env location
     (assoc ::location
-      (new-location location))))
+           (new-location location))))
 
 (defonce problems (atom {}))
 
@@ -192,11 +192,14 @@
     (merge warning
       (::location env))))
 
-(defn clear-problems! []
-  (swap! problems
-    (partial reduce-kv
-      (fn [m k v] (assoc m k (dissoc v ::errors ::warnings)))
-      {})))
+(defn clear-problems!
+  ([sym]
+   (swap! problems update sym assoc ::errors [] ::warnings []))
+  ([]
+   (swap! problems
+     (partial reduce-kv
+       (fn [m k v] (assoc m k (dissoc v ::errors ::warnings)))
+       {}))))
 
 (comment
   (-> (build-env)

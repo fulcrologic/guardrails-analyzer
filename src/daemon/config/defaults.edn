@@ -1,4 +1,18 @@
 {:org.httpkit.server/config       {:port 3000}
- :ring.middleware/defaults-config {:static {:resources "public"}
-                                   :params {:urlencoded true}}
+ :ring.middleware/defaults-config {:params    {:keywordize true
+                                               :multipart  true
+                                               :nested     true
+                                               :urlencoded true}
+                                   :cookies   true
+                                   :responses {:absolute-redirects     true
+                                               :content-types          true
+                                               :default-charset        "utf-8"
+                                               :not-modified-responses true}
+                                   :static    {:resources "public"}
+                                   :security  {:anti-forgery   true
+                                               :hsts           true
+                                               :ssl-redirect   false
+                                               :frame-options  :sameorigin
+                                               :xss-protection false}}
+
  :taoensso.timbre/logging-config  {:level :info}}
