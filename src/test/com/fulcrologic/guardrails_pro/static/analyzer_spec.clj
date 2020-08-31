@@ -10,13 +10,26 @@
   [int? => int?]
   (inc x))
 
-(specification "analyze"
+(defn with-mocked-errors [cb]
+  (let [errors (atom [])]
+    (when-mocking!
+      (grp.art/record-error! _ error) => (swap! errors conj error)
+      (cb errors))))
+
+(specification "analyze-let-like-form!"
   (component "A simple let"
-    (let [errors (atom [])]
-      (when-mocking!
-        (grp.art/record-error! _ problem) => (swap! errors conj problem)
+    (with-mocked-errors
+      (fn [errors]
         (let [env (grp.art/build-env)]
           (grp.ana/analyze! env `(let [a# :a-kw] (test_int->int a#)))
           (assertions
             "It finds an error"
             (count @errors) => 1))))))
+
+(specification "analyze-hashmap!"
+  (with-mocked-errors
+    (fn [errors]
+      (let [env (grp.art/build-env)]
+        (grp.ana/analyze! env {::grp.art/type 666})
+        (assertions
+          (count @errors) => 1)))))

@@ -23,10 +23,6 @@
   [int? string? | #(and (pos? x) (seq y)) => string?]
   (str x ":" y))
 
-(grp/>defn test_abs-val_pure [x]
-  ^::grp.art/pure? [int? => int?]
-  (if (neg? x) (- x) x))
-
 (gr/>defn type-description
   "Generate a type description for a given spec"
   [name expr spec samples]
@@ -94,6 +90,10 @@
               (count @errors) => 1
               (::grp.art/original-expression error) => '(x y)
               (::grp.art/actual error) => {::grp.art/failing-samples [-42 "88"]})))))))
+
+(grp/>defn test_abs-val_pure [x]
+  ^::grp.art/pure? [int? => int?]
+  (if (neg? x) (- x) x))
 
 (specification "calculate-function-type (pure)"
   (behavior "Uses the function itself to generate type information"

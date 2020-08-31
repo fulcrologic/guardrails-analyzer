@@ -53,7 +53,7 @@
       (doseq [e errors]
           (t/do-report
             (assoc e :type :fail))))
-    ;; silence =fn=> reporting
+    ;; return true to silence =fn=> reporting
     true))
 
 ;; NOTE: not run because file name is not a *_spec

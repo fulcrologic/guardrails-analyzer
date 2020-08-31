@@ -1,17 +1,6 @@
 (ns com.fulcrologic.guardrails-pro.static.analyzer
-  "An extensible analyzer for expressions (including special forms).
-
-   * Call `analyze` on the expression.
-   * If it is a call to a function in the registry, then we dispatch to a multimethod that can
-     do proper steps for type extraction (which may call analyze on arguments to get type
-     descriptors).
-   ** Analyze may find it to be trivially a type (e.g. primitive/literal)
-   ** The analyzer can detect special forms (i.e. `let`) and process them, which in turn
-      will need to recursively ask for the `type-description` of each binding value.
-      NOTE: There can be any number of errors detected during this analysis.
-   ** The end result is a `type-description` (which can include errors)
-   "
   (:require
+    [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [>defn =>]]
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.static.function-type :as grp.fnt]
@@ -77,6 +66,28 @@
 (defmethod analyze-mm :symbol [env sym]
   (or (grp.art/symbol-detail env sym) {}))
 
+(defn analyze-hashmap! [env hashmap]
+  (doseq [[k v] hashmap]
+    (when-let [spec (s/get-spec k)]
+      (let [{::grp.art/keys [samples]} (analyze! env v)]
+        (when-let [failing-sample (and (seq samples)
+                                    (some (fn _invalid-sample [sample]
+                                            (when-not (s/valid? spec sample) sample))
+                                      samples))]
+          (grp.art/record-error! env
+            {::grp.art/original-expression hashmap
+             ::grp.art/expected {::grp.art/spec spec}
+             ::grp.art/actual {::grp.art/failing-samples [failing-sample]}
+             ::grp.art/message (str "Value in map: " v " failed to pass spec for " k " on failing sample " failing-sample ".")})))))
+  {::grp.art/samples [hashmap]
+   ::grp.art/type    "literal-hashmap"})
+
+(defmethod analyze-mm :collection [env coll]
+  (cond
+    (map? coll) (analyze-hashmap! env coll)
+    ;; TODO
+    :else       {}))
+
 (defmethod analyze-mm :function-call [env [function & arguments]]
   (grp.fnt/calculate-function-type env function
     (mapv (partial analyze! env) arguments)))
@@ -89,7 +100,7 @@
 (defmethod analyze-mm 'do [env [_ & body]]
   (analyze-statements! env body))
 
-(defn analyze-let-like-form [env [_ bindings & body]]
+(defn analyze-let-like-form! [env [_ bindings & body]]
   (analyze-statements!
     (reduce (fn [env [bind-sexpr sexpr]]
               ;; TASK: update location & test
@@ -99,6 +110,6 @@
       env (partition 2 bindings))
     body))
 
-(defmethod analyze-mm 'let [env sexpr] (analyze-let-like-form env sexpr))
-(defmethod analyze-mm 'clojure.core/let [env sexpr] (analyze-let-like-form env sexpr))
-(defmethod analyze-mm 'cljs.core/let [env sexpr] (analyze-let-like-form env sexpr))
+(defmethod analyze-mm 'let [env sexpr] (analyze-let-like-form! env sexpr))
+(defmethod analyze-mm 'clojure.core/let [env sexpr] (analyze-let-like-form! env sexpr))
+(defmethod analyze-mm 'cljs.core/let [env sexpr] (analyze-let-like-form! env sexpr))

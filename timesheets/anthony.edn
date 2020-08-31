@@ -28,4 +28,5 @@
  {:date "2020-08-29" :description "talking with tony and daemon server" :timespans [[1100 1300]]}
  {:date "2020-08-31" :description "chat with tony" :timespans [[900 1000]]}
  {:date "2020-08-31" :description "timesheets.clj error checking" :timespans [[1030 1100]]}
+ {:date "2020-08-31" :description "analyze-hashmap!" :timespans [[1400 1600]]}
  ]
