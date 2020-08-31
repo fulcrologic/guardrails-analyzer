@@ -3,22 +3,32 @@
     [clojure.core.async :as async]
     [com.fulcrologic.guardrails-pro.daemon.server.config :refer [config]]
     [com.fulcrologic.guardrails-pro.daemon.server.problems :as problems]
+    [com.fulcrologic.guardrails-pro.daemon.server.connection-management :as cmgmt]
     [com.wsscode.pathom.connect :as pc]
     [com.wsscode.pathom.core :as p]
     [mount.core :refer [defstate]]
-    [taoensso.timbre :as log]))
+    [taoensso.timbre :as log]
+    [clojure.set :as set]
+    [com.fulcrologic.fulcro.networking.websocket-protocols :as wsp]))
 
 (pc/defresolver all-problems [_env _params]
   {::pc/output [:all-problems]}
   {:all-problems (problems/get!)})
 
-(pc/defmutation set-problems [_env problems]
+(pc/defmutation set-problems [{:keys [websockets]} problems]
   {::pc/sym    'daemon/set-problems
    ::pc/output [:result]}
   (problems/set! problems)
+  (cmgmt/notify-daemon-uis! websockets)
   {:result :ok})
 
-(def all-resolvers [all-problems set-problems])
+(pc/defmutation self-check [{:keys [request] :as env} {:keys [on?]}]
+  {::pc/sym 'daemon/self-check}
+  (when-not on?
+    (swap! cmgmt/daemon-cids conj (:cid env)))
+  {})
+
+(def all-resolvers [all-problems set-problems self-check])
 
 (defn preprocess-parser-plugin [f]
   {::p/wrap-parser

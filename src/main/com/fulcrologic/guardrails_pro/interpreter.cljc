@@ -11,12 +11,11 @@
 
 (grp/>defn f [x]
   [int? => string?]
-  (str "n = " x)
-  x)
+  (str "n = " x))
 
 (grp/>defn foobar [x]
   [int? => int?]
-  (let [v (f "hello")]
+  (let [v (f 22)]
     v))
 
 (>defn bind-type-desc
@@ -50,6 +49,7 @@
          ::grp.art/expected return-type
          ::grp.art/message  (str "Return value (e.g. " (pr-str sample-failure) ") does not always satisfy the return spec of " return-type ".")}))))
 
+
 (>defn check!
   ([sym]
    [qualified-symbol? => any?]
@@ -74,7 +74,3 @@
     (doseq [f (keys @grp.art/registry)]
       (check! env f))))
 
-(comment
-  (do (grp.art/clear-problems!)
-      (check! (grp.art/build-env) 'com.fulcrologic.guardrails-pro.core/env-test))
-  )

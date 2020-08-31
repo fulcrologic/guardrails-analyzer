@@ -10,6 +10,6 @@
   (grp.intrp/check-all!))
 
 (defn refresh []
-  (reporter/start!)
+  (reporter/start! true)
   (grp.intrp/check-all!)
   (reporter/report-problems! @grp.art/problems))

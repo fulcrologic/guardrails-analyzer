@@ -5,6 +5,7 @@
     [com.fulcrologic.fulcro.mutations :as f.m]
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
     [taoensso.timbre :as log]
+    [taoensso.encore :as enc]
     [com.fulcrologic.fulcro.dom :as dom :refer [div h3 h4 label input]]
     [com.fulcrologic.fulcro.routing.dynamic-routing :as dr :refer [defrouter]]
     [com.fulcrologic.fulcro.networking.websockets :as fws]
@@ -14,6 +15,26 @@
   (action [{:keys [app state]}]
     (swap! state assoc-in [:component/id ::namespace-problems :current-namespace] ns)
     (dr/change-route! app ["namespace"])))
+
+(f.m/defmutation self-check [{:keys [on?]}]
+  (action [{:keys [state]}]
+    (swap! state assoc :self-checker? on?))
+  (remote [env]
+    (f.m/with-server-side-mutation env 'daemon/self-check)))
+
+(defn set-problems* [state-map problems]
+  (let [ks (keys problems)]
+    (reduce
+      (fn [sm k]
+        (assoc-in sm [:problems/by-namespace (or (namespace k) "") (name k)] (get problems k)))
+      (dissoc state-map :problems/by-namespace)
+      ks)))
+
+(f.m/defmutation set-problems [problems]
+  (action [{:keys [state]}] (swap! state set-problems* problems))
+  (remote [{:keys [state] :as env}]
+    (if (get @state :self-checker?)
+      (f.m/with-server-side-mutation env 'daemon/set-problems))))
 
 (defsc Settings [this {:settings/keys [daemon-port]}]
   {:query         [:settings/daemon-port]
@@ -69,8 +90,6 @@
     (h3 "Problems for " current-namespace)
     (namespace-problem-list this current-namespace (get by-namespace current-namespace))))
 
-
-
 (defsc AllProblems [this {:keys [problems/by-namespace show-warnings?]}]
   {:query         [:show-warnings?
                    [:problems/by-namespace '_]]
@@ -98,23 +117,35 @@
 
 (def ui-reporter-root (comp/factory CheckerRoot {:keyfn :id}))
 
-(f.m/defmutation set-problems [problems]
-  (action [{:keys [state]}]
-    (let [ks (keys problems)]
-      (swap! state (fn [s]
-                     (reduce
-                       (fn [sm k]
-                         (assoc-in sm [:problems/by-namespace (or (namespace k) "") (name k)] (get problems k)))
-                       (dissoc s :problems/by-namespace)
-                       ks)))))
-  (remote [env]
-    (f.m/with-server-side-mutation env 'daemon/set-problems)))
+(declare update-problems!)
+(defonce app (app/fulcro-app {:remotes {:remote (fws/fulcro-websocket-remote {:push-handler
+                                                                              (fn [{:keys [topic msg]}]
+                                                                                (log/spy :info [topic msg])
+                                                                                (when (= topic :new-problems)
+                                                                                  (update-problems! msg)))})}}))
 
-(defonce app (app/fulcro-app {:remotes {:remote (fws/fulcro-websocket-remote {})}}))
+(defn update-problems! [problems]
+  (log/info "received new problem list from daemon")
+  (swap! (::app/state-atom app) set-problems* problems)
+  (app/schedule-render! app))
 
-(defn start! []
-  (log/info "Starting checker app")
-  (app/mount! app CheckerRoot "checker"))
+(defn start!
+  ([] (start! false))
+  ([self-checker?]
+   (log/info "Starting checker app")
+   (app/mount! app CheckerRoot "checker")
+   (comp/transact! app [(self-check {:on? self-checker?})])))
+
+(defn transit-safe-problems [problems]
+  (enc/map-vals (fn [problem] (let [ok-keys [::grp.art/message
+                                             ::grp.art/line-number
+                                             ::grp.art/column-end
+                                             ::grp.art/column-start
+                                             ::grp.art/file]]
+                                (-> problem
+                                  (update ::grp.art/errors (fn [s] (mapv #(select-keys % ok-keys) s)))
+                                  (update ::grp.art/warnings (fn [s] (mapv #(select-keys % ok-keys) s)))))) problems))
 
 (defn report-problems! [problems]
-  (comp/transact! app [`(set-problems ~problems)]))
+  (let [problems (transit-safe-problems problems)]
+    (comp/transact! app [(set-problems problems)])))
