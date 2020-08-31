@@ -16,15 +16,16 @@
                        :extra-deps  {ring/ring-core                    {:mvn/version "1.8.1"}
                                      ring/ring-defaults                {:mvn/version "0.3.2"}
                                      com.fulcrologic/fulcro-websockets {:mvn/version "3.1.1"}
-                                     com.taoensso/sente                {:mvn/version "1.16.0-alpha1"}
+                                     com.taoensso/sente                {:mvn/version "1.15.0"}
                                      http-kit                          {:mvn/version "2.3.0"}
                                      mount                             {:mvn/version "0.1.12"}
                                      bidi                              {:mvn/version "2.1.6"}
                                      com.wsscode/pathom                {:mvn/version "2.2.30"}}
                        :jvm-opts    ["-Ddaemon"]}
 
-           :hours     {:extra-paths ["src/dev"]
-                       :main-opts   ["-m" "timesheets"]}
+           :hours     {:extra-paths   ["src/timesheets"]
+                       :override-deps {com.fulcrologic/guardrails {:mvn/version "0.0.12"}}
+                       :main-opts     ["-m" "timesheets"]}
 
            :clj-tests {:extra-paths ["src/test"]
                        :main-opts   ["-m" "kaocha.runner"]

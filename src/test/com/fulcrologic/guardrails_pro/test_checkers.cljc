@@ -1,4 +1,4 @@
-(ns com.fulcrologic.guardrails-pro.checkers
+(ns com.fulcrologic.guardrails-pro.test-checkers
   (:require
     [clojure.spec.alpha :as s]
     [clojure.test :as t]
