@@ -1,11 +1,13 @@
 (ns com.fulcrologic.guardrails-pro.static.analyzer
   (:require
     [clojure.spec.alpha :as s]
+    [clojure.spec.gen.alpha :as gen]
     [com.fulcrologic.guardrails.core :refer [>defn =>]]
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.static.function-type :as grp.fnt]
     [com.fulcrologic.guardrails-pro.utils :as grp.u]
-    [taoensso.timbre :as log])
+    [taoensso.timbre :as log]
+    [taoensso.encore :as enc])
   (:import
     #?@(:clj [(java.util.regex Pattern)])))
 
@@ -66,21 +68,43 @@
 (defmethod analyze-mm :symbol [env sym]
   (or (grp.art/symbol-detail env sym) {}))
 
+(>defn generate-hashmap-sample-permutations [sample-map]
+  [(s/map-of any? (s/coll-of any?)) => seq?]
+  (->> sample-map
+    (enc/map-vals gen/elements)
+    (apply concat)
+    (apply gen/hash-map)
+    gen/sample))
+
+(defn validate-samples! [env k v samples]
+  (and (enc/when-let [spec (s/get-spec k)
+                      failing-sample (some (fn _invalid-sample [sample]
+                                             (when-not (s/valid? spec sample) sample))
+                                       samples)]
+         (grp.art/record-error! env
+           {::grp.art/original-expression v
+            ::grp.art/expected {::grp.art/spec spec}
+            ::grp.art/actual {::grp.art/failing-samples [failing-sample]}
+            ::grp.art/message (str "Value in map: " failing-sample " failed to pass spec for " k ".")})
+         false)
+    samples))
+
 (defn analyze-hashmap! [env hashmap]
-  (doseq [[k v] hashmap]
-    (when-let [spec (s/get-spec k)]
-      (let [{::grp.art/keys [samples]} (analyze! env v)]
-        (when-let [failing-sample (and (seq samples)
-                                    (some (fn _invalid-sample [sample]
-                                            (when-not (s/valid? spec sample) sample))
-                                      samples))]
-          (grp.art/record-error! env
+  (let [sample-map (reduce-kv
+                     (fn [acc k v]
+                       (assoc acc k
+                         (let [{::grp.art/keys [samples]} (analyze! env v)]
+                           (if (seq samples)
+                             (validate-samples! env k v samples)
+                             false))))
+                     {} hashmap)]
+    (if (some false? (vals sample-map))
+      (do (grp.art/record-warning! env
             {::grp.art/original-expression hashmap
-             ::grp.art/expected {::grp.art/spec spec}
-             ::grp.art/actual {::grp.art/failing-samples [failing-sample]}
-             ::grp.art/message (str "Value in map: " v " failed to pass spec for " k " on failing sample " failing-sample ".")})))))
-  {::grp.art/samples [hashmap]
-   ::grp.art/type    "literal-hashmap"})
+             ::grp.art/message (str "Failed to generate samples for literal map due to earlier spec failure.")})
+        {})
+      {::grp.art/samples (generate-hashmap-sample-permutations sample-map)
+       ::grp.art/type    "literal-hashmap"})))
 
 (defmethod analyze-mm :collection [env coll]
   (cond

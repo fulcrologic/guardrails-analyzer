@@ -4,7 +4,8 @@
     [com.fulcrologic.guardrails-pro.static.analyzer :as grp.ana]
     [com.fulcrologic.guardrails.core :as gr :refer [=>]]
     [com.fulcrologic.guardrails-pro.core :as grp]
-    [fulcro-spec.core :refer [specification component assertions when-mocking!]]))
+    [com.fulcrologic.guardrails-pro.test-checkers :as check :refer [check!]]
+    [fulcro-spec.core :refer [specification component assertions when-mocking! =fn=>]]))
 
 (grp/>defn test_int->int [x]
   [int? => int?]
@@ -26,10 +27,14 @@
             "It finds an error"
             (count @errors) => 1))))))
 
-(specification "analyze-hashmap!"
-  (with-mocked-errors
-    (fn [errors]
-      (let [env (grp.art/build-env)]
-        (grp.ana/analyze! env {::grp.art/type 666})
-        (assertions
-          (count @errors) => 1)))))
+(specification "generate-hashmap-sample-permutations"
+  (assertions
+    (grp.ana/generate-hashmap-sample-permutations
+      {:foo [1 2 3]
+       :bar [:a :b :c]})
+    =fn=> (check!
+            (check/is?* seq?)
+            (check/every?*
+              (check/is?* map?)
+              (check/is?* #(int? (:foo %)))
+              (check/is?* #(keyword? (:bar %)))))))

@@ -5,7 +5,7 @@
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
     [fulcro-spec.core :refer [specification assertions =fn=>]]))
 
-(defn check-error? [x] (map? x))
+(defn check-error? [x] (and (map? x) (:expected x) (:actual x)))
 
 (defn all* [& checkers]
   (fn [actual]
@@ -31,6 +31,10 @@
       {:message (s/explain-str spec actual)
        :actual actual
        :expected spec})))
+
+(defn every?* [& checkers]
+  (fn [actual]
+    (mapcat (apply all* checkers) actual)))
 
 (defn embeds?*
   ([expected] (embeds?* expected []))

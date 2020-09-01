@@ -29,4 +29,7 @@
  {:date "2020-08-31" :description "chat with tony" :timespans [[900 1000]]}
  {:date "2020-08-31" :description "timesheets.clj error checking" :timespans [[1030 1100]]}
  {:date "2020-08-31" :description "analyze-hashmap!" :timespans [[1400 1600]]}
+ {:date "2020-08-31" :description ">fdef and >ftag" :timespans [[1600 1630]]}
+ {:date "2020-09-01" :description "chat with tony" :timespans [[930 1100]]}
+ {:date "2020-09-01" :description "analyze-hashmap!" :timespans [[1100 1145] [1300 1400]]}
  ]
