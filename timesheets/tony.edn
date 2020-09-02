@@ -25,6 +25,6 @@
  {:date "2020-08-29" :description "pairing, LSP research" :timespans [[1230 1430] [1850 2200]]}
  {:date "2020-08-30" :description "worked on UI" :timespans [[1630 2200]]}
  {:date "2020-08-31" :description "pairing, biz dev, design" :timespans [[900 950] [1100 1500]]}
- {:date "2020-09-01" :description "pairing" :timespans [[930 1100]]}
+ {:date "2020-09-01" :description "pairing, IntelliJ plugin" :timespans [[930 1100] [1200 1910]]}
  ]
 
