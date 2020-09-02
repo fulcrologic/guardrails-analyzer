@@ -39,6 +39,7 @@
                                  :column-end   "end_col"}
             format-problem (fn [problem]
                              (-> problem
+                               (update ::grp.art/column-end dec)
                                (set/rename-keys vim-remap)
                                (select-keys (vals vim-remap))))
             error #(assoc % "type" "E")

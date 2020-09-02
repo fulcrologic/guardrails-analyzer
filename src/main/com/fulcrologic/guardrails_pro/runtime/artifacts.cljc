@@ -46,6 +46,7 @@
 (s/def ::expected ::type-description)
 (s/def ::actual (s/keys :opt [::type-description ::failing-samples]))
 (s/def ::registry map?)
+(s/def ::external-registry map?)
 (s/def ::checking-sym qualified-symbol?)
 (s/def ::current-form any?)
 (s/def ::location (s/keys
@@ -82,13 +83,14 @@
                     :map (s/keys :req [::dispatch])
                     :vec (s/and vector? #(s/valid? ::dispatch (first %)))))
 
-(s/def ::gspec (s/keys :req [::arg-types ::arg-specs ::return-type ::return-spec]
-                 :opt [::generator ::arg-predicates ::return-predicates
+(s/def ::gspec (s/keys :req [::return-type ::return-spec]
+                 :opt [::arg-types ::arg-specs
+                       ::generator ::arg-predicates ::return-predicates
                        ::pure? ::typecalc]))
 (s/def ::body any?)
 (s/def ::raw-body vector?)
 (s/def ::arity-detail (s/keys :req [::arglist ::gspec ::body]))
-(s/def ::arity #{1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 :n})
+(s/def ::arity #{0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 :n})
 (s/def ::arities (s/map-of ::arity ::arity-detail))
 (s/def ::function (s/keys :req [::name ::fn-ref
                                 ::arities ::extern-symbols
@@ -102,19 +104,19 @@
   [::arities (s/coll-of ::type-description) => ::arity-detail]
   (get arities (count argtypes) (get arities :n)))
 
+(defonce external-registry (atom {}))
+
 (defonce registry (atom {}))
 
 (>defn register-function!
-  [fn-sym function-description]
-  [qualified-symbol? ::function => nil?]
-  (swap! registry assoc fn-sym function-description)
-  nil)
+  [fn-sym fn-desc]
+  [qualified-symbol? ::function => any?]
+  (swap! registry assoc fn-sym fn-desc))
 
-(>defn symbol-detail [env sym]
-  [::env symbol? => (? ::type-description)]
-  (or
-    (get-in env [::local-symbols sym])
-    (get-in env [::extern-symbols sym ::type-description])))
+(>defn register-external-function!
+  [fn-sym fn-desc]
+  [qualified-symbol? (s/keys :req [::name ::fn-ref ::arities ::last-changed]) => any?]
+  (swap! external-registry assoc fn-sym fn-desc))
 
 (>defn qualify-extern
   "Attempt to find a qualified symbol that goes with the given simple symbol.
@@ -123,16 +125,27 @@
   [::env symbol? => symbol?]
   (get-in env [::extern-symbols sym ::extern-name] sym))
 
-(>defn remember-local [env sym td]
-  [::env symbol? ::type-description => ::env]
-  (assoc-in env [::local-symbols sym] td))
-
 (>defn function-detail [env sym]
   [::env symbol? => (? ::function)]
   (let [sym (if (qualified-symbol? sym)
-              sym
-              (qualify-extern env sym))]
+              sym (qualify-extern env sym))]
     (get-in env [::registry sym])))
+
+(>defn external-function-detail [env sym]
+  [::env symbol? => (? (s/keys :req [::name ::fn-ref ::arities ::last-changed]))]
+  (let [sym (if (qualified-symbol? sym)
+              sym (qualify-extern env sym))]
+    (get-in env [::external-registry sym])))
+
+(>defn symbol-detail [env sym]
+  [::env symbol? => (? ::type-description)]
+  (or
+    (get-in env [::local-symbols sym])
+    (get-in env [::extern-symbols sym ::type-description])))
+
+(>defn remember-local [env sym td]
+  [::env symbol? ::type-description => ::env]
+  (assoc-in env [::local-symbols sym] td))
 
 (>defn changed-since
   "Get a set of all symbols that have changed since tm (inst-ms)."
@@ -147,8 +160,11 @@
 (defn clear-registry! [] (reset! registry {}))
 
 (defn build-env
-  ([] {::registry @registry})
-  ([registry] {::registry registry}))
+  ([] (build-env @registry))
+  ([registry] (build-env registry @external-registry))
+  ([registry external-registry]
+   {::registry          registry
+    ::external-registry external-registry}))
 
 (>defn new-location
   [location]
@@ -158,10 +174,9 @@
                         :line       ::line-number
                         :column     ::column-start
                         :end-column ::column-end}]
-    (log/spy :debug :new-location
-      (-> location
-        (set/rename-keys location-remap)
-        (select-keys (vals location-remap))))))
+    (-> location
+      (set/rename-keys location-remap)
+      (select-keys (vals location-remap)))))
 
 (>defn update-location
   [env location]
@@ -169,7 +184,7 @@
   (log/info :update-location (::checking-sym env) location)
   (cond-> env location
     (assoc ::location
-           (new-location location))))
+      (new-location location))))
 
 (defonce problems (atom {}))
 
@@ -200,12 +215,3 @@
      (partial reduce-kv
        (fn [m k v] (assoc m k (dissoc v ::errors ::warnings)))
        {}))))
-
-(comment
-  (-> (build-env)
-    (function-detail 'com.fulcrologic.guardrails-pro.core/env-test)
-    ::arities (get 1)
-    ::body first meta)
-
-  (deref problems)
-  )

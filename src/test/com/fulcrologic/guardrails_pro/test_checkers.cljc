@@ -5,7 +5,7 @@
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
     [fulcro-spec.core :refer [specification assertions =fn=>]]))
 
-(defn check-error? [x] (and (map? x) (:expected x) (:actual x)))
+(defn check-error? [x] (and (map? x) (contains? x :expected) (contains? x :actual)))
 
 (defn all* [& checkers]
   (fn [actual]
@@ -32,9 +32,24 @@
        :actual actual
        :expected spec})))
 
+(defn exists?* [msg]
+  (fn [actual]
+    (when (nil? actual)
+      {:message msg
+       :expected "(comp not nil?)"
+       :actual actual})))
+
 (defn every?* [& checkers]
   (fn [actual]
-    (mapcat (apply all* checkers) actual)))
+    (conj (mapcat (apply all* checkers) actual)
+      ((is?* seq) actual))))
+
+(defn in* [path & checkers]
+  (fn [actual]
+    ((apply all*
+       (exists?* (str "expected " path " to exist in " actual))
+       checkers)
+     (get-in actual path))))
 
 (defn embeds?*
   ([expected] (embeds?* expected []))

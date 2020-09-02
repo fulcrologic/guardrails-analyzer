@@ -17,6 +17,12 @@
       (grp.art/record-error! _ error) => (swap! errors conj error)
       (cb errors))))
 
+(defn with-mocked-warnings [cb]
+  (let [warnings (atom [])]
+    (when-mocking!
+      (grp.art/record-warning! _ warning) => (swap! warnings conj warning)
+      (cb warnings))))
+
 (specification "analyze-let-like-form!"
   (component "A simple let"
     (with-mocked-errors
@@ -38,3 +44,13 @@
               (check/is?* map?)
               (check/is?* #(int? (:foo %)))
               (check/is?* #(keyword? (:bar %)))))))
+
+(specification "analyze-hashmap!"
+  (assertions
+    (grp.ana/analyze-hashmap! (grp.art/build-env)
+      {:a 0})
+    =fn=> (check!
+            (check/in* [::grp.art/samples]
+              (check/every?*
+                (check/is?* map?)
+                (check/equals?* {:a 0}))))))

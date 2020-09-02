@@ -30,6 +30,8 @@
     (if (= "/problems" (:uri request))
       (let [{:strs [editor file]} (:query-params request)]
         (log/debug "getting problems for file:" file "and editor:" editor)
+        ;;FIXME: delays so checker can update daemon
+        (Thread/sleep 3000)
         (case (:request-method request)
           :get {:body (json/write-str
                         (problems/format-for editor

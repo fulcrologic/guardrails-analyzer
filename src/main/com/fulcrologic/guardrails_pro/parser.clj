@@ -1,6 +1,7 @@
 (ns com.fulcrologic.guardrails-pro.parser
   "Implementation of reading >defn for macro expansion."
   (:require
+    [clojure.set :as set]
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.static.forms :as forms]
@@ -85,8 +86,9 @@
     [(assoc result ::grp.art/generator (first remainder)) []]
     env))
 
-(defn parse-gspec [spec arglist]
-  (let [md (or (meta spec) {})]
+(defn parse-gspec [result spec arglist]
+  (let [md (merge (or (meta spec) {})
+             (::fn-meta result {}))]
     (first
       (-> [md spec]
         (arg-specs)
@@ -107,7 +109,7 @@
   [(assoc result (body-arity args)
      (with-meta
        {::grp.art/arglist `(quote ~arglist)
-        ::grp.art/gspec   (parse-gspec spec arglist)
+        ::grp.art/gspec   (parse-gspec result spec arglist)
         ::grp.art/body    (forms/form-expression (vec forms))}
        {::grp.art/raw-body `(quote ~(vec forms))}))])
 
@@ -142,7 +144,26 @@
     {::grp.art/arities arities
      ::grp.art/location (grp.art/new-location (meta defn-sym))}))
 
+(defn var-name
+  [[result [nm :as args]]]
+  (if (qualified-symbol? nm)
+    [(assoc result ::fn-meta
+       (set/rename-keys (meta nm)
+         {:pure? ::grp.art/pure?}))
+     (next args)]
+    (throw (ex-info (format "%s is not fully qualified symbol" nm) {}))))
+
+(defn parse-fdef-args [args]
+  (-> [{} args]
+    (var-name)
+    (function-content)
+    first
+    (dissoc ::fn-meta)))
+
 (comment
+  (parse-fdef-args '(x/nm [a] [a => c]))
+  (parse-fdef-args '(x/nm ([a] [a => c]) ([a b] [a b => c])))
+
   (parse-defn-args '(nm "hello"
                       [a] [string? | #(not (empty? a)) => int?]
                       (str a)))

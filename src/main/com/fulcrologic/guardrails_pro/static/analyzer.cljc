@@ -2,7 +2,7 @@
   (:require
     [clojure.spec.alpha :as s]
     [clojure.spec.gen.alpha :as gen]
-    [com.fulcrologic.guardrails.core :refer [>defn =>]]
+    [com.fulcrologic.guardrails.core :refer [>defn => ?]]
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.static.function-type :as grp.fnt]
     [com.fulcrologic.guardrails-pro.utils :as grp.u]
@@ -18,6 +18,7 @@
 (defn list-dispatch-type [env [f :as _sexpr]]
   (cond
     (grp.art/function-detail env f) :function-call
+    (grp.art/external-function-detail env f) :external-function
     (symbol? f) f
     :else :unknown))
 
@@ -54,7 +55,8 @@
   {})
 
 (defmethod analyze-mm :literal [_ sexpr]
-  (let [spec (cond
+  (log/spy :debug :analyze/literal
+    (let [spec (cond
                (char? sexpr) char?
                (number? sexpr) number?
                (string? sexpr) string?
@@ -62,43 +64,50 @@
                (regex? sexpr) regex?
                (nil? sexpr) nil?)]
     {::grp.art/spec                spec
-     ::grp.art/samples             #{sexpr}
-     ::grp.art/original-expression sexpr}))
+     ::grp.art/samples             [sexpr]
+     ::grp.art/original-expression sexpr})))
 
 (defmethod analyze-mm :symbol [env sym]
   (or (grp.art/symbol-detail env sym) {}))
 
 (>defn generate-hashmap-sample-permutations [sample-map]
-  [(s/map-of any? (s/coll-of any?)) => seq?]
+  [(s/map-of any? ::grp.art/samples) => ::grp.art/samples]
   (->> sample-map
     (enc/map-vals gen/elements)
     (apply concat)
     (apply gen/hash-map)
-    gen/sample))
+    (hash-map ::grp.art/generator)
+    (grp.u/try-sampling)))
 
-(defn validate-samples! [env k v samples]
-  (and (enc/when-let [spec (s/get-spec k)
-                      failing-sample (some (fn _invalid-sample [sample]
-                                             (when-not (s/valid? spec sample) sample))
-                                       samples)]
-         (grp.art/record-error! env
-           {::grp.art/original-expression v
-            ::grp.art/expected {::grp.art/spec spec}
-            ::grp.art/actual {::grp.art/failing-samples [failing-sample]}
-            ::grp.art/message (str "Value in map: " failing-sample " failed to pass spec for " k ".")})
-         false)
+(>defn validate-samples! [env k v samples]
+  [::grp.art/env any? any? ::grp.art/samples => (? ::grp.art/samples)]
+  (enc/if-let [spec (s/get-spec k)
+               failing-sample (some (fn _invalid-sample [sample]
+                                      (when-not (s/valid? spec sample) sample))
+                                samples)]
+    (do (grp.art/record-error! env
+          {::grp.art/original-expression v
+           ::grp.art/expected {::grp.art/spec spec}
+           ::grp.art/actual {::grp.art/failing-samples [failing-sample]}
+           ::grp.art/message (str "Value in map: " failing-sample " failed to pass spec for " k ".")})
+      nil)
     samples))
 
-(defn analyze-hashmap! [env hashmap]
-  (let [sample-map (reduce-kv
-                     (fn [acc k v]
-                       (assoc acc k
-                         (let [{::grp.art/keys [samples]} (analyze! env v)]
-                           (if (seq samples)
-                             (validate-samples! env k v samples)
-                             false))))
-                     {} hashmap)]
-    (if (some false? (vals sample-map))
+(>defn reduce-hashmap-samples [env acc k v]
+  [::grp.art/env map? any? any? => (? ::grp.art/samples)]
+  (assoc acc k
+    (let [{::grp.art/keys [samples]} (analyze! env v)]
+      (if (seq samples)
+        (validate-samples! env k v samples)
+        (do (grp.art/record-warning! env
+              {::grp.art/original-expression v
+               ::grp.art/message (str "Failed to generate values for: " v)})
+          nil)))))
+
+(>defn analyze-hashmap! [env hashmap]
+  [::grp.art/env map? => ::grp.art/type-description]
+  (let [sample-map (reduce-kv (partial reduce-hashmap-samples env) {} hashmap)]
+    (if (some nil? (vals sample-map))
       (do (grp.art/record-warning! env
             {::grp.art/original-expression hashmap
              ::grp.art/message (str "Failed to generate samples for literal map due to earlier spec failure.")})
@@ -111,6 +120,21 @@
     (map? coll) (analyze-hashmap! env coll)
     ;; TODO
     :else       {}))
+
+(>defn analyze-external-function! [env f args]
+  [::grp.art/env symbol? (s/coll-of any?) => ::grp.art/type-description]
+  (let [argtypes (mapv (partial analyze! env) args)
+        {::grp.art/keys [arities fn-ref]} (grp.art/external-function-detail env f)
+        {::grp.art/keys [gspec]} (grp.art/get-arity arities argtypes)
+        {::grp.art/keys [pure? return-type return-spec]} gspec]
+    (if pure?
+      {::grp.art/samples (apply map fn-ref (map ::grp.art/samples argtypes))}
+      {::grp.art/spec return-spec
+       ::grp.art/type return-type
+       ::grp.art/samples (grp.u/try-sampling gspec)})))
+
+(defmethod analyze-mm :external-function [env [f & args]]
+  (analyze-external-function! env f args))
 
 (defmethod analyze-mm :function-call [env [function & arguments]]
   (grp.fnt/calculate-function-type env function
@@ -127,7 +151,7 @@
 (defn analyze-let-like-form! [env [_ bindings & body]]
   (analyze-statements!
     (reduce (fn [env [bind-sexpr sexpr]]
-              ;; TASK: update location & test
+              ;; TODO: update location & test
               (reduce-kv grp.art/remember-local
                 env (grp.u/destructure* env bind-sexpr
                       (analyze! env sexpr))))
@@ -137,3 +161,21 @@
 (defmethod analyze-mm 'let [env sexpr] (analyze-let-like-form! env sexpr))
 (defmethod analyze-mm 'clojure.core/let [env sexpr] (analyze-let-like-form! env sexpr))
 (defmethod analyze-mm 'cljs.core/let [env sexpr] (analyze-let-like-form! env sexpr))
+
+(defmethod analyze-mm '-> [env [_ subject & args]]
+  (analyze! env
+    (reduce (fn [acc form]
+              (with-meta
+                (if (seq? form)
+                  (apply list (first form) acc (rest form))
+                  (list form acc))
+                (meta form)))
+      subject args)))
+
+(comment
+  ; (-> a :b (:c 1 2))
+  (let [t1# (:b a)
+        t2# (:c t1# 1 2)
+        t3# (:d t3#)]
+    t3#)
+  )

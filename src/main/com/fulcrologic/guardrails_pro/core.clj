@@ -1,6 +1,5 @@
 (ns com.fulcrologic.guardrails-pro.core
   (:require
-    [clojure.java.io :as io]
     [clojure.walk :as walk]
     [com.fulcrologic.guardrails-pro.parser :as parser]
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
@@ -9,7 +8,6 @@
     [taoensso.timbre :as log])
   (:import
     (java.util Date)))
-
 
 (try
   (require 'cljs.analyzer.api)
@@ -60,8 +58,9 @@
           ;; FIXME: might be broken (not tested yet)
           file (:line (meta form)))))))
 
-(defn process-defn [env form [defn-sym :as args]]
+(defn >defn-impl [env form [defn-sym :as args]]
   (try
+    ;; TODO: hash args, check old hash if we need to register!
     (let [current-ns     (if (enc/compiling-cljs?)
                            (-> env :ns :name name)
                            (name (ns-name *ns*)))
@@ -89,11 +88,18 @@
 (defmacro >defn
   "Pro version of >defn. The non-pro version of this macro simply emits *this* macro if it is in pro mode."
   [& args]
-  (process-defn &env &form args))
+  (>defn-impl &env &form args))
 
-(comment
-  (>defn env-test
-    [x]
-    [int? :ret int?]
-    "a string")
-  )
+;;TODO: guardrails >fdef should emit call to >ftag-impl if pro?
+(defn >ftag-impl [env [sym :as args]]
+  (let [arities (parser/parse-fdef-args args)]
+    `(grp.art/register-external-function! '~sym
+       #::grp.art{:name '~sym
+                  :fn-ref ~sym
+                  :last-changed ~(inst-ms (Date.))
+                  :arities ~arities})))
+
+(defmacro >ftag
+  "Tag an existing function that has a spec with a guardrails-pro spec."
+  [& args]
+  (>ftag-impl &env args))

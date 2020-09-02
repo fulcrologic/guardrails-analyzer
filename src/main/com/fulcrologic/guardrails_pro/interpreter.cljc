@@ -2,21 +2,12 @@
   (:require
     [clojure.spec.alpha :as s]
     [clojure.test.check.generators]
+    [com.fulcrologic.guardrails-pro.ftags.clojure-core]
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.static.analyzer :as grp.ana]
     [com.fulcrologic.guardrails-pro.utils :as grp.u]
     [com.fulcrologic.guardrails.core :refer [>defn =>]]
-    [com.fulcrologic.guardrails-pro.core :as grp]
     [taoensso.timbre :as log]))
-
-(grp/>defn f [x]
-  [int? => string?]
-  (str "n = " x))
-
-(grp/>defn foobar [x]
-  [int? => int?]
-  (let [v (f 22)]
-    v))
 
 (>defn bind-type-desc
   [typename clojure-spec]
@@ -49,7 +40,6 @@
          ::grp.art/expected return-type
          ::grp.art/message  (str "Return value (e.g. " (pr-str sample-failure) ") does not always satisfy the return spec of " return-type ".")}))))
 
-
 (>defn check!
   ([sym]
    [qualified-symbol? => any?]
@@ -72,5 +62,7 @@
 (defn check-all! []
   (let [env (grp.art/build-env)]
     (doseq [f (keys @grp.art/registry)]
+      ;;TODO: only check things that have changed since last check
       (check! env f))))
 
+;;TODO: defn force-check-all! clear all cache & restart
