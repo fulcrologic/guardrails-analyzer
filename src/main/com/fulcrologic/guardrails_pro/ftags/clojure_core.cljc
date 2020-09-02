@@ -15,7 +15,7 @@
 
 (>ftag ^:pure? #?(:cljs cljs.core/get :clj clojure.core/get)
   ([map key] [map? any? => any?])
-  ([map key not-found] [map? any? any? => string?]))
+  ([map key not-found] [map? any? any? => any?]))
 
 #_(>defn test:get [x]
   [int? => keyword?]
