@@ -33,4 +33,5 @@
  {:date "2020-09-01" :description "chat with tony" :timespans [[930 1100]]}
  {:date "2020-09-01" :description "analyze-hashmap!" :timespans [[1100 1145] [1300 1400]]}
  {:date "2020-09-01" :description "-> and >ftag" :timespans [[1400 1730] [1900 2140]]}
+ {:date "2020-09-02" :description "chat with tony, form-hash" :timespans [[900 1030]]}
  ]
