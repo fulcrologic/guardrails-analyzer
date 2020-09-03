@@ -28,5 +28,6 @@
  {:date "2020-09-01" :description "pairing, IntelliJ plugin" :timespans [[930 1100] [1200 1910]]}
  {:date      "2020-09-02" :description "IntelliJ plugin, user experience design, pairing, checkin"
   :timespans [[830 955] [1700 1930]]}
+ {:date "2020-09-03" :description "pairing, experiments with adv compile" :timespans [[520 1130]]}
  ]
 
