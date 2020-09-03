@@ -1,5 +1,7 @@
 (ns com.fulcrologic.guardrails-pro.runtime.reporter
   (:require
+    [com.fulcrologic.guardrails.core :refer [=> | ?]]
+    [com.fulcrologic.guardrails-pro.core :as grp]
     [com.fulcrologic.fulcro.application :as app]
     [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
     [com.fulcrologic.fulcro.mutations :as f.m]

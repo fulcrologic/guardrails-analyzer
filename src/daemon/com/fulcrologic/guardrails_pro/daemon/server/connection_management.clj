@@ -24,10 +24,12 @@
 
 (defn update-viewers!
   "Send the updated problem list to subscribed websocket viewers."
-  [websockets]
-  (let [ui-cids @subscribed-viewers]
-    (log/info ui-cids)
-    (doseq [cid ui-cids]
-      (log/info "Notifying daemon UI of new problems " cid)
-      (wsp/push websockets cid :new-problems (problems/get!)))))
+  ([websockets]
+   (let [ui-cids @subscribed-viewers]
+     (log/info ui-cids)
+     (doseq [cid ui-cids]
+       (log/info "Notifying daemon UI of new problems " cid)
+       (update-viewers! websockets cid))))
+  ([websockets only-cid]
+   (wsp/push websockets only-cid :new-problems (problems/get!))))
 

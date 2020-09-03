@@ -22,10 +22,11 @@
   (cmgmt/update-viewers! websockets)
   {})
 
-(pc/defmutation subscribe [{:keys [cid]} _params]
+(pc/defmutation subscribe [{:keys [websockets cid]} _params]
   {::pc/sym 'daemon/subscribe}
   (log/info "Client subscribed to error updates: " cid)
   (swap! cmgmt/subscribed-viewers conj cid)
+  (cmgmt/update-viewers! websockets cid)
   {})
 
 (pc/defmutation register-checker [{:keys [cid] :as _env} _params]
