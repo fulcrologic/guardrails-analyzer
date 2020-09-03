@@ -147,16 +147,6 @@
   [::env symbol? ::type-description => ::env]
   (assoc-in env [::local-symbols sym] td))
 
-(>defn changed-since
-  "Get a set of all symbols that have changed since tm (inst-ms)."
-  [tm]
-  [int? => (s/coll-of qualified-symbol? :kind set?)]
-  (into #{}
-    (keep (fn [{::keys [name last-changed]}]
-            (when (> last-changed tm)
-              name)))
-    (vals @registry)))
-
 (defn clear-registry! [] (reset! registry {}))
 
 (defn build-env

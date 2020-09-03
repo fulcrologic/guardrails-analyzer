@@ -7,7 +7,8 @@
     [com.fulcrologic.guardrails-pro.static.analyzer :as grp.ana]
     [com.fulcrologic.guardrails-pro.utils :as grp.u]
     [com.fulcrologic.guardrails.core :refer [>defn =>]]
-    [taoensso.timbre :as log]))
+    [taoensso.timbre :as log])
+  #?(:clj (:import (java.util Date))))
 
 (>defn bind-type-desc
   [typename clojure-spec]
@@ -59,10 +60,18 @@
          (log/info "Locals for " sym ":" (::grp.art/local-symbols env))
          (check-return-type! env arity-detail result))))))
 
+(defonce last-checked (atom 0))
+
+(>defn changed-since? [{::grp.art/keys [last-changed]} since]
+  [::grp.art/function int? => boolean?]
+  (> last-changed since))
+
 (defn check-all! []
-  (let [env (grp.art/build-env)]
-    (doseq [f (keys @grp.art/registry)]
-      ;;TODO: only check things that have changed since last check
-      (check! env f))))
+  (let [now (inst-ms (new #?(:clj Date :cljs js/Date)))
+        env (grp.art/build-env)]
+    (doseq [[fn-sym fd] (::grp.art/registry env)]
+      (when (changed-since? fd @last-checked)
+        (check! env fn-sym)))
+    (reset! last-checked now)))
 
 ;;TODO: defn force-check-all! clear all cache & restart
