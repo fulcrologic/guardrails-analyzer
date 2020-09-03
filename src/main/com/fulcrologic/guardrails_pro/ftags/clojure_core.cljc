@@ -5,10 +5,16 @@
     [com.fulcrologic.guardrails-pro.core :refer [>ftag >defn]]))
 
 ;; TASK: Use mm for type propagation. Layer above does error handling via env
-(defmulti rv-generator (fn [k original-f return-spec & a-sample-of-args] k))
-(defmethod rv-generator :pure (fn [_ f return-spec & args] (apply f args)))
-(defmethod rv-generator :merge-arg1 (fn [_ _ return-sample & args] (let [arg1 (first args)] (merge return-sample arg1))))
-(defmethod rv-generator :map-like (fn [_ _ return-sample & args] (let [arg1 (first args)] (merge return-sample arg1))))
+;(defmulti rv-generator (fn [k original-f return-spec & a-sample-of-args] k))
+;(defmethod rv-generator :pure (fn [_ f return-spec & args] (apply f args)))
+;(defmethod rv-generator :merge-arg1 (fn [_ _ return-sample & args] (let [arg1 (first args)] (merge return-sample arg1))))
+;(defmethod rv-generator :map-like (fn [_ _ return-sample & args] (let [arg1 (first args)] (merge return-sample arg1))))
+
+;(>defn add-last-name [p]
+;  ^::grp/merge-arg2 [db (s/keys :req [id]) | #(...) => (s/keys :req [full-name]) | ...]
+;  [db person]
+;  (let [person (db/lookup id)]
+;    (assoc person ...)))
 
 ;; HOF notes
 ;(>defn f [m]
@@ -27,12 +33,6 @@
 ;                       (map (fn ...) ...)
 ;                       m) a)]))
 
-(>defn add-last-name [p]
-  ^::grp/merge-arg2 [db (s/keys :req [id]) | #(...) => (s/keys :req [full-name]) | ...]
-  [db person]
-  (let [person (db/lookup id)]
-    (assoc person ...)))
-
 (>ftag ^:pure? #?(:cljs cljs.core/str :clj clojure.core/str)
   ([] [=> string? <- :pure])
   ([x] [any? => string?])
@@ -40,7 +40,7 @@
 
 (>defn test:str [x]
   [int? => keyword?]
-  (str "n = " x))
+  (str "x = " x))
 
 (>ftag ^:pure? #?(:cljs cljs.core/get :clj clojure.core/get)
   ([map key] [map? any? => any?])
@@ -116,7 +116,6 @@
     (assoc m :k :v))
 
 (comment
-  assoc
   assoc-in
   butlast
   case

@@ -7,7 +7,8 @@
     [clojure.spec.alpha :as s]
     [clojure.spec.gen.alpha :as gen]
     [com.fulcrologic.guardrails.core :refer [>defn => ?]]
-    [taoensso.timbre :as log]))
+    [taoensso.timbre :as log])
+  #?(:clj (:import (java.util Date))))
 
 (def posint?
   (s/with-gen pos-int?
@@ -92,12 +93,15 @@
 (s/def ::arity-detail (s/keys :req [::arglist ::gspec ::body]))
 (s/def ::arity #{0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 :n})
 (s/def ::arities (s/map-of ::arity ::arity-detail))
-(s/def ::function (s/keys :req [::name ::fn-ref
-                                ::arities ::extern-symbols
-                                ::last-changed ::last-seen ::last-checked ::location]))
+(s/def ::hashed int?)
 (s/def ::last-changed posint?)
 (s/def ::last-checked posint?)
 (s/def ::last-seen posint?)
+(s/def ::function (s/keys
+                    :req [::name ::fn-ref
+                          ::arities ::extern-symbols
+                          ::last-changed ::last-seen ::location]
+                    :opt [::last-checked ::hashed]))
 (s/def ::errors (s/coll-of ::error))
 (s/def ::warnings (s/coll-of ::warning))
 
@@ -110,18 +114,20 @@
 
 (defonce registry (atom {}))
 
-(defn now []
-  (inst-ms #?(:cljs (js/Date.)
-              :clj  (java.util.Date.))))
+(defn now [] (inst-ms (new #?(:cljs js/Date :clj Date))))
 
 (>defn register-function!
   [fn-sym fn-desc]
-  [qualified-symbol? ::function => any?]
-  (let [{::keys [prior-hash arities extern-symbols] :as entry} (get @registry fn-sym)
+  [qualified-symbol? (s/keys :req [::name ::fn-ref
+                                   ::arities ::location
+                                   ::last-changed ::extern-symbols])
+   => any?]
+  (let [{::keys [hashed arities extern-symbols] :as entry} (get @registry fn-sym)
         new-hash (hash [arities extern-symbols])]
-    (if (= new-hash prior-hash)
-      (swap! registry assoc-in [fn-sym ::last-seen] (now))
-      (swap! registry assoc fn-sym (assoc fn-desc ::last-seen (now))))))
+    (swap! registry update fn-sym merge
+      {::last-seen (now)}
+      (if (= new-hash hashed) {}
+        (assoc fn-desc ::hashed new-hash)))))
 
 (>defn register-external-function!
   [fn-sym fn-desc]
@@ -158,6 +164,9 @@
   (assoc-in env [::local-symbols sym] td))
 
 (defn clear-registry! [] (reset! registry {}))
+
+(defn set-last-checked! [env sym ts]
+  (swap! registry assoc-in [sym ::last-checked] ts))
 
 (defn build-env
   ([] (build-env @registry))
