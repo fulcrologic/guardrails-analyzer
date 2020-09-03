@@ -47,7 +47,7 @@
    (check! (grp.art/build-env) sym))
   ([env sym]
    [::grp.art/env qualified-symbol? => any?]
-   (grp.art/clear-problems! sym)
+   (grp.art/clear-problems! sym) ;; TASK: needs to control proper env b/c clj vs cljs and target
    (let [{::grp.art/keys [arities extern-symbols location]} (grp.art/function-detail env sym)
          env (assoc env
                ::grp.art/location location
@@ -66,10 +66,13 @@
   [::grp.art/function int? => boolean?]
   (> last-changed since))
 
+;; TASK: Daemon needs to watch the filesystem and publish that info to checkers when files change, appear, or disappear
+;; TASK: we need when the ns last updated (or that it disappeared) + last-seen to remove stale entries.
 (defn check-all! []
   (let [now (inst-ms (new #?(:clj Date :cljs js/Date)))
         env (grp.art/build-env)]
     (doseq [[fn-sym fd] (::grp.art/registry env)]
+      ;; TASK: checked time is ts on entry itself. Move to check! instead of here
       (when (changed-since? fd @last-checked)
         (check! env fn-sym)))
     (reset! last-checked now)))

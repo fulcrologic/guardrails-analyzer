@@ -94,8 +94,10 @@
 (s/def ::arities (s/map-of ::arity ::arity-detail))
 (s/def ::function (s/keys :req [::name ::fn-ref
                                 ::arities ::extern-symbols
-                                ::last-changed ::location]))
+                                ::last-changed ::last-seen ::last-checked ::location]))
 (s/def ::last-changed posint?)
+(s/def ::last-checked posint?)
+(s/def ::last-seen posint?)
 (s/def ::errors (s/coll-of ::error))
 (s/def ::warnings (s/coll-of ::warning))
 
@@ -108,10 +110,18 @@
 
 (defonce registry (atom {}))
 
+(defn now []
+  (inst-ms #?(:cljs (js/Date.)
+              :clj  (java.util.Date.))))
+
 (>defn register-function!
   [fn-sym fn-desc]
   [qualified-symbol? ::function => any?]
-  (swap! registry assoc fn-sym fn-desc))
+  (let [{::keys [prior-hash arities extern-symbols] :as entry} (get @registry fn-sym)
+        new-hash (hash [arities extern-symbols])]
+    (if (= new-hash prior-hash)
+      (swap! registry assoc-in [fn-sym ::last-seen] (now))
+      (swap! registry assoc fn-sym (assoc fn-desc ::last-seen (now))))))
 
 (>defn register-external-function!
   [fn-sym fn-desc]
@@ -174,7 +184,7 @@
   (log/info :update-location (::checking-sym env) location)
   (cond-> env location
     (assoc ::location
-      (new-location location))))
+           (new-location location))))
 
 (defonce problems (atom {}))
 

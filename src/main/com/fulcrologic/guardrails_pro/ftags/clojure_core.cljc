@@ -1,11 +1,22 @@
 (ns com.fulcrologic.guardrails-pro.ftags.clojure-core
   (:require
     [clojure.spec.alpha :as s]
-    [com.fulcrologic.guardrails.core :refer [=> |]]
+    [com.fulcrologic.guardrails.core :refer [=> | <-]]
     [com.fulcrologic.guardrails-pro.core :refer [>ftag >defn]]))
 
+;; TASK: Use mm for type propagation. Layer above does error handling via env
+(defmulti rv-generator (fn [k original-f return-spec & a-sample-of-args] k))
+(defmethod rv-generator :pure (fn [_ f return-spec & args] (apply f args)))
+(defmethod rv-generator :merge-arg1 (fn [_ _ return-sample & args] (let [arg1 (first args)] (merge return-sample arg1))))
+
+(>defn add-last-name [p]
+  ^::grp/merge-arg2 [db (s/keys :req [id]) | #(...) => (s/keys :req [full-name]) | ...]
+  [db person]
+  (let [person (db/lookup id)]
+    (assoc person ...)))
+
 (>ftag ^:pure? #?(:cljs cljs.core/str :clj clojure.core/str)
-  ([] [=> string?])
+  ([] [=> string? <- :pure])
   ([x] [any? => string?])
   ([x & ys] [any? (s/* any?) => string?]))
 
@@ -83,8 +94,8 @@
   ([map key val & kvs] [map? any? any? (s/* any?) | #(even? (count kvs)) => map?]))
 
 #_(>defn test:assoc [m]
-  [int? => map?]
-  (assoc m :k :v))
+    [int? => map?]
+    (assoc m :k :v))
 
 (comment
   assoc

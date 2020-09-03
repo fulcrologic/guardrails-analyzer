@@ -58,40 +58,28 @@
           ;; FIXME: might be broken (not tested yet)
           file (:line (meta form)))))))
 
-(defonce form-hash-registry (atom {}))
-
-(defn changed-form? [defn-sym form-hash]
-  (not= form-hash (get @form-hash-registry defn-sym ::always-true)))
-
-(defn update-form-hash! [defn-sym form-hash]
-  (swap! form-hash-registry assoc defn-sym form-hash))
-
 (defn >defn-impl [env form [defn-sym :as args]]
   (try
     (let [current-ns (if (enc/compiling-cljs?)
                        (-> env :ns :name name)
                        (name (ns-name *ns*)))
           fqsym      `(symbol ~current-ns ~(name defn-sym))
-          fn-ref     (symbol current-ns (name defn-sym))
-          form-hash  (hash args)]
-      (if-not (changed-form? fn-ref form-hash)
-        `(defn ~@args)
-        (let [{::grp.art/keys [arities location]} (parse-defn form *file*)
-              extern-symbols (record-extern-symbols env arities)]
-          (update-form-hash! fn-ref form-hash)
-          `(do
-             (defn ~@args)
-             (try
-               (grp.art/register-function! ~fqsym
-                 ~{::grp.art/name           fqsym
-                   ::grp.art/fn-ref         fn-ref
-                   ::grp.art/arities        arities
-                   ::grp.art/location       location
-                   ::grp.art/last-changed   (inst-ms (Date.))
-                   ::grp.art/extern-symbols extern-symbols})
-               (catch ~(if (enc/compiling-cljs?) :default 'Exception) e#
-                 (log/error e# "Cannot record function info for GRP:" ~fqsym)))
-             (var ~fn-ref)))))
+          fn-ref     (symbol current-ns (name defn-sym))]
+      (let [{::grp.art/keys [arities location]} (parse-defn form *file*)
+            extern-symbols (record-extern-symbols env arities)]
+        `(do
+           (defn ~@args)
+           (try
+             (grp.art/register-function! ~fqsym
+               ~{::grp.art/name           fqsym
+                 ::grp.art/fn-ref         fn-ref
+                 ::grp.art/arities        arities
+                 ::grp.art/location       location
+                 ::grp.art/last-changed   (inst-ms (Date.))
+                 ::grp.art/extern-symbols extern-symbols})
+             (catch ~(if (enc/compiling-cljs?) :default 'Exception) e#
+               (log/error e# "Cannot record function info for GRP:" ~fqsym)))
+           (var ~fn-ref))))
     (catch Throwable t
       (log/error "Failed to do analysis on" (first args) ":" (ex-message t))
       `(defn ~@args))))
@@ -105,9 +93,9 @@
 (defn >ftag-impl [env [sym :as args]]
   (let [arities (parser/parse-fdef-args args)]
     `(grp.art/register-external-function! '~sym
-       #::grp.art{:name '~sym
-                  :fn-ref ~sym
-                  :arities ~arities
+       #::grp.art{:name         '~sym
+                  :fn-ref       ~sym
+                  :arities      ~arities
                   :last-changed ~(inst-ms (Date.))})))
 
 (defmacro >ftag
