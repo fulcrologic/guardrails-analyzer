@@ -16,11 +16,17 @@
     (swap! state assoc-in [:component/id ::namespace-problems :current-namespace] ns)
     (dr/change-route! app ["namespace"])))
 
-(f.m/defmutation self-check [{:keys [on?]}]
+(f.m/defmutation register-checker [_]
   (action [{:keys [state]}]
-    (swap! state assoc :self-checker? on?))
+    (swap! state assoc :self-checker? true))
   (remote [env]
-    (f.m/with-server-side-mutation env 'daemon/self-check)))
+    (f.m/with-server-side-mutation env 'daemon/register-checker)))
+
+(f.m/defmutation subscribe [_]
+  (action [{:keys [state]}]
+    (swap! state assoc :self-checker? false))
+  (remote [env]
+    (f.m/with-server-side-mutation env 'daemon/subscribe)))
 
 (defn set-problems* [state-map problems]
   (let [ks (keys problems)]
@@ -129,12 +135,16 @@
   (swap! (::app/state-atom app) set-problems* problems)
   (app/schedule-render! app))
 
+(defn hot-reload! [] (app/mount! app CheckerRoot "checker"))
+
 (defn start!
   ([] (start! false))
-  ([self-checker?]
+  ([checker?]
    (log/info "Starting checker app")
-   (app/mount! app CheckerRoot "checker")
-   (comp/transact! app [(self-check {:on? self-checker?})])))
+   (hot-reload!)
+   (if checker?
+     (comp/transact! app [(register-checker)])
+     (comp/transact! app [(subscribe)]))))
 
 (defn transit-safe-problems [problems]
   (enc/map-vals (fn [problem] (let [ok-keys [::grp.art/message

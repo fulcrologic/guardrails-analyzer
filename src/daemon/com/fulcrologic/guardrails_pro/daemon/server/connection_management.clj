@@ -9,19 +9,25 @@
     [com.fulcrologic.guardrails-pro.daemon.server.problems :as problems]))
 
 (defstate connected-clients :start (atom #{}))
+(defstate registered-checkers :start (atom #{}))
+(defstate subscribed-viewers :start (atom #{}))
 
-(def daemon-cids (atom #{}))
+(def checker-cids (atom #{}))
 
 (def listener (reify wsp/WSListener
                 (client-added [_ _ cid]
                   (swap! connected-clients conj cid))
                 (client-dropped [_ _ cid]
+                  (swap! registered-checkers disj cid)
+                  (swap! subscribed-viewers disj cid)
                   (swap! connected-clients disj cid))))
 
-(defn notify-daemon-uis! [websockets]
-  (let [daemons (set/intersection @daemon-cids @connected-clients)]
-    (log/info daemons)
-    (doseq [d daemons]
-      (log/info "Notifying daemon UI of new problems " d)
-      (wsp/push websockets d :new-problems (problems/get!)))))
+(defn update-viewers!
+  "Send the updated problem list to subscribed websocket viewers."
+  [websockets]
+  (let [ui-cids @subscribed-viewers]
+    (log/info ui-cids)
+    (doseq [cid ui-cids]
+      (log/info "Notifying daemon UI of new problems " cid)
+      (wsp/push websockets cid :new-problems (problems/get!)))))
 

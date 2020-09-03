@@ -19,17 +19,22 @@
   {::pc/sym    'daemon/set-problems
    ::pc/output [:result]}
   (problems/set! problems)
-  (cmgmt/notify-daemon-uis! websockets)
-  {:result :ok})
-
-(pc/defmutation self-check [{:keys [request] :as env} {:keys [on?]}]
-  {::pc/sym 'daemon/self-check}
-  (log/info "Self check called")
-  (when-not on?
-    (swap! cmgmt/daemon-cids conj (:cid env)))
+  (cmgmt/update-viewers! websockets)
   {})
 
-(def all-resolvers [all-problems set-problems self-check])
+(pc/defmutation subscribe [{:keys [cid]} _params]
+  {::pc/sym 'daemon/subscribe}
+  (log/info "Client subscribed to error updates: " cid)
+  (swap! cmgmt/subscribed-viewers conj cid)
+  {})
+
+(pc/defmutation register-checker [{:keys [cid] :as _env} _params]
+  {::pc/sym 'daemon/register-checker}
+  (log/info "Checker registered: " cid)
+  (swap! cmgmt/registered-checkers conj cid)
+  {})
+
+(def all-resolvers [all-problems set-problems subscribe register-checker])
 
 (defn preprocess-parser-plugin [f]
   {::p/wrap-parser

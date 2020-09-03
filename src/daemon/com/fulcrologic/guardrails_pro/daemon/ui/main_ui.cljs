@@ -4,6 +4,6 @@
     [com.fulcrologic.fulcro.data-fetch :as f.df]
     [com.fulcrologic.guardrails-pro.runtime.reporter :as reporter]))
 
-(defn ^:export refresh [] (reporter/start!))
+(defn ^:export refresh [] (reporter/hot-reload!))
 
-(defn ^:export init [] (reporter/start!))
+(defn ^:export init [] (reporter/start! false))
