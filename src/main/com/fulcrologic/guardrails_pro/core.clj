@@ -61,7 +61,8 @@
 (defonce form-hash-registry (atom {}))
 
 (defn changed-form? [defn-sym form-hash]
-  (not= form-hash (get @form-hash-registry defn-sym ::always-true)))
+  (or (System/getProperty "test")
+    (not= form-hash (get @form-hash-registry defn-sym ::always-true))))
 
 (defn update-form-hash! [defn-sym form-hash]
   (swap! form-hash-registry assoc defn-sym form-hash))
