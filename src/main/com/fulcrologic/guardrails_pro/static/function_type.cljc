@@ -68,6 +68,7 @@
 (defmethod calculate-function-type :pure [env sym argtypes]
   (let [{::grp.art/keys [fn-ref]} (grp.art/function-detail env sym)]
     (validate-argtypes! env sym argtypes)
+    ;;TODO: fn-ref can fail, report error
     {::grp.art/samples (apply map fn-ref (map ::grp.art/samples argtypes))}))
 
 (defmethod calculate-function-type :reduce-like [env sym argtypes]
