@@ -127,11 +127,11 @@
         (assoc fn-desc ::hashed new-hash)))))
 
 (defmulti cljc-rewrite-sym-ns-mm identity)
-(defmethod cljc-rewrite-sym-ns-mm "clojure.core" [ns]
-  #?(:cljs "cljs.core" :clj ns))
+(defmethod cljc-rewrite-sym-ns-mm "clojure.core" [ns] #?(:cljs "cljs.core" :clj ns))
+(defmethod cljc-rewrite-sym-ns-mm :default [ns] ns)
 
 (>defn cljc-rewrite-sym-ns [sym]
-  [qualified-symbol? => qualified-symbol?]
+  [symbol? => symbol?]
   (symbol (cljc-rewrite-sym-ns-mm (namespace sym))
     (name sym)))
 

@@ -19,7 +19,7 @@
   (cond
     (grp.art/function-detail env f) :function-call
     (grp.art/external-function-detail env f) :external-function
-    (symbol? f) f
+    (symbol? f)  (grp.art/cljc-rewrite-sym-ns f)
     ;; TODO: ifn? eg: :kw 'sym {} ...
     :else :unknown))
 
@@ -144,7 +144,6 @@
 
 (defmethod analyze-mm 'let [env sexpr] (analyze-let-like-form! env sexpr))
 (defmethod analyze-mm 'clojure.core/let [env sexpr] (analyze-let-like-form! env sexpr))
-(defmethod analyze-mm 'cljs.core/let [env sexpr] (analyze-let-like-form! env sexpr))
 
 (defmethod analyze-mm '-> [env [_ subject & args]]
   (analyze! env
