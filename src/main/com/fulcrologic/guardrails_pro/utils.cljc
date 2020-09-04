@@ -1,19 +1,10 @@
 (ns com.fulcrologic.guardrails-pro.utils
   (:require
     [clojure.spec.alpha :as s]
-    [clojure.spec.gen.alpha :as gen]
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
-    [com.fulcrologic.guardrails.core :refer [>defn => ?]]
+    [com.fulcrologic.guardrails-pro.static.sampler :as grp.sampler]
+    [com.fulcrologic.guardrails.core :refer [>defn =>]]
     [taoensso.timbre :as log]))
-
-(>defn try-sampling [{::grp.art/keys [return-spec generator] :as sampler}]
-  [::grp.art/spec => (? (s/coll-of any? :min-count 1))]
-  (try
-    (gen/sample
-      (or generator (s/gen return-spec)))
-    (catch #?(:clj Throwable :cljs :default) _
-      (log/warn "Cannot sample from:" sampler)
-      nil)))
 
 (s/def ::destructurable
   (s/or
@@ -26,19 +17,18 @@
   [::grp.art/env ::destructurable ::grp.art/type-description
    => (s/map-of symbol? ::grp.art/type-description)]
   (log/info :destructure* bind-sexpr value-type-desc)
-  (letfn [(MAP* [[k v]]
+  (letfn [(MAP* [[k v :as entry]]
             (cond
               (qualified-keyword? v)
               #_=> (when-let [spec (s/get-spec v)]
-                     (let [samples (try-sampling {::grp.art/return-spec spec :keyword v})]
+                     (let [samples (grp.sampler/try-sampling! env spec {::grp.art/original-expression entry})]
                        [[k (cond-> {::grp.art/spec spec ::grp.art/type (pr-str v)}
                              samples (assoc ::grp.art/samples samples))]]))
               (and (qualified-keyword? k) (= (name k) "keys"))
               #_=> (map (fn [sym]
                           (let [spec-kw (keyword (namespace k) (str sym))]
                             (when-let [spec (s/get-spec spec-kw)]
-                              (let [samples (try-sampling {::grp.art/return-spec spec
-                                                           :keyword spec-kw})]
+                              (let [samples (grp.sampler/try-sampling! env spec {::grp.art/original-expression entry})]
                                 [sym (cond-> {::grp.art/spec spec ::grp.art/type (pr-str sym)}
                                        samples (assoc ::grp.art/samples samples))]))))
                      v)

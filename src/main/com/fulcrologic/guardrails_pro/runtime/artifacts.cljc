@@ -62,7 +62,6 @@
 (s/def ::extern-symbols (s/map-of symbol? ::extern))
 (s/def ::class? boolean?)
 (s/def ::macro? boolean?)
-(s/def ::pure? boolean?)
 (s/def ::extern (s/keys :req [::extern-name]
                   :opt [::class? ::macro? ::type-description ::value]))
 (s/def ::name qualified-symbol?)
@@ -77,17 +76,14 @@
 (s/def ::return-spec ::spec)
 (s/def ::return-predicates (s/with-gen (s/coll-of fn? :kind vector?) fn-gen))
 (s/def ::generator any?)
-(s/def ::pure? boolean?)
 (s/def ::dispatch keyword?)
-(s/def ::typecalc (s/or
-                    :kw ::dispatch
-                    :map (s/keys :req [::dispatch])
-                    :vec (s/and vector? #(s/valid? ::dispatch (first %)))))
-
+(s/def ::sampler (s/or
+                   :kw ::dispatch
+                   :vec (s/and vector? #(s/valid? ::dispatch (first %)))))
 (s/def ::gspec (s/keys :req [::return-type ::return-spec]
                  :opt [::arg-types ::arg-specs
-                       ::generator ::arg-predicates ::return-predicates
-                       ::pure? ::typecalc]))
+                       ::sampler ::generator
+                       ::arg-predicates ::return-predicates]))
 (s/def ::body any?)
 (s/def ::raw-body vector?)
 (s/def ::arity-detail (s/keys :req [::arglist ::gspec ::body]))
@@ -118,9 +114,10 @@
 
 (>defn register-function!
   [fn-sym fn-desc]
-  [qualified-symbol? (s/keys :req [::name ::fn-ref
-                                   ::arities ::location
-                                   ::last-changed ::extern-symbols])
+  [qualified-symbol?
+   (s/keys :req [::name ::fn-ref
+                 ::arities ::location
+                 ::last-changed ::extern-symbols])
    => any?]
   (let [{::keys [hashed arities extern-symbols] :as entry} (get @registry fn-sym)
         new-hash (hash [arities extern-symbols])]

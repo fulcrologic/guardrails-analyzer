@@ -1,11 +1,11 @@
 (ns com.fulcrologic.guardrails-pro.parser
   "Implementation of reading >defn for macro expansion."
   (:require
-    [clojure.set :as set]
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.static.forms :as forms]
-    [com.fulcrologic.guardrails.core :refer [>defn =>]])
+    [com.fulcrologic.guardrails.core :refer [>defn =>]]
+    [taoensso.timbre :as log])
   (:import
     (clojure.lang Cons)))
 
@@ -87,8 +87,8 @@
     env))
 
 (defn parse-gspec [result spec arglist]
-  (let [md (merge (or (meta spec) {})
-             (::fn-meta result {}))]
+  (let [md (merge (::fn-meta result {})
+             (or (meta spec) {}))]
     (first
       (-> [md spec]
         (arg-specs)
@@ -148,8 +148,8 @@
   [[result [nm :as args]]]
   (if (qualified-symbol? nm)
     [(assoc result ::fn-meta
-       (set/rename-keys (meta nm)
-         {:pure? ::grp.art/pure?}))
+       (cond-> (meta nm)
+         (:pure? (meta nm)) (assoc ::grp.art/sampler :pure)))
      (next args)]
     (throw (ex-info (format "%s is not fully qualified symbol" nm) {}))))
 

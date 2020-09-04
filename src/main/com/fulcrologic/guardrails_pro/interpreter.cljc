@@ -5,14 +5,15 @@
     [com.fulcrologic.guardrails-pro.ftags.clojure-core]
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.static.analyzer :as grp.ana]
+    [com.fulcrologic.guardrails-pro.static.sampler :as grp.sampler]
     [com.fulcrologic.guardrails-pro.utils :as grp.u]
     [com.fulcrologic.guardrails.core :refer [>defn =>]]
     [taoensso.timbre :as log]))
 
 (>defn bind-type-desc
-  [typename clojure-spec]
-  [::grp.art/type ::grp.art/spec => ::grp.art/type-description]
-  (let [samples (grp.u/try-sampling {::grp.art/return-spec clojure-spec})]
+  [env typename clojure-spec err]
+  [::grp.art/env ::grp.art/type ::grp.art/spec map? => ::grp.art/type-description]
+  (let [samples (grp.sampler/try-sampling! env (s/gen clojure-spec) err)]
     (cond-> {::grp.art/spec clojure-spec
              ::grp.art/type typename}
       (seq samples) (assoc ::grp.art/samples samples))))
@@ -26,7 +27,8 @@
       (fn [env [bind-sexpr arg-type arg-spec]]
         (reduce-kv grp.art/remember-local
           env (grp.u/destructure* env bind-sexpr
-                (bind-type-desc arg-type arg-spec))))
+                (bind-type-desc env arg-type arg-spec
+                  {::grp.art/original-expression arglist}))))
       env
       (map vector arglist arg-types arg-specs))))
 

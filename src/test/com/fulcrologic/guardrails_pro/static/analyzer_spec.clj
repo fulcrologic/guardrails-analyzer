@@ -33,18 +33,6 @@
             "It finds an error"
             (count @errors) => 1))))))
 
-(specification "generate-hashmap-sample-permutations"
-  (assertions
-    (grp.ana/generate-hashmap-sample-permutations
-      {:foo [1 2 3]
-       :bar [:a :b :c]})
-    =fn=> (check!
-            (check/is?* seq?)
-            (check/every?*
-              (check/is?* map?)
-              (check/is?* #(int? (:foo %)))
-              (check/is?* #(keyword? (:bar %)))))))
-
 (specification "analyze-hashmap!"
   (assertions
     (grp.ana/analyze-hashmap! (grp.art/build-env)

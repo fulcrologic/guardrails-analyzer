@@ -1,10 +1,10 @@
 (ns com.fulcrologic.guardrails-pro.static.analyzer
   (:require
     [clojure.spec.alpha :as s]
-    [clojure.spec.gen.alpha :as gen]
     [com.fulcrologic.guardrails.core :refer [>defn => ?]]
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.static.function-type :as grp.fnt]
+    [com.fulcrologic.guardrails-pro.static.sampler :as grp.sampler]
     [com.fulcrologic.guardrails-pro.utils :as grp.u]
     [taoensso.timbre :as log]
     [taoensso.encore :as enc])
@@ -20,6 +20,7 @@
     (grp.art/function-detail env f) :function-call
     (grp.art/external-function-detail env f) :external-function
     (symbol? f) f
+    ;; TODO: ifn? eg: :kw 'sym {} ...
     :else :unknown))
 
 (defmulti analyze-mm
@@ -57,27 +58,18 @@
 (defmethod analyze-mm :literal [_ sexpr]
   (log/spy :debug :analyze/literal
     (let [spec (cond
-               (char? sexpr) char?
-               (number? sexpr) number?
-               (string? sexpr) string?
-               (keyword? sexpr) keyword?
-               (regex? sexpr) regex?
-               (nil? sexpr) nil?)]
-    {::grp.art/spec                spec
-     ::grp.art/samples             [sexpr]
-     ::grp.art/original-expression sexpr})))
+                 (char? sexpr) char?
+                 (number? sexpr) number?
+                 (string? sexpr) string?
+                 (keyword? sexpr) keyword?
+                 (regex? sexpr) regex?
+                 (nil? sexpr) nil?)]
+      {::grp.art/spec                spec
+       ::grp.art/samples             [sexpr]
+       ::grp.art/original-expression sexpr})))
 
 (defmethod analyze-mm :symbol [env sym]
   (or (grp.art/symbol-detail env sym) {}))
-
-(>defn generate-hashmap-sample-permutations [sample-map]
-  [(s/map-of any? ::grp.art/samples) => ::grp.art/samples]
-  (->> sample-map
-    (enc/map-vals gen/elements)
-    (apply concat)
-    (apply gen/hash-map)
-    (hash-map ::grp.art/generator)
-    (grp.u/try-sampling)))
 
 (>defn validate-samples! [env k v samples]
   [::grp.art/env any? any? ::grp.art/samples => (? ::grp.art/samples)]
@@ -112,7 +104,9 @@
             {::grp.art/original-expression hashmap
              ::grp.art/message (str "Failed to generate samples for literal map due to earlier spec failure.")})
         {})
-      {::grp.art/samples (generate-hashmap-sample-permutations sample-map)
+      {::grp.art/samples (grp.sampler/try-sampling! env
+                           (grp.sampler/hashmap-permutation-generator sample-map)
+                           {::grp.art/original-expression hashmap})
        ::grp.art/type    "literal-hashmap"})))
 
 (defmethod analyze-mm :collection [env coll]
@@ -121,20 +115,10 @@
     ;; TODO
     :else       {}))
 
-(>defn analyze-external-function! [env f args]
-  [::grp.art/env symbol? (s/coll-of any?) => ::grp.art/type-description]
-  (let [argtypes (mapv (partial analyze! env) args)
-        {::grp.art/keys [arities fn-ref]} (grp.art/external-function-detail env f)
-        {::grp.art/keys [gspec]} (grp.art/get-arity arities argtypes)
-        {::grp.art/keys [pure? return-type return-spec]} gspec]
-    (if pure?
-      {::grp.art/samples (apply map fn-ref (map ::grp.art/samples argtypes))}
-      {::grp.art/spec return-spec
-       ::grp.art/type return-type
-       ::grp.art/samples (grp.u/try-sampling gspec)})))
-
 (defmethod analyze-mm :external-function [env [f & args]]
-  (analyze-external-function! env f args))
+  (let [fd (grp.art/external-function-detail env f)
+        argtypes (mapv (partial analyze! env) args)]
+    {::grp.art/samples (grp.sampler/sample! env fd argtypes)}))
 
 (defmethod analyze-mm :function-call [env [function & arguments]]
   (grp.fnt/calculate-function-type env function
@@ -171,6 +155,23 @@
                   (list form acc))
                 (meta form)))
       subject args)))
+
+;; HOF notes
+;(>defn f [m]
+;  (let [a (range 1 2)                                       ;; (s/coll-of int?)
+;        (>fn [a] [int? => string?]) (comp
+;                                      (>fn [a] [map? => string?])
+;                                      (>fn [a] [(>fspec [n] [int? => int?]) => map?])
+;                                      some-f
+;                                      #_(>fn [a] [int? => (>fspec [x] [number? => number?] string?)]))
+;        bb (into #{}
+;             (comp
+;               (map f) ;; >fspec ...
+;               (filter :person/fat?))
+;             people)
+;        new-seq (map (>fn [x] ^:boo [int? => int?]
+;                       (map (fn ...) ...)
+;                       m) a)]))
 
 (comment
   and

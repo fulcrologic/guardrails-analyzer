@@ -38,7 +38,7 @@
       (grp.art/record-error! _ error) => (swap! errors conj error)
       (cb errors))))
 
-(specification "calculate-function-type (non-special)"
+(specification "calculate-function-type"
   (behavior "Uses the function's return spec to generate the type description"
     (let [arg-type-description (type-description "int?" 42 int? #{42})
           env                  (grp.art/build-env)
@@ -90,30 +90,3 @@
               (count @errors) => 1
               (::grp.art/original-expression error) => '(x y)
               (::grp.art/actual error) => {::grp.art/failing-samples [-42 "88"]})))))))
-
-(grp/>defn test_abs-val_pure [x]
-  ^::grp.art/pure? [int? => int?]
-  (if (neg? x) (- x) x))
-
-(specification "calculate-function-type (pure)"
-  (behavior "Uses the function itself to generate type information"
-    (let [input-samples        #{42 -32}
-          arg-type-description (type-description "int?" 42 int? input-samples)
-          env                  (grp.art/build-env)
-          {::grp.art/keys [samples]} (grp.fnt/calculate-function-type env `test_abs-val_pure [arg-type-description])]
-      (assertions
-        "The return type has new samples"
-        (not= samples input-samples) => true
-        (boolean (seq samples)) => true
-        "The samples are transformed by the real function"
-        samples =fn=> #(every? pos? %))))
-  (behavior "Still checks its arguments based on their specs"
-    (with-mocked-errors
-      (fn [errors]
-        (grp.fnt/calculate-function-type (grp.art/build-env) `test_abs-val_pure
-          [(type-description "int?" 'x int? #{"3" 22})])
-        (let [error (first @errors)]
-          (assertions
-            (::grp.art/original-expression error) => 'x
-            (::grp.art/actual error) => {::grp.art/failing-samples ["3"]}
-            (-> error ::grp.art/expected ::grp.art/arg-types) => ["int?"]))))))
