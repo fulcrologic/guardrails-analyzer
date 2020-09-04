@@ -21,14 +21,14 @@
             (cond
               (qualified-keyword? v)
               #_=> (when-let [spec (s/get-spec v)]
-                     (let [samples (grp.sampler/try-sampling! env spec {::grp.art/original-expression entry})]
+                     (let [samples (grp.sampler/try-sampling! env (s/gen spec) {::grp.art/original-expression entry})]
                        [[k (cond-> {::grp.art/spec spec ::grp.art/type (pr-str v)}
                              samples (assoc ::grp.art/samples samples))]]))
               (and (qualified-keyword? k) (= (name k) "keys"))
               #_=> (map (fn [sym]
                           (let [spec-kw (keyword (namespace k) (str sym))]
                             (when-let [spec (s/get-spec spec-kw)]
-                              (let [samples (grp.sampler/try-sampling! env spec {::grp.art/original-expression entry})]
+                              (let [samples (grp.sampler/try-sampling! env (s/gen spec) {::grp.art/original-expression entry})]
                                 [sym (cond-> {::grp.art/spec spec ::grp.art/type (pr-str sym)}
                                        samples (assoc ::grp.art/samples samples))]))))
                      v)
