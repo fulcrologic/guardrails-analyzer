@@ -84,7 +84,7 @@
 
 ;; TASK: pure can fail so try catch
 (>defn test:assoc [m]
-  [int? => keyword?]
+  [map? => keyword?]
   (assoc m :k :v))
 
 (>ftag ^:pure? clojure.core/assoc-in
