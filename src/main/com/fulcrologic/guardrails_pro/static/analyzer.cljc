@@ -173,9 +173,22 @@
       subject args)))
 
 (comment
-  ; (-> a :b (:c 1 2))
-  (let [t1# (:b a)
-        t2# (:c t1# 1 2)
-        t3# (:d t3#)]
-    t3#)
+  and
+  case
+  cond
+  condp
+  doseq
+  for
+  if
+  if-let
+  if-not
+  letfn
+  loop
+  recur
+  or
+  try
+  throw
+  when
+  when-let
+  when-not
   )

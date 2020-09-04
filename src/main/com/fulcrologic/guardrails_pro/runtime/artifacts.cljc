@@ -129,10 +129,19 @@
       (if (= new-hash hashed) {}
         (assoc fn-desc ::hashed new-hash)))))
 
+(defmulti cljc-rewrite-sym-ns-mm identity)
+(defmethod cljc-rewrite-sym-ns-mm "clojure.core" [ns]
+  #?(:cljs "cljs.core" :clj ns))
+
+(>defn cljc-rewrite-sym-ns [sym]
+  [qualified-symbol? => qualified-symbol?]
+  (symbol (cljc-rewrite-sym-ns-mm (namespace sym))
+    (name sym)))
+
 (>defn register-external-function!
   [fn-sym fn-desc]
   [qualified-symbol? (s/keys :req [::name ::fn-ref ::arities ::last-changed]) => any?]
-  (swap! external-registry assoc fn-sym fn-desc))
+  (swap! external-registry assoc (cljc-rewrite-sym-ns fn-sym) fn-desc))
 
 (>defn qualify-extern
   "Attempt to find a qualified symbol that goes with the given simple symbol.
