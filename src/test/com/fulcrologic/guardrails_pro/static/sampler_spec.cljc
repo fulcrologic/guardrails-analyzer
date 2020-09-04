@@ -28,10 +28,18 @@
 (specification "return-sample-generator"
   (let [env (grp.art/build-env)]
     (assertions
-      (grp.sampler/return-sample-generator env nil {:return-sample ::test-sample})
+      (grp.sampler/return-sample-generator env nil
+        {:return-sample ::test-sample})
       => ::test-sample
-      (grp.sampler/return-sample-generator env :pure {:fn-ref str :args ["pure" \: "test"]})
-      => "pure:test")))
+      (grp.sampler/return-sample-generator env :pure
+        {:fn-ref str :args ["pure" \: "test"]})
+      => "pure:test"
+      (grp.sampler/return-sample-generator env [:merge-arg 1]
+        {:args [:db {:person/name "john"}]
+         :params 1
+         :return-sample {:person/full-name "john doe"}})
+      => #:person{:name "john" :full-name "john doe"}
+      )))
 
 (specification "hashmap-permutation-generator"
   (assertions

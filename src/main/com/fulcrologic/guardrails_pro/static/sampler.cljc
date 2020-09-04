@@ -14,15 +14,17 @@
       (vector? x) (first x)
       :else :default)))
 
-(defmethod return-sample-generator :pure
-  [env x {:keys [fn-ref args return-sample params]}]
-  (apply fn-ref args))
-
 (defmethod return-sample-generator :default
-  [env x {:keys [fn-ref args return-sample params]}]
+  [env x {:keys [return-sample]}]
   return-sample)
 
-;(defmethod rv-generator :merge-arg1 (fn [_ _ return-sample & args] (let [arg1 (first args)] (merge return-sample arg1))))
+(defmethod return-sample-generator :pure
+  [env x {:keys [fn-ref args]}]
+  (apply fn-ref args))
+
+(defmethod return-sample-generator :merge-arg
+  [env _ {:keys [args return-sample] N :params}]
+  (merge return-sample (nth args (or N 0) {})))
 
 ;(defmethod rv-generator :map-like (fn [_ _ return-sample & args] (let [arg1 (first args)] (merge return-sample arg1))))
 
@@ -54,7 +56,7 @@
         (gen/hash-map
           :args (apply gen/tuple (map gen/elements (map ::grp.art/samples argtypes)))
           :fn-ref (gen/return fn-ref)
-          :params (gen/return (if (vector? sampler) (second sampler) sampler))
+          :params (gen/return (and sampler (if (vector? sampler) (second sampler) sampler)))
           :return-sample (or generator (s/gen return-spec))))
       {::grp.art/original-expression name})))
 
