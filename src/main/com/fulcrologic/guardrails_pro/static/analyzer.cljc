@@ -55,13 +55,17 @@
   (log/warn "Could not analyze:" (pr-str sexpr))
   {})
 
-(defmethod analyze-mm :literal [_ sexpr]
+(defmethod analyze-mm :literal [env sexpr]
   (log/spy :debug :analyze/literal
     (let [spec (cond
                  (char? sexpr) char?
                  (number? sexpr) number?
                  (string? sexpr) string?
-                 (keyword? sexpr) keyword?
+                 (keyword? sexpr) (let [s (when (qualified-keyword? sexpr) (s/get-spec sexpr))]
+                                    (when-not s
+                                      (grp.art/record-warning! env sexpr
+                                        (str "Fully qualified keyword " sexpr " has no spec. Possible typo?")))
+                                    keyword?)
                  (regex? sexpr) regex?
                  (nil? sexpr) nil?)]
       {::grp.art/spec                spec
@@ -85,9 +89,8 @@
            ::grp.art/actual              {::grp.art/failing-samples #{failing-sample}}
            ::grp.art/message             (str "Possible value in map: " failing-sample " fails to pass spec for " k ".")})
         samples)
-      (if spec
-        (into #{} (filter (partial s/valid? spec)) samples)
-        #{}))))
+      (when-let [valid-samples (and spec (seq (filter (partial s/valid? spec))))]
+        (set valid-samples)))))
 
 (defn- analyze-hashmap-entry
   [env acc k v]
@@ -135,10 +138,9 @@
     {::grp.art/samples (grp.sampler/sample! env fd argtypes)}))
 
 (defmethod analyze-mm :function-call [env [function & arguments]]
-  (log/spy :info function)
   (let [current-ns (some-> env ::grp.art/checking-sym namespace)
-        ;; TASK : resolve simple symbols things in current ns
         fqsym      (if (simple-symbol? function) (symbol current-ns (name function)) function)]
+    (log/spy :info [function fqsym])
     (grp.fnt/calculate-function-type env fqsym
       (mapv (partial analyze! env) arguments))))
 

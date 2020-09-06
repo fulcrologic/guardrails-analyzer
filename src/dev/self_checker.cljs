@@ -20,25 +20,22 @@
 (s/def ::person (s/keys :req [:person/id :person/fname :person/lname]
                   :opt [:person/full-name]))
 
-(comment
-  (gen/sample (s/gen map?)))
-
-(>defn ^:pure? new-person
+(>defn new-person
   [id fn ln]
-  [int? string? string? => ::person]
+  ^:pure [pos-int? ::non-empty-string ::non-empty-string => ::person]
   (let [p  {:person/id    id
             :person/lname ln}
         p2 (assoc p :person/fname fn)]
     p2))
 
-(>defn ^:pure? with-full-name
+(>defn with-full-name
   [person]
-  [(s/keys :req [:person/fname :person/lname])
-   => (s/keys :req [:person/full-name])]
+  ^:pure [(s/keys :req [:person/fname :person/lname])
+          => (s/keys :req [:person/full-name])]
   (assoc person :person/full-name (str (get person :person/fname) " " (get person :person/lname))))
 
-(>defn ^:pure? test-person [p]
-  [::person => int?]
+(>defn test-person [a]
+  ^:pure [any? => int?]
   (let [p (new-person 9 "Tony" "Bob")
         b (with-full-name p)
         d (get b :person/id)]

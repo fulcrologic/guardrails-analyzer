@@ -179,11 +179,12 @@
 (>defn symbol-detail [env sym]
   [::env symbol? => (? ::type-description)]
   (or
-    (get-in env [::local-symbols sym])
+    (log/spy :info :LOCAL (get-in env [::local-symbols sym]))
     (get-in env [::extern-symbols sym ::type-description])))
 
 (>defn remember-local [env sym td]
   [::env symbol? ::type-description => ::env]
+  (log/info "Remembering samples for " sym " as " (::samples td))
   (assoc-in env [::local-symbols sym] td))
 
 (defn clear-registry! [] (reset! registry {}))

@@ -20,22 +20,36 @@
     [result (next args)]
     [result args]))
 
-(defn arg-specs [[result args :as env]]
-  (loop [r    result
-         args args
-         a    (first args)
-         as   (next args)]
-    (if (#{'| '=> :st :ret} a)
-      [r args]
-      (if a
-        (recur
-          (-> r
-            (update ::grp.art/arg-types (fnil conj []) (pr-str a))
-            (update ::grp.art/arg-specs (fnil conj []) a))
-          as
-          (first as)
-          (next as))
-        (throw (ex-info "Syntax error in argument spec. Expected a return type." {}))))))
+(defn derive-sampler-type [m]
+  (if-let [hard-value (get m ::grp.art/dispatch)]
+    hard-value
+    (let [possible-values (reduce-kv (fn [acc k v]
+                                       (cond-> acc
+                                         (true? v) (conj k))) #{} m)]
+      ;; TASK: if we do this analysis at runtime we can know all installed dispatch extensions. Little flaky to
+      ;; do it at macro expansion time
+      (when (< 1 (count possible-values))
+        (log/warn "Multiple possible type propagation candidates for spec list" possible-values))
+      (first possible-values))))
+
+(defn arg-specs [[result argspecs :as env]]
+  (let [sampler-type (log/spy :info (derive-sampler-type (meta argspecs)))]
+    (loop [r        (cond-> result
+                      sampler-type (assoc ::grp.art/sampler sampler-type))
+           argspecs argspecs
+           a        (first argspecs)
+           as       (next argspecs)]
+      (if (#{'| '=> :st :ret} a)
+        [r argspecs]
+        (if a
+          (recur
+            (-> r
+              (update ::grp.art/arg-types (fnil conj []) (pr-str a))
+              (update ::grp.art/arg-specs (fnil conj []) a))
+            as
+            (first as)
+            (next as))
+          (throw (ex-info "Syntax error in argument spec. Expected a return type." {})))))))
 
 (defn replace-args [lambda new-arglist]
   (apply list (first lambda) new-arglist (rest (rest lambda))))
@@ -89,13 +103,13 @@
 (defn parse-gspec [result spec arglist]
   (let [md (merge (::fn-meta result {})
              (or (meta spec) {}))]
-    (first
-      (-> [md spec]
-        (arg-specs)
-        (arg-predicates arglist)
-        (return-type)
-        (such-that)
-        (generator)))))
+    (log/spy :info :GSPEC (first
+       (-> [md spec]
+         (arg-specs)
+         (arg-predicates arglist)
+         (return-type)
+         (such-that)
+         (generator))))))
 
 (defn arity-body? [b] (or (instance? Cons b) (list? b)))
 
