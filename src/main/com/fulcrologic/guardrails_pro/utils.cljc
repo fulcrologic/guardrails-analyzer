@@ -35,7 +35,7 @@
               (= :as k)
               #_=> [[v value-type-desc]]))]
     (cond
-      (symbol? bind-sexpr) {bind-sexpr value-type-desc}
+      (symbol? bind-sexpr) (log/spy :info {bind-sexpr value-type-desc})
       (vector? bind-sexpr) (let [as-sym (some #(when (= :as (first %))
                                                  (second %))
                                           (partition 2 1 bind-sexpr))]

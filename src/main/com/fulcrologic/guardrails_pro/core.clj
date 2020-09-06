@@ -63,8 +63,10 @@
     (let [current-ns (if (enc/compiling-cljs?)
                        (-> env :ns :name name)
                        (name (ns-name *ns*)))
+          now        (grp.art/now-ms)
           fqsym      `(symbol ~current-ns ~(name defn-sym))
           fn-ref     (symbol current-ns (name defn-sym))]
+      (.println System/err  now)
       (let [{::grp.art/keys [arities location]} (parse-defn form *file*)
             extern-symbols (record-extern-symbols env arities)]
         `(do
@@ -75,7 +77,7 @@
                  ::grp.art/fn-ref         fn-ref
                  ::grp.art/arities        arities
                  ::grp.art/location       location
-                 ::grp.art/last-changed   (inst-ms (Date.))
+                 ::grp.art/last-changed   now
                  ::grp.art/extern-symbols extern-symbols})
              (catch ~(if (enc/compiling-cljs?) :default 'Exception) e#
                (log/error e# "Cannot record function info for GRP:" ~fqsym)))

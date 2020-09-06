@@ -28,7 +28,7 @@
    (let [ui-cids @subscribed-viewers]
      (log/info ui-cids)
      (doseq [cid ui-cids]
-       (log/info "Notifying daemon UI of new problems " cid)
+       (log/info "Notifying viewer of new problems " cid)
        (update-viewers! websockets cid))))
   ([websockets only-cid]
    (wsp/push websockets only-cid :new-problems (problems/get!))))

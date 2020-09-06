@@ -35,13 +35,14 @@
 (>defn check-return-type! [env {::grp.art/keys [body gspec]} {::grp.art/keys [samples]}]
   [::grp.art/env ::grp.art/arity-detail ::grp.art/type-description => any?]
   (let [{::grp.art/keys [return-spec return-type]} gspec
-        sample-failure (some #(when-not (s/valid? return-spec %) %) samples)]
-    (when sample-failure
-      (grp.art/record-error! env
-        {::grp.art/original-expression (last body)
-         ::grp.art/actual              {::grp.art/failing-samples [sample-failure]}
-         ::grp.art/expected            {::grp.art/type return-type ::grp.art/spec return-spec}
-         ::grp.art/message             (str "Return value (e.g. " (pr-str sample-failure) ") does not always satisfy the return spec of " return-type ".")}))))
+        sample-failure (some #(when-not (s/valid? return-spec %) {:failing-case %}) samples)]
+    (when (contains? sample-failure :failing-case)
+      (let [sample-failure (:failing-case sample-failure)]
+        (grp.art/record-error! env
+          {::grp.art/original-expression (last body)
+           ::grp.art/actual              {::grp.art/failing-samples [sample-failure]}
+           ::grp.art/expected            {::grp.art/type return-type ::grp.art/spec return-spec}
+           ::grp.art/message             (str "Return value (e.g. " (pr-str sample-failure) ") does not always satisfy the return spec of " return-type ".")})))))
 
 (>defn check!
   ([sym]
@@ -50,10 +51,10 @@
   ([env sym]
    [::grp.art/env qualified-symbol? => any?]
    (let [{::grp.art/keys [last-changed last-checked] :as fd} (grp.art/function-detail env sym)]
-     (log/debug :check! sym last-changed last-checked)
+     (log/spy :info [sym last-changed last-checked])
      (when (> last-changed (or last-checked 0))
-       (grp.art/set-last-checked! env sym (grp.art/now))
-       (grp.art/clear-problems! sym) ;; TODO: needs to control proper env b/c clj vs cljs and target
+       (grp.art/set-last-checked! env sym (grp.art/now-ms))
+       (grp.art/clear-problems! sym)                        ;; TODO: needs to control proper env b/c clj vs cljs and target
        (let [{::grp.art/keys [arities extern-symbols location]} fd
              env (assoc env
                    ::grp.art/location location
@@ -64,7 +65,7 @@
                  env    (bind-argument-types env arity-detail)
                  result (grp.ana/analyze-statements! env body)]
              (log/info "Locals for " sym ":" (::grp.art/local-symbols env))
-             (check-return-type! env arity-detail result))))))))
+             (check-return-type! env arity-detail (log/spy :info result)))))))))
 
 ;; TODO: Daemon needs to watch the filesystem and publish that info to checkers when files change, appear, or disappear
 (defn check-all! []

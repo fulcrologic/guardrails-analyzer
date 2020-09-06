@@ -16,14 +16,17 @@
 
 (defmethod return-sample-generator :default
   [env x {:keys [return-sample]}]
+  (log/info "Using default return sample generator")
   return-sample)
 
 (defmethod return-sample-generator :pure
   [env x {:keys [fn-ref args]}]
+  (log/info "Using pure return sample generator")
   (apply fn-ref args))
 
 (defmethod return-sample-generator :merge-arg
   [env _ {:keys [args return-sample] N :params}]
+  (log/info "Using merge-arg return sample generator")
   (merge return-sample (nth args (or N 0) {})))
 
 ;(defmethod rv-generator :map-like (fn [_ _ return-sample & args] (let [arg1 (first args)] (merge return-sample arg1))))
@@ -50,7 +53,7 @@
   (let [{::grp.art/keys [name arities fn-ref]} fd
         {::grp.art/keys [gspec]} (grp.art/get-arity arities argtypes)
         {::grp.art/keys [sampler return-spec generator]} gspec]
-    (log/debug "sample!/sampler" name sampler)
+    (log/info "sample!/sampler" name sampler)
     (try-sampling! env
       (gen/fmap (partial return-sample-generator env sampler)
         (gen/hash-map

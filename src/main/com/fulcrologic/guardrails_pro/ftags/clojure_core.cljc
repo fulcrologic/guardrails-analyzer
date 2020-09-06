@@ -17,6 +17,10 @@
   ([map key] [map? any? => any?])
   ([map key not-found] [map? any? any? => any?]))
 
+(>ftag ^:pure? cljs.core/get
+  ([map key] [map? any? => any?])
+  ([map key not-found] [map? any? any? => any?]))
+
 (>defn test:get [x]
   [int? => keyword?]
   (get {:a x} :a))
@@ -79,6 +83,10 @@
   ([x y & more] [any? any? (s/coll-of any?) => boolean?]))
 
 (>ftag ^:pure? clojure.core/assoc
+  ([coll k v] [map? any? any? => map?])
+  ([coll k v & kvs] [map? any? any? (s/* any?) | #(even? (count kvs)) => map?]))
+
+(>ftag ^:pure? cljs.core/assoc
   ([coll k v] [map? any? any? => map?])
   ([coll k v & kvs] [map? any? any? (s/* any?) | #(even? (count kvs)) => map?]))
 

@@ -3,12 +3,17 @@
   and acts as the central control for finding, caching, renewing and expiring things from the runtime. These routines
   must work in CLJ and CLJS, and should typically not be hot reloaded during updates."
   (:require
+    [clojure.pprint :refer [pprint]]
     [clojure.set :as set]
     [clojure.spec.alpha :as s]
     [clojure.spec.gen.alpha :as gen]
     [com.fulcrologic.guardrails.core :refer [>defn => ?]]
     [taoensso.timbre :as log])
   #?(:clj (:import (java.util Date))))
+
+(defn now-ms []
+  (inst-ms #?(:clj  (Date.)
+              :cljs (js/Date.))))
 
 (def posint?
   (s/with-gen pos-int?
@@ -89,7 +94,6 @@
 (s/def ::arity-detail (s/keys :req [::arglist ::gspec ::body]))
 (s/def ::arity #{0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 :n})
 (s/def ::arities (s/map-of ::arity ::arity-detail))
-(s/def ::hashed int?)
 (s/def ::last-changed posint?)
 (s/def ::last-checked posint?)
 (s/def ::last-seen posint?)
@@ -97,7 +101,7 @@
                     :req [::name ::fn-ref
                           ::arities ::extern-symbols
                           ::last-changed ::last-seen ::location]
-                    :opt [::last-checked ::hashed]))
+                    :opt [::last-checked]))
 (s/def ::errors (s/coll-of ::error))
 (s/def ::warnings (s/coll-of ::warning))
 
@@ -110,7 +114,19 @@
 
 (defonce registry (atom {}))
 
-(defn now [] (inst-ms (new #?(:cljs js/Date :clj Date))))
+(defn- arities-match? [{old ::arities} {new ::arities}]
+  (let [ks (keys new)]
+    (not
+      (or
+        (not= (keys old) ks)
+        (some
+          (fn [k]
+            (or
+              (not= (get-in old [k ::body]) (get-in new [k ::body]))
+              (not= (get-in old [k ::arglist]) (get-in new [k ::arglist]))
+              (not= (get-in old [k ::gspec ::return-types]) (get-in new [k ::gspec ::return-types]))
+              (not= (get-in old [k ::gspec ::arg-types]) (get-in new [k ::gspec ::arg-types]))))
+          ks)))))
 
 (>defn register-function!
   [fn-sym fn-desc]
@@ -119,12 +135,11 @@
                  ::arities ::location
                  ::last-changed ::extern-symbols])
    => any?]
-  (let [{::keys [hashed arities extern-symbols] :as entry} (get @registry fn-sym)
-        new-hash (hash [arities extern-symbols])]
-    (swap! registry update fn-sym merge
-      {::last-seen (now)}
-      (if (= new-hash hashed) {}
-        (assoc fn-desc ::hashed new-hash)))))
+  (swap! registry update fn-sym
+    (fn [old-desc]
+      (if (arities-match? old-desc fn-desc)
+        (assoc old-desc ::last-seen (now-ms))
+        fn-desc))))
 
 (defmulti cljc-rewrite-sym-ns-mm identity)
 (defmethod cljc-rewrite-sym-ns-mm "clojure.core" [ns] #?(:cljs "cljs.core" :clj ns))

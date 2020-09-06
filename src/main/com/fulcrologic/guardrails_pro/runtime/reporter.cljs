@@ -149,14 +149,16 @@
      (comp/transact! app [(subscribe)]))))
 
 (defn transit-safe-problems [problems]
-  (enc/map-vals (fn [problem] (let [ok-keys [::grp.art/message
-                                             ::grp.art/line-number
-                                             ::grp.art/column-end
-                                             ::grp.art/column-start
-                                             ::grp.art/file]]
-                                (-> problem
-                                  (update ::grp.art/errors (fn [s] (mapv #(select-keys % ok-keys) s)))
-                                  (update ::grp.art/warnings (fn [s] (mapv #(select-keys % ok-keys) s)))))) problems))
+   (enc/map-vals (fn [problem]
+                   (let [ok-keys [::grp.art/message
+                                  ::grp.art/line-number
+                                  ::grp.art/column-end
+                                  ::grp.art/column-start
+                                  ::grp.art/file]]
+                     (-> problem
+                       (update ::grp.art/errors (fn [s] (mapv #(select-keys % ok-keys) s)))
+                       (update ::grp.art/warnings (fn [s] (mapv #(select-keys % ok-keys) s)))))) problems))
+
 
 (defn report-problems! [problems]
   (let [problems (transit-safe-problems problems)]

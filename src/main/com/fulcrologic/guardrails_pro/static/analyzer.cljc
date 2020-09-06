@@ -116,13 +116,17 @@
     :else       {}))
 
 (defmethod analyze-mm :external-function [env [f & args]]
-  (let [fd (grp.art/external-function-detail env f)
+  (let [fd       (grp.art/external-function-detail env f)
         argtypes (mapv (partial analyze! env) args)]
     {::grp.art/samples (grp.sampler/sample! env fd argtypes)}))
 
 (defmethod analyze-mm :function-call [env [function & arguments]]
-  (grp.fnt/calculate-function-type env function
-    (mapv (partial analyze! env) arguments)))
+  (log/spy :info function)
+  (let [current-ns (namespace (::grp.art/checking-sym env))
+        ;; TASK : resolve simple symbols things in current ns
+        fqsym (if (simple-symbol? function) (symbol current-ns (name function)) function)]
+    (grp.fnt/calculate-function-type env fqsym
+     (mapv (partial analyze! env) arguments))))
 
 (defn analyze-statements! [env body]
   (doseq [expr (butlast body)]
