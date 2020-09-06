@@ -6,7 +6,8 @@
     [taoensso.timbre :as log]
     [clojure.set :as set]
     [com.fulcrologic.fulcro.networking.websocket-protocols :as wsp]
-    [com.fulcrologic.guardrails-pro.daemon.server.problems :as problems]))
+    [com.fulcrologic.guardrails-pro.daemon.server.problems :as problems]
+    [com.fulcrologic.guardrails-pro.daemon.server.bindings :as bindings]))
 
 (defstate connected-clients :start (atom #{}))
 (defstate registered-checkers :start (atom #{}))
@@ -33,3 +34,13 @@
   ([websockets only-cid]
    (wsp/push websockets only-cid :new-problems (problems/get!))))
 
+(defn update-visible-bindings!
+  "Sends updated bindings to all viewers"
+  ([websockets]
+   (let [ui-cids @subscribed-viewers]
+     (log/info ui-cids)
+     (doseq [cid ui-cids]
+       (log/info "Notifying viewer of new bindings " cid)
+       (update-visible-bindings! websockets cid))))
+  ([websockets only-cid]
+   (wsp/push websockets only-cid :new-bindings (bindings/get!))) )

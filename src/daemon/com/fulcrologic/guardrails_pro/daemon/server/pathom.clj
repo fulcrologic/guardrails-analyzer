@@ -3,6 +3,7 @@
     [clojure.core.async :as async]
     [com.fulcrologic.guardrails-pro.daemon.server.config :refer [config]]
     [com.fulcrologic.guardrails-pro.daemon.server.problems :as problems]
+    [com.fulcrologic.guardrails-pro.daemon.server.bindings :as bindings]
     [com.fulcrologic.guardrails-pro.daemon.server.connection-management :as cmgmt]
     [com.wsscode.pathom.connect :as pc]
     [com.wsscode.pathom.core :as p]
@@ -22,6 +23,13 @@
   (cmgmt/update-viewers! websockets)
   {})
 
+(pc/defmutation set-bindings [{:keys [websockets]} bindings]
+  {::pc/sym    'daemon/set-bindings
+   ::pc/output [:result]}
+  (bindings/set! bindings)
+  (cmgmt/update-viewers! websockets)
+  {})
+
 (pc/defmutation subscribe [{:keys [websockets cid]} _params]
   {::pc/sym 'daemon/subscribe}
   (log/info "Client subscribed to error updates: " cid)
@@ -35,7 +43,7 @@
   (swap! cmgmt/registered-checkers conj cid)
   {})
 
-(def all-resolvers [all-problems set-problems subscribe register-checker])
+(def all-resolvers [all-problems set-problems set-bindings subscribe register-checker])
 
 (defn preprocess-parser-plugin [f]
   {::p/wrap-parser

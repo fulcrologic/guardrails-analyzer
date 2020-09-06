@@ -1,5 +1,6 @@
 (ns com.fulcrologic.guardrails-pro.runtime.reporter
   (:require
+    [clojure.pprint :refer [pprint]]
     [com.fulcrologic.guardrails.core :refer [=> | ?]]
     [com.fulcrologic.guardrails-pro.core :as grp]
     [com.fulcrologic.fulcro.application :as app]
@@ -43,6 +44,11 @@
   (remote [{:keys [state] :as env}]
     (if (get @state :self-checker?)
       (f.m/with-server-side-mutation env 'daemon/set-problems))))
+
+(f.m/defmutation set-bindings [bindings]
+  (remote [{:keys [state] :as env}]
+    (if (get @state :self-checker?)
+      (f.m/with-server-side-mutation env 'daemon/set-bindings))))
 
 (defsc Settings [this {:settings/keys [daemon-port]}]
   {:query         [:settings/daemon-port]
@@ -149,17 +155,30 @@
      (comp/transact! app [(subscribe)]))))
 
 (defn transit-safe-problems [problems]
-   (enc/map-vals (fn [problem]
-                   (let [ok-keys [::grp.art/message
-                                  ::grp.art/line-number
-                                  ::grp.art/column-end
-                                  ::grp.art/column-start
-                                  ::grp.art/file]]
-                     (-> problem
-                       (update ::grp.art/errors (fn [s] (mapv #(select-keys % ok-keys) s)))
-                       (update ::grp.art/warnings (fn [s] (mapv #(select-keys % ok-keys) s)))))) problems))
+  (enc/map-vals (fn [problem]
+                  (let [ok-keys [::grp.art/message
+                                 ::grp.art/line-number
+                                 ::grp.art/column-end
+                                 ::grp.art/column-start
+                                 ::grp.art/file]]
+                    (-> problem
+                      (update ::grp.art/errors (fn [s] (mapv #(select-keys % ok-keys) s)))
+                      (update ::grp.art/warnings (fn [s] (mapv #(select-keys % ok-keys) s)))))) problems))
 
 
 (defn report-problems! [problems]
   (let [problems (transit-safe-problems problems)]
     (comp/transact! app [(set-problems problems)])))
+
+(defn formatted-bindings [bindings]
+  (reduce-kv
+    (fn [acc location {::grp.art/keys [type samples original-expression]}]
+      (let [pp-samples (mapv (fn [s] (with-out-str (pprint s))) samples)]
+        (assoc acc location {:type       type
+                             :expression (pr-str original-expression)
+                             :samples    pp-samples})))
+    {} bindings))
+
+(defn report-bindings! [bindings]
+  (let [bindings (formatted-bindings bindings)]
+    (comp/transact! app [(set-bindings bindings)])))

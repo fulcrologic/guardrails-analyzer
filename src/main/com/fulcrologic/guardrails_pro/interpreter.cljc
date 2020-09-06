@@ -71,6 +71,7 @@
 
 ;; TODO: Daemon needs to watch the filesystem and publish that info to checkers when files change, appear, or disappear
 (defn check-all! []
+  (grp.art/clear-bindings!)
   (let [env (grp.art/build-env)]
     (doseq [[fn-sym fd] (::grp.art/registry env)]
       (check! env fn-sym))))

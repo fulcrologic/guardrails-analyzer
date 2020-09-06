@@ -221,12 +221,10 @@
 
 (defonce binding-annotations (atom {}))
 
-(>defn clear-bindings!
+(defn clear-bindings!
   "Clear all of the binding information for symbols in the given the symbolic name of a fully-qualified function."
-  [sym]
-  [qualified-symbol? => any?]
-  (swap! binding-annotations assoc sym {})
-  nil)
+  []
+  (reset! binding-annotations {}))
 
 (>defn record-binding!
   "Report a type description for the given symbol, which must have file/line/column metadata in order to be recorded."
@@ -268,7 +266,6 @@
 
 (defn clear-problems!
   ([sym]
-   (clear-bindings! sym)
    (swap! problems update sym assoc ::errors [] ::warnings []))
   ([]
    (swap! problems
