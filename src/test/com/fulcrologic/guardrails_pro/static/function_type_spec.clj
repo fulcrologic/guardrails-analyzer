@@ -26,14 +26,14 @@
 (gr/>defn type-description
   "Generate a type description for a given spec"
   [name expr spec samples]
-  [string? any? any? any? => ::grp.art/type-description]
+  [string? any? any? ::grp.art/samples => ::grp.art/type-description]
   {::grp.art/spec                spec
    ::grp.art/type                name
    ::grp.art/samples             samples
    ::grp.art/original-expression expr})
 
 (defn with-mocked-errors [cb]
-  (let [errors (atom [])]
+  (let [errors (atom #{})]
     (when-mocking!
       (grp.art/record-error! _ error) => (swap! errors conj error)
       (cb errors))))
@@ -67,7 +67,7 @@
           (assertions
             (count @errors) => 1
             (::grp.art/original-expression error) => 'x
-            (::grp.art/actual error) => {::grp.art/failing-samples ["3"]}
+            (::grp.art/actual error) => {::grp.art/failing-samples #{"3"}}
             (-> error ::grp.art/expected ::grp.art/arg-types) => ["int?"])))))
   (behavior "If spec'ed to have argument predicates"
     (behavior "Returns any errors"
@@ -79,7 +79,7 @@
             (assertions
               (count @errors) => 1
               (::grp.art/original-expression error) => '(x)
-              (::grp.art/actual error) => {::grp.art/failing-samples [-42]}))))
+              (::grp.art/actual error) => {::grp.art/failing-samples #{-42}}))))
       (with-mocked-errors
         (fn [errors]
           (grp.fnt/calculate-function-type (grp.art/build-env) `test_pos-int-string->string
@@ -89,4 +89,4 @@
             (assertions
               (count @errors) => 1
               (::grp.art/original-expression error) => '(x y)
-              (::grp.art/actual error) => {::grp.art/failing-samples [-42 "88"]})))))))
+              (::grp.art/actual error) => {::grp.art/failing-samples #{-42 "88"}})))))))

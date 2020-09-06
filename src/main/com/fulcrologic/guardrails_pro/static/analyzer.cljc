@@ -12,14 +12,14 @@
     #?@(:clj [(java.util.regex Pattern)])))
 
 (defn regex? [x]
-  #?(:clj (= (type x) Pattern)
+  #?(:clj  (= (type x) Pattern)
      :cljs (regexp? x)))
 
 (defn list-dispatch-type [env [f :as _sexpr]]
   (cond
     (grp.art/function-detail env f) :function-call
     (grp.art/external-function-detail env f) :external-function
-    (symbol? f)  (grp.art/cljc-rewrite-sym-ns f)
+    (symbol? f) (grp.art/cljc-rewrite-sym-ns f)
     ;; TODO: ifn? eg: :kw 'sym {} ...
     :else :unknown))
 
@@ -65,7 +65,7 @@
                  (regex? sexpr) regex?
                  (nil? sexpr) nil?)]
       {::grp.art/spec                spec
-       ::grp.art/samples             [sexpr]
+       ::grp.art/samples             #{sexpr}
        ::grp.art/original-expression sexpr})))
 
 (defmethod analyze-mm :symbol [env sym]
@@ -73,47 +73,61 @@
 
 (>defn validate-samples! [env k v samples]
   [::grp.art/env any? any? ::grp.art/samples => (? ::grp.art/samples)]
-  (enc/if-let [spec (s/get-spec k)
-               failing-sample (some (fn _invalid-sample [sample]
-                                      (when-not (s/valid? spec sample) sample))
-                                samples)]
-    (do (grp.art/record-error! env
+  (let [spec (s/get-spec k)]
+    (enc/if-let [spec           spec
+                 failing-sample (some (fn _invalid-sample [sample]
+                                        (when-not (s/valid? spec sample) sample))
+                                  samples)]
+      (do
+        (grp.art/record-error! env
           {::grp.art/original-expression v
-           ::grp.art/expected {::grp.art/spec spec}
-           ::grp.art/actual {::grp.art/failing-samples [failing-sample]}
-           ::grp.art/message (str "Value in map: " failing-sample " failed to pass spec for " k ".")})
-      nil)
-    samples))
+           ::grp.art/expected            {::grp.art/spec spec}
+           ::grp.art/actual              {::grp.art/failing-samples #{failing-sample}}
+           ::grp.art/message             (str "Possible value in map: " failing-sample " fails to pass spec for " k ".")})
+        samples)
+      (if spec
+        (into #{} (filter (partial s/valid? spec)) samples)
+        #{}))))
 
-(>defn reduce-hashmap-samples [env acc k v]
-  [::grp.art/env map? any? any? => (? ::grp.art/samples)]
-  (assoc acc k
-    (let [{::grp.art/keys [samples]} (analyze! env v)]
-      (if (seq samples)
-        (validate-samples! env k v samples)
-        (do (grp.art/record-warning! env
-              {::grp.art/original-expression v
-               ::grp.art/message (str "Failed to generate values for: " v)})
-          nil)))))
+(defn- analyze-hashmap-entry
+  [env acc k v]
+  (let [sample-value (let [{::grp.art/keys [samples]} (analyze! env v)]
+                       (validate-samples! env k v samples)
+                       (if (seq samples)
+                         (rand-nth (vec samples))
+                         (do
+                           (grp.art/record-warning! env v (str "Failed to generate values for: " v))
+                           ::grp.art/Unknown)))]
+    (assoc acc k sample-value)))
 
 (>defn analyze-hashmap! [env hashmap]
   [::grp.art/env map? => ::grp.art/type-description]
-  (let [sample-map (reduce-kv (partial reduce-hashmap-samples env) {} hashmap)]
-    (if (some nil? (vals sample-map))
-      (do (grp.art/record-warning! env
-            {::grp.art/original-expression hashmap
-             ::grp.art/message (str "Failed to generate samples for literal map due to earlier spec failure.")})
-        {})
-      {::grp.art/samples (grp.sampler/try-sampling! env
-                           (grp.sampler/hashmap-permutation-generator sample-map)
-                           {::grp.art/original-expression hashmap})
-       ::grp.art/type    "literal-hashmap"})))
+  (let [sample-map (reduce-kv (partial analyze-hashmap-entry env) {} hashmap)]
+    {::grp.art/samples             #{sample-map}
+     ::grp.art/original-expression hashmap
+     ::grp.art/type                "literal-hashmap"}))
+
+(defn- analyze-vector-entry
+  [env acc v]
+  (let [sample (let [{::grp.art/keys [samples]} (analyze! env v)]
+                 (when (seq samples) {:sample-value (rand-nth (vec samples))}))]
+    (if (contains? sample :sample-value)
+      (conj acc (:sample-value sample))
+      (conj acc ::grp.art/Unknown))))
+
+(>defn analyze-vector! [env v]
+  [::grp.art/env map? => ::grp.art/type-description]
+  (let [sample-vector (reduce (partial analyze-vector-entry env) [] v)]
+    {::grp.art/samples             #{sample-vector}
+     ::grp.art/original-expression v
+     ::grp.art/type                "literal-vector"}))
 
 (defmethod analyze-mm :collection [env coll]
   (cond
     (map? coll) (analyze-hashmap! env coll)
+    (vector? coll) (analyze-vector! env coll)
     ;; TODO
-    :else       {}))
+    :else {}))
 
 (defmethod analyze-mm :external-function [env [f & args]]
   (let [fd       (grp.art/external-function-detail env f)
@@ -122,11 +136,11 @@
 
 (defmethod analyze-mm :function-call [env [function & arguments]]
   (log/spy :info function)
-  (let [current-ns (namespace (::grp.art/checking-sym env))
+  (let [current-ns (some-> env ::grp.art/checking-sym namespace)
         ;; TASK : resolve simple symbols things in current ns
-        fqsym (if (simple-symbol? function) (symbol current-ns (name function)) function)]
+        fqsym      (if (simple-symbol? function) (symbol current-ns (name function)) function)]
     (grp.fnt/calculate-function-type env fqsym
-     (mapv (partial analyze! env) arguments))))
+      (mapv (partial analyze! env) arguments))))
 
 (defn analyze-statements! [env body]
   (doseq [expr (butlast body)]

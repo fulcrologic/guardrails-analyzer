@@ -15,18 +15,17 @@
             (map vector arg-specs argtypes)
             :let [checkable? (and arg-spec (seq samples))]]
       (when-not checkable?
-        (grp.art/record-warning! env
-          {::grp.art/original-expression original-expression
-           ::grp.art/message (str "Could not check " original-expression ".")}))
-      (when-let [failing-sample (and checkable?
-                                  (some (fn _invalid-sample [sample]
-                                          (when-not (s/valid? arg-spec sample) sample))
-                                    samples))]
+        (grp.art/record-warning! env original-expression (str "Could not check " original-expression ".")))
+      (when-let [{:keys [failing-sample]} (and checkable?
+                                            (some (fn _invalid-sample [sample]
+                                                    (when-not (s/valid? arg-spec sample)
+                                                      {:failing-sample sample}))
+                                              samples))]
         (grp.art/record-error! env
           {::grp.art/original-expression original-expression
-           ::grp.art/expected gspec
-           ::grp.art/actual {::grp.art/failing-samples [failing-sample]}
-           ::grp.art/message (str "Function argument " original-expression " failed to pass spec " arg-spec " on failing sample " failing-sample ".")})))
+           ::grp.art/expected            gspec
+           ::grp.art/actual              {::grp.art/failing-samples #{failing-sample}}
+           ::grp.art/message             (str "Function argument " original-expression " failed to pass spec " arg-spec " on failing sample " failing-sample ".")})))
     (doseq [sample-arguments (apply map vector (map ::grp.art/samples argtypes))]
       (doseq [arg-pred arg-predicates
               :when (every? (partial apply s/valid?)
@@ -34,8 +33,8 @@
         (when-not (apply arg-pred sample-arguments)
           (grp.art/record-error! env
             {::grp.art/original-expression (map ::grp.art/original-expression argtypes)
-             ::grp.art/actual {::grp.art/failing-samples sample-arguments}
-             ::grp.art/message (str "Function arguments " (map ::grp.art/original-expression argtypes) "failed to pass predicate " arg-pred " on failing sample " sample-arguments ".")})))))
+             ::grp.art/actual              {::grp.art/failing-samples (set sample-arguments)}
+             ::grp.art/message             (str "Function arguments " (map ::grp.art/original-expression argtypes) "failed to pass predicate " arg-pred " on failing sample " sample-arguments ".")})))))
   :done)
 
 (defn calculate-function-type [env sym argtypes]
@@ -43,6 +42,6 @@
         {::grp.art/keys [gspec]} (grp.art/get-arity arities argtypes)
         {::grp.art/keys [return-type return-spec]} gspec]
     (validate-argtypes! env sym argtypes)
-    {::grp.art/spec return-spec
-     ::grp.art/type return-type
+    {::grp.art/spec    return-spec
+     ::grp.art/type    return-type
      ::grp.art/samples (grp.sampler/sample! env fd argtypes)}))

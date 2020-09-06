@@ -40,30 +40,39 @@
    (try-sampling! env gen {}))
   ([env gen extra]
    [::grp.art/env ::generator map? => (? ::grp.art/samples)]
-   (try (if-let [samples (seq (gen/sample gen))]
-          samples (throw (ex-info "No samples!?" {})))
+   (try
+     (if-let [samples (seq (gen/sample gen))]
+       (set samples)
+       (throw (ex-info "No samples!?" {})))
      (catch #?(:clj Throwable :cljs :default) _
        (grp.art/record-error! env
          (merge {::grp.art/message (str "Failed to generate samples!")}
            extra))
-       nil))))
+       #{}))))
 
 (>defn sample! [env fd argtypes]
-  [::grp.art/env (s/keys :req [::grp.art/name ::grp.art/arities ::grp.art/fn-ref]) (s/coll-of ::grp.art/type-description) => ::grp.art/samples]
+  [::grp.art/env (s/keys :req [::grp.art/name ::grp.art/arities ::grp.art/fn-ref]) (s/coll-of ::grp.art/type-description)
+   => ::grp.art/samples]
   (let [{::grp.art/keys [name arities fn-ref]} fd
         {::grp.art/keys [gspec]} (grp.art/get-arity arities argtypes)
-        {::grp.art/keys [sampler return-spec generator]} gspec]
-    (log/info "sample!/sampler" name sampler)
-    (try-sampling! env
-      (gen/fmap (partial return-sample-generator env sampler)
-        (gen/hash-map
-          :args (apply gen/tuple (map gen/elements (map ::grp.art/samples argtypes)))
-          :fn-ref (gen/return fn-ref)
-          :params (gen/return (and sampler (if (vector? sampler) (second sampler) sampler)))
-          :return-sample (or generator (s/gen return-spec))))
-      {::grp.art/original-expression name})))
+        {::grp.art/keys [sampler return-spec generator]} gspec
+        generator (try
+                    (when (seq argtypes)
+                      (gen/fmap (partial return-sample-generator env sampler)
+                        (gen/hash-map
+                          :args (apply gen/tuple (map gen/elements (map ::grp.art/samples argtypes)))
+                          :fn-ref (gen/return fn-ref)
+                          :params (gen/return (and sampler (if (vector? sampler) (second sampler) sampler)))
+                          :return-sample (or generator (s/gen return-spec)))))
+                    (catch #?(:clj  Exception
+                              :cljs :default) e
+                      (log/error e "Unable to build generator from " [sampler return-spec generator])
+                      nil))]
+    (if generator
+      (try-sampling! env generator {::grp.art/original-expression name})
+      #{})))
 
-(>defn hashmap-permutation-generator [sample-map]
+#_(>defn hashmap-permutation-generator [sample-map]
   [(s/map-of any? ::grp.art/samples) => ::generator]
   (->> sample-map
     (enc/map-vals gen/elements)

@@ -76,7 +76,7 @@
     true))
 
 ;; NOTE: not run because file name is not a *_spec
-(specification "check!"
+(specification "check!" :failing
   (let [x-double? (fn [actual]
                     (when-not (double? (get-in actual [:x]))
                       {:actual actual

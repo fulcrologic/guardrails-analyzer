@@ -107,11 +107,11 @@
 
 (defn single-arity [[result [arglist spec & forms :as args]]]
   [(assoc result (body-arity args)
-     (with-meta
-       {::grp.art/arglist `(quote ~arglist)
-        ::grp.art/gspec   (parse-gspec result spec arglist)
-        ::grp.art/body    (forms/form-expression (vec forms))}
-       {::grp.art/raw-body `(quote ~(vec forms))}))])
+                 (with-meta
+                   {::grp.art/arglist `(quote ~arglist)
+                    ::grp.art/gspec   (parse-gspec result spec arglist)
+                    ::grp.art/body    (forms/form-expression (vec forms))}
+                   {::grp.art/raw-body `(quote ~(vec forms))}))])
 
 (defn multiple-arities [[result args]]
   (loop [r           result
@@ -132,24 +132,24 @@
     (multiple-arities env)
     (single-arity env)))
 
-(>defn parse-defn-args
+;; NOTE: Cannot have a spec from artifacts, because this is dealing with syntax parsing at macro time
+(defn parse-defn-args
   "Takes the body of a defn and returns parsed arities and top level location information."
   [[defn-sym :as args]]
-  [seq? => (s/keys :req [::grp.art/arities ::grp.art/location])]
   (let [arities (first
                   (-> [{} args]
                     (function-name)
                     (optional-docstring)
                     (function-content)))]
-    {::grp.art/arities arities
+    {::grp.art/arities  arities
      ::grp.art/location (grp.art/new-location (meta defn-sym))}))
 
 (defn var-name
   [[result [nm :as args]]]
   (if (qualified-symbol? nm)
     [(assoc result ::fn-meta
-       (cond-> (meta nm)
-         (:pure? (meta nm)) (assoc ::grp.art/sampler :pure)))
+                   (cond-> (meta nm)
+                     (:pure? (meta nm)) (assoc ::grp.art/sampler :pure)))
      (next args)]
     (throw (ex-info (format "%s is not fully qualified symbol" nm) {}))))
 

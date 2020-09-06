@@ -29,7 +29,7 @@
                 fn-gen))
 (s/def ::type string?)
 ;; samples is for generated data only
-(s/def ::samples (s/coll-of any? :min-count 1))
+(s/def ::samples (s/coll-of any? :min-count 1 :kind set?))
 (s/def ::failing-samples ::samples)
 (s/def ::original-expression any?)
 (s/def ::literal-value ::original-expression)
@@ -137,9 +137,11 @@
    => any?]
   (swap! registry update fn-sym
     (fn [old-desc]
-      (if (arities-match? old-desc fn-desc)
-        (assoc old-desc ::last-seen (now-ms))
-        fn-desc))))
+      (assoc
+        (if (arities-match? old-desc fn-desc)
+          old-desc
+          fn-desc)
+        ::last-seen (now-ms)))))
 
 (defmulti cljc-rewrite-sym-ns-mm identity)
 (defmethod cljc-rewrite-sym-ns-mm "clojure.core" [ns] #?(:cljs "cljs.core" :clj ns))
@@ -216,6 +218,28 @@
     (assoc ::location
            (new-location location))))
 
+(defonce binding-annotations (atom {}))
+
+(>defn clear-bindings!
+  "Clear all of the binding information for symbols in the given the symbolic name of a fully-qualified function."
+  [sym]
+  [qualified-symbol? => any?]
+  (swap! binding-annotations assoc sym {})
+  nil)
+
+(>defn record-binding!
+  "Report a type description for the given symbol, which must have file/line/column metadata in order to be recorded."
+  [env sym type-description]
+  [::env simple-symbol? ::type-description => any?]
+  (let [env (update-location env (meta sym))
+        {::keys [checking-sym location]} env
+        {::keys [line-number column-start file]} location]
+    (if (and line-number column-start file)
+      (swap! binding-annotations update-in [checking-sym line-number]
+        assoc column-start type-description)
+      (log/warn "Cannot record binding because we don't know enough location info" file line-number column-start))
+    nil))
+
 (defonce problems (atom {}))
 
 (>defn record-error!
@@ -229,16 +253,21 @@
       (::location env))))
 
 (>defn record-warning!
-  [env warning]
-  [::env (s/keys :req [::message ::original-expression]) => any?]
-  (swap! problems update-in
-    [(::checking-sym env) ::warnings]
-    (fnil conj [])
-    (merge warning
-      (::location env))))
+  ([env original-expression message]
+   [::env any? string? => nil?]
+   (record-warning! env {::message message ::original-expression original-expression}))
+  ([env warning]
+   [::env (s/keys :req [::message ::original-expression]) => nil?]
+   (swap! problems update-in
+     [(::checking-sym env) ::warnings]
+     (fnil conj [])
+     (merge warning
+       (::location env)))
+   nil))
 
 (defn clear-problems!
   ([sym]
+   (clear-bindings! sym)
    (swap! problems update sym assoc ::errors [] ::warnings []))
   ([]
    (swap! problems

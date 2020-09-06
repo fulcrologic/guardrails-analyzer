@@ -66,7 +66,6 @@
           now        (grp.art/now-ms)
           fqsym      `(symbol ~current-ns ~(name defn-sym))
           fn-ref     (symbol current-ns (name defn-sym))]
-      (.println System/err  now)
       (let [{::grp.art/keys [arities location]} (parse-defn form *file*)
             extern-symbols (record-extern-symbols env arities)]
         `(do
@@ -93,12 +92,17 @@
 
 ;;TODO: guardrails >fdef should emit call to >ftag-impl if pro?
 (defn >ftag-impl [env [sym :as args]]
-  (let [arities (parser/parse-fdef-args args)]
-    `(grp.art/register-external-function! '~sym
-       #::grp.art{:name         '~sym
-                  :fn-ref       ~sym
-                  :arities      ~arities
-                  :last-changed ~(inst-ms (Date.))})))
+  (let [arities (parser/parse-fdef-args args)
+        resolution (cljc-resolve env sym)]
+    (if resolution
+      `(grp.art/register-external-function! '~sym
+         #::grp.art{:name         '~sym
+                    :fn-ref       ~sym
+                    :arities      ~arities
+                    :last-changed ~(inst-ms (Date.))})
+      (do
+        (log/warn ">ftag Cannot resolve: " sym)
+        nil))))
 
 (defmacro >ftag
   "Tag an existing function that has a spec with a guardrails-pro spec."

@@ -6,19 +6,28 @@
     [com.fulcrologic.guardrails-pro.interpreter :as grp.intrp]
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.ftags.clojure-core]
+    [cljs.spec.gen.alpha :as gen]
     [cljs.spec.alpha :as s]))
 
-(s/def :person/id int?)
-(s/def :person/fname string?)
-(s/def :person/lname string?)
-(s/def :person/full-name string?)
+(defn nestring [& samples]
+  (s/with-gen (s/and string? seq) #(s/gen (set samples))))
+
+(s/def ::non-empty-string (nestring "a" "a medium string" "a very long string that has a lot in it"))
+(s/def :person/id pos-int?)
+(s/def :person/fname (nestring "Sam" "Sally" "Amanda" "Bob" "Abed" "Lynn" "Leslie"))
+(s/def :person/lname (nestring "Smith" "Wang" "Gopinath" "Mason"))
+(s/def :person/full-name (nestring "Sam Smith" "Amanda Wang"))
 (s/def ::person (s/keys :req [:person/id :person/fname :person/lname]
-                        :opt [:person/full-name]))
+                  :opt [:person/full-name]))
+
+(comment
+  (gen/sample (s/gen map?)))
+
 (>defn ^:pure? new-person
   [id fn ln]
   [int? string? string? => ::person]
-  (let [p {:person/id    id
-           :person/lname ln}
+  (let [p  {:person/id    id
+            :person/lname ln}
         p2 (assoc p :person/fname fn)]
     p2))
 

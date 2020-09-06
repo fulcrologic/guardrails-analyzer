@@ -1,4 +1,4 @@
-{:deps     {:aliases [:gr-dev :dev :daemon]}
+{:deps     {:aliases [:gr-dev :dev :daemon :test]}
  :nrepl    {:port 9000}
  :dev-http {9001 "resources/public"}
  :builds   {:guardrailspro {:target           :browser

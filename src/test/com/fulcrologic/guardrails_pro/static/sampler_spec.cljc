@@ -41,7 +41,7 @@
       => #:person{:name "john" :full-name "john doe"}
       )))
 
-(specification "hashmap-permutation-generator"
+#_(specification "hashmap-permutation-generator"
   (assertions
     (gen/sample
       (grp.sampler/hashmap-permutation-generator

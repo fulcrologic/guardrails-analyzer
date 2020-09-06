@@ -5,7 +5,8 @@
     [com.fulcrologic.guardrails.core :as gr :refer [=>]]
     [com.fulcrologic.guardrails-pro.core :as grp]
     [com.fulcrologic.guardrails-pro.test-checkers :as check :refer [check!]]
-    [fulcro-spec.core :refer [specification component assertions when-mocking! =fn=>]]))
+    [fulcro-spec.core :refer [specification component assertions when-mocking! =fn=>]]
+    [clojure.spec.alpha :as s]))
 
 (grp/>defn test_int->int [x]
   [int? => int?]
@@ -33,12 +34,36 @@
             "It finds an error"
             (count @errors) => 1))))))
 
-(specification "analyze-hashmap!"
-  (assertions
-    (grp.ana/analyze-hashmap! (grp.art/build-env)
-      {:a 0})
-    =fn=> (check!
-            (check/in* [::grp.art/samples]
-              (check/every?*
-                (check/is?* map?)
-                (check/equals?* {:a 0}))))))
+(s/def ::number number?)
+(s/def ::x ::number)
+(s/def ::y ::number)
+(s/def ::point (s/keys :req [::x ::y]))
+(s/def ::color #{"red" "green" "blue"})
+(s/def ::points (s/coll-of ::point :kind vector?))
+(s/def ::polygon (s/keys :req [::points]
+                   :opt [::color]))
+
+(specification "Analyzing literal data structures"
+  (component "A non-nested literal map"
+    (let [data   {:x 1
+                  :y "hello"}
+          actual (grp.ana/analyze-hashmap! (grp.art/build-env) data)]
+      (assertions
+        "Returns the exact literal nested hash map as the only single sample"
+        (= (::grp.art/samples actual) #{data}) => true)))
+  (component "A non-nested literal map with spec'd keys"
+    (let [data   {::x 1
+                  ::y "hello"}
+          actual (grp.ana/analyze-hashmap! (grp.art/build-env) data)]
+      (assertions
+        "Returns the exact literal map as the only single sample"
+        (= (::grp.art/samples actual) #{data}) => true)))
+  (component "When given a nested hash map with all literal entries"
+    (let [nested-data {::polygon {::color  "red"
+                                  ::points [{::x 0 ::y 0}
+                                            {::x 32.0 ::y 44}
+                                            {::x 12.0 ::y 4}]}}
+          actual      (grp.ana/analyze-hashmap! (grp.art/build-env) nested-data)]
+      (assertions
+        "Returns the exact literal nested hash map as the only single sample"
+        (= (::grp.art/samples actual) #{nested-data}) => true))))
