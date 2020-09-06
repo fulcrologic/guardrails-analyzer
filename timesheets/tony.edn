@@ -30,5 +30,6 @@
   :timespans [[830 955] [1700 1930]]}
  {:date "2020-09-03" :description "pairing, experiments with adv compile" :timespans [[520 1130]]}
  {:date "2020-09-04" :description "pairing" :timespans [[900 930]]}
+ {:date "2020-09-05" :description "IntelliJ plugin, some bug tweaks" :timespans [[1245 1900]]}
  ]
 
