@@ -24,8 +24,9 @@
                            (let [spec-kw (keyword (namespace k) (str sym))]
                              (if-let [spec (s/get-spec spec-kw)]
                                (let [samples (grp.sampler/try-sampling! env (s/gen spec) {::grp.art/original-expression entry})
-                                     type    (cond-> {::grp.art/spec spec
-                                                      ::grp.art/type (pr-str sym)}
+                                     type    (cond-> {::grp.art/spec                spec
+                                                      ::grp.art/original-expression (pr-str sym)
+                                                      ::grp.art/type                (pr-str sym)}
                                                samples (assoc ::grp.art/samples (set samples)))]
                                  (grp.art/record-binding! env sym type)
                                  [sym type])
@@ -38,25 +39,30 @@
               (qualified-keyword? v)
               #_=> (when-let [spec (s/get-spec v)]
                      (let [samples (grp.sampler/try-sampling! env (s/gen spec) {::grp.art/original-expression entry})
-                           type    (cond-> {::grp.art/spec spec ::grp.art/type (pr-str v)}
+                           type    (cond-> {::grp.art/spec                spec
+                                            ::grp.art/original-expression (pr-str k)
+                                            ::grp.art/type                (pr-str v)}
                                      samples (assoc ::grp.art/samples (set samples)))]
                        (grp.art/record-binding! env k type)
                        [[k type]]))
               (= :as k)
-              #_=> [[v value-type-desc]]))]
-    (cond
-      (symbol? bind-sexpr) (do
-                             (grp.art/record-binding! env bind-sexpr value-type-desc)
-                             {bind-sexpr value-type-desc})
-      (vector? bind-sexpr) (let [as-sym (some #(when (= :as (first %))
-                                                 (second %))
-                                          (partition 2 1 bind-sexpr))]
-                             (if as-sym
-                               (do
-                                 (grp.art/record-binding! env as-sym value-type-desc)
-                                 {as-sym value-type-desc})
-                               {}))
-      ;; TODO: might need to return for :keys [x ...] an empty type desc
-      (map? bind-sexpr) (into {}
-                          (mapcat MAP*)
-                          bind-sexpr))))
+              #_=> (let [typ (assoc value-type-desc ::grp.art/original-expression v)]
+                     (grp.art/record-binding! env v typ)
+                     [[v typ]])))]
+    (let [typ (assoc value-type-desc ::grp.art/original-expression bind-sexpr)]
+      (cond
+        (symbol? bind-sexpr) (do
+                               (grp.art/record-binding! env bind-sexpr typ)
+                               {bind-sexpr typ})
+        (vector? bind-sexpr) (let [as-sym (some #(when (= :as (first %))
+                                                   (second %))
+                                            (partition 2 1 bind-sexpr))]
+                               (if as-sym
+                                 (do
+                                   (grp.art/record-binding! env as-sym typ)
+                                   {as-sym typ})
+                                 {}))
+        ;; TODO: might need to return for :keys [x ...] an empty type desc
+        (map? bind-sexpr) (into {}
+                            (mapcat MAP*)
+                            bind-sexpr)))))

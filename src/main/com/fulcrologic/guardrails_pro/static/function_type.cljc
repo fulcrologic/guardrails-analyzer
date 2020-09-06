@@ -13,8 +13,8 @@
   (let [{::grp.art/keys [arities]} (grp.art/function-detail env sym)
         {::grp.art/keys [gspec]} (grp.art/get-arity arities actual-argument-type-descriptors)
         {::grp.art/keys [arg-specs arg-types arg-predicates]} gspec]
-    (doseq [[arg-spec human-readable-expected-type {::grp.art/keys [samples original-expression]}]
-            (map vector arg-specs arg-types actual-argument-type-descriptors)
+    (doseq [[arg-spec human-readable-expected-type {::grp.art/keys [samples original-expression] :as descr} n]
+            (map vector arg-specs arg-types actual-argument-type-descriptors (range))
             :let [checkable? (and arg-spec (seq samples))]]
       (when-not checkable?
         (grp.art/record-warning! env original-expression (str "Could not check " original-expression ".")))
@@ -27,9 +27,10 @@
           {::grp.art/original-expression original-expression
            ::grp.art/expected            gspec
            ::grp.art/actual              {::grp.art/failing-samples #{failing-sample}}
-           ::grp.art/message             (str "Function argument " (pr-str original-expression)
+           ::grp.art/message             (str "Function argument " (inc n)
+                                           (when original-expression (str " (" (pr-str original-expression) ")"))
                                            " failed to pass spec " human-readable-expected-type
-                                           ". (expression sample that failed: " (pr-str failing-sample) ").")})))
+                                           ". Expression sample that failed: " (pr-str failing-sample) ".")})))
     (doseq [sample-arguments (apply map vector (map ::grp.art/samples actual-argument-type-descriptors))]
       (doseq [arg-pred arg-predicates
               :when (every? (partial apply s/valid?)

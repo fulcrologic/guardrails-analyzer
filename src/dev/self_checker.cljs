@@ -33,9 +33,9 @@
           => (s/keys :req [:person/full-name])]
   (assoc person :person/full-name (str (get person :person/fname) " " (get person :person/lname))))
 
-(>defn test-person [a]
-  ^:pure [any? => int?]
-  (let [p (new-person 9 "Tony" "Bob")
+(>defn test-person [input-id]
+  ^:pure [pos-int? => int?]
+  (let [p (new-person input-id "Joe" "Bob")
         b (with-full-name p)
         d (get b :person/id)]
     d))

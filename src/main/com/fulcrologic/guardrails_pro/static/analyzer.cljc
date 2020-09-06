@@ -62,7 +62,7 @@
                  (number? sexpr) number?
                  (string? sexpr) string?
                  (keyword? sexpr) (let [s (when (qualified-keyword? sexpr) (s/get-spec sexpr))]
-                                    (when-not s
+                                    (when (and (qualified-keyword? sexpr) (not s))
                                       (grp.art/record-warning! env sexpr
                                         (str "Fully qualified keyword " sexpr " has no spec. Possible typo?")))
                                     keyword?)
