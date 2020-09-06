@@ -23,6 +23,7 @@
   [::grp.art/env ::grp.art/arity-detail => ::grp.art/env]
   (let [{::grp.art/keys [gspec arglist]} arity-detail
         {::grp.art/keys [arg-specs arg-types]} gspec]
+    (log/spy :warn [arglist (meta arglist) (meta (first arglist))])
     (reduce
       (fn [env [bind-sexpr arg-type arg-spec]]
         (reduce-kv grp.art/remember-local
@@ -52,7 +53,8 @@
    [::grp.art/env qualified-symbol? => any?]
    (let [{::grp.art/keys [last-changed last-checked] :as fd} (grp.art/function-detail env sym)]
      (log/spy :info [sym last-changed last-checked])
-     (when (> last-changed (or last-checked 0))
+     ;; TASK: Refresh logic is a lot more complex than this...disabling for now
+     (when true                                             ; (> last-changed (or last-checked 0))
        (grp.art/set-last-checked! env sym (grp.art/now-ms))
        (grp.art/clear-problems! sym)                        ;; TODO: needs to control proper env b/c clj vs cljs and target
        (let [{::grp.art/keys [arities extern-symbols location]} fd

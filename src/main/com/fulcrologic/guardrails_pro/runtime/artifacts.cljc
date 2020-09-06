@@ -237,7 +237,7 @@
         {::keys [line-number column-start file]} location]
     (if (and line-number column-start file)
       (swap! binding-annotations update-in [checking-sym line-number]
-        assoc column-start type-description)
+        assoc column-start (assoc type-description ::target-expression sym))
       (log/warn "Cannot record binding because we don't know enough location info" file line-number column-start))
     nil))
 

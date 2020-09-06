@@ -89,11 +89,13 @@
            ::grp.art/actual              {::grp.art/failing-samples #{failing-sample}}
            ::grp.art/message             (str "Possible value in map: " failing-sample " fails to pass spec for " k ".")})
         samples)
-      (when-let [valid-samples (and spec (seq (filter (partial s/valid? spec))))]
+      (when-let [valid-samples (and spec (seq (filter (partial s/valid? spec) samples)))]
         (set valid-samples)))))
 
 (defn- analyze-hashmap-entry
   [env acc k v]
+  (when (and (qualified-keyword? k) (nil? (s/get-spec k)))
+    (grp.art/record-warning! env k (str k " does not have a spec. Possible typo?")))
   (let [sample-value (let [{::grp.art/keys [samples]} (analyze! env v)]
                        (validate-samples! env k v samples)
                        (if (seq samples)

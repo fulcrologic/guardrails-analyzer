@@ -104,12 +104,12 @@
   (let [md (merge (::fn-meta result {})
              (or (meta spec) {}))]
     (log/spy :info :GSPEC (first
-       (-> [md spec]
-         (arg-specs)
-         (arg-predicates arglist)
-         (return-type)
-         (such-that)
-         (generator))))))
+                            (-> [md spec]
+                              (arg-specs)
+                              (arg-predicates arglist)
+                              (return-type)
+                              (such-that)
+                              (generator))))))
 
 (defn arity-body? [b] (or (instance? Cons b) (list? b)))
 
@@ -122,7 +122,7 @@
 (defn single-arity [[result [arglist spec & forms :as args]]]
   [(assoc result (body-arity args)
                  (with-meta
-                   {::grp.art/arglist `(quote ~arglist)
+                   {::grp.art/arglist (forms/form-expression arglist)
                     ::grp.art/gspec   (parse-gspec result spec arglist)
                     ::grp.art/body    (forms/form-expression (vec forms))}
                    {::grp.art/raw-body `(quote ~(vec forms))}))])

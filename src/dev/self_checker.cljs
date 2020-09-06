@@ -28,8 +28,7 @@
         p2 (assoc p :person/fname fn)]
     p2))
 
-(>defn with-full-name
-  [person]
+(>defn with-full-name [person]
   ^:pure [(s/keys :req [:person/fname :person/lname])
           => (s/keys :req [:person/full-name])]
   (assoc person :person/full-name (str (get person :person/fname) " " (get person :person/lname))))
