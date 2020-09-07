@@ -15,12 +15,13 @@
     (assertions
       "simple symbol"
       (grp.u/destructure* test-env 'foo test-td)
-      => {'foo test-td})
+      => {'foo (assoc test-td
+                 ::grp.art/original-expression 'foo)})
     (component "vector destructuring"
       (assertions
         "returns the symbol used to bind to the entire collection"
         (grp.u/destructure* test-env '[foo bar :as coll] test-td)
-        => {'coll test-td}
+        => {'coll (assoc test-td ::grp.art/original-expression '[foo bar :as coll])}
         "ignores all other symbols"
         (grp.u/destructure* test-env '[foo bar] test-td)
         => {}))
@@ -39,7 +40,7 @@
       (component ":as binding"
         (assertions
           (grp.u/destructure* test-env '{:as foo} test-td)
-          => {'foo test-td}
+          => {'foo (assoc test-td ::grp.art/original-expression 'foo)}
           (grp.u/destructure* test-env '{:ERROR/as foo} test-td)
           => {}))
       (component "keys destructuring"

@@ -121,7 +121,7 @@
       (conj acc ::grp.art/Unknown))))
 
 (>defn analyze-vector! [env v]
-  [::grp.art/env map? => ::grp.art/type-description]
+  [::grp.art/env vector? => ::grp.art/type-description]
   (let [sample-vector (reduce (partial analyze-vector-entry env) [] v)]
     {::grp.art/samples             #{sample-vector}
      ::grp.art/original-expression v

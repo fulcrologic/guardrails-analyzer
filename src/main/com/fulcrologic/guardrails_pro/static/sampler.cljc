@@ -62,10 +62,10 @@
 (s/def ::generator gen/generator?)
 
 (>defn try-sampling!
-  ([env gen] [::grp.art/env ::generator => (? ::grp.art/samples)]
+  ([env gen] [::grp.art/env ::generator => ::grp.art/samples]
    (try-sampling! env gen {}))
   ([env gen extra]
-   [::grp.art/env ::generator map? => (? ::grp.art/samples)]
+   [::grp.art/env ::generator map? => ::grp.art/samples]
    (try
      (if-let [samples (seq (gen/sample gen))]
        (set samples)

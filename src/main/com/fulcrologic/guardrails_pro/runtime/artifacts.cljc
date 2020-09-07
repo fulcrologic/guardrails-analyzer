@@ -29,7 +29,7 @@
                 fn-gen))
 (s/def ::type string?)
 ;; samples is for generated data only
-(s/def ::samples (s/coll-of any? :min-count 1 :kind set?))
+(s/def ::samples (s/coll-of any? :min-count 0 :kind set?))
 (s/def ::failing-samples ::samples)
 (s/def ::original-expression any?)
 (s/def ::literal-value ::original-expression)
