@@ -39,16 +39,11 @@
       (dissoc state-map :problems/by-namespace)
       ks)))
 
-(f.m/defmutation set-problems [problems]
+(f.m/defmutation report-analysis [{:keys [bindings problems]}]
   (action [{:keys [state]}] (swap! state set-problems* problems))
   (remote [{:keys [state] :as env}]
     (if (get @state :self-checker?)
-      (f.m/with-server-side-mutation env 'daemon/set-problems))))
-
-(f.m/defmutation set-bindings [bindings]
-  (remote [{:keys [state] :as env}]
-    (if (get @state :self-checker?)
-      (f.m/with-server-side-mutation env 'daemon/set-bindings))))
+      (f.m/with-server-side-mutation env 'daemon/report-analysis))))
 
 (defsc Settings [this {:settings/keys [daemon-port]}]
   {:query         [:settings/daemon-port]
@@ -166,10 +161,6 @@
                       (update ::grp.art/warnings (fn [s] (mapv #(select-keys % ok-keys) s)))))) problems))
 
 
-(defn report-problems! [problems]
-  (let [problems (transit-safe-problems problems)]
-    (comp/transact! app [(set-problems problems)])))
-
 (defn formatted-bindings [bindings]
   (reduce-kv
     (fn [acc location {::grp.art/keys [type samples original-expression]}]
@@ -179,6 +170,9 @@
                              :samples    pp-samples})))
     {} bindings))
 
-(defn report-bindings! [bindings]
-  (let [bindings (formatted-bindings bindings)]
-    (comp/transact! app [(set-bindings bindings)])))
+(defn report-analysis! []
+  (let [problems (transit-safe-problems @grp.art/problems)
+        bindings (formatted-bindings @grp.art/binding-annotations)]
+    (comp/transact! app [(report-analysis {:problems problems
+                                           :bindings bindings})])))
+

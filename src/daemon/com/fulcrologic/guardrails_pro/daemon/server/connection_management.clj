@@ -23,6 +23,21 @@
                   (swap! subscribed-viewers disj cid)
                   (swap! connected-clients disj cid))))
 
+(defn clear-viewer-data!
+  "Send the updated problem list to subscribed websocket viewers."
+  [websockets only-cid]
+  (wsp/push websockets only-cid :clear! {}))
+
+(defn update-problems!
+  "Send the updated problem list to subscribed websocket viewers."
+  [websockets only-cid]
+  (wsp/push websockets only-cid :new-problems (problems/get!)))
+
+(defn update-visible-bindings!
+  "Sends updated bindings to all viewers"
+  [websockets only-cid]
+  (wsp/push websockets only-cid :new-bindings (bindings/get!)))
+
 (defn update-viewers!
   "Send the updated problem list to subscribed websocket viewers."
   ([websockets]
@@ -32,15 +47,6 @@
        (log/info "Notifying viewer of new problems " cid)
        (update-viewers! websockets cid))))
   ([websockets only-cid]
-   (wsp/push websockets only-cid :new-problems (problems/get!))))
-
-(defn update-visible-bindings!
-  "Sends updated bindings to all viewers"
-  ([websockets]
-   (let [ui-cids @subscribed-viewers]
-     (log/info ui-cids)
-     (doseq [cid ui-cids]
-       (log/info "Notifying viewer of new bindings " cid)
-       (update-visible-bindings! websockets cid))))
-  ([websockets only-cid]
-   (wsp/push websockets only-cid :new-bindings (bindings/get!))) )
+   (clear-viewer-data! websockets only-cid)
+   (update-problems! websockets only-cid)
+   (update-visible-bindings! websockets only-cid)))

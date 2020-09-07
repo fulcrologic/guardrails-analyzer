@@ -16,16 +16,10 @@
   {::pc/output [:all-problems]}
   {:all-problems (problems/get!)})
 
-(pc/defmutation set-problems [{:keys [websockets]} problems]
-  {::pc/sym    'daemon/set-problems
+(pc/defmutation report-analysis [{:keys [websockets]} {:keys [bindings problems]}]
+  {::pc/sym    'daemon/report-analysis
    ::pc/output [:result]}
   (problems/set! problems)
-  (cmgmt/update-viewers! websockets)
-  {})
-
-(pc/defmutation set-bindings [{:keys [websockets]} bindings]
-  {::pc/sym    'daemon/set-bindings
-   ::pc/output [:result]}
   (bindings/set! bindings)
   (cmgmt/update-viewers! websockets)
   {})
@@ -43,7 +37,7 @@
   (swap! cmgmt/registered-checkers conj cid)
   {})
 
-(def all-resolvers [all-problems set-problems set-bindings subscribe register-checker])
+(def all-resolvers [all-problems report-analysis subscribe register-checker])
 
 (defn preprocess-parser-plugin [f]
   {::p/wrap-parser
