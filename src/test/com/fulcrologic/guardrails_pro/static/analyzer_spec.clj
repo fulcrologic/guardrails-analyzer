@@ -4,7 +4,6 @@
     [com.fulcrologic.guardrails-pro.static.analyzer :as grp.ana]
     [com.fulcrologic.guardrails.core :as gr :refer [=>]]
     [com.fulcrologic.guardrails-pro.core :as grp]
-    [com.fulcrologic.guardrails-pro.test-checkers :as check :refer [check!]]
     [fulcro-spec.core :refer [specification component assertions when-mocking! =fn=>]]
     [clojure.spec.alpha :as s]))
 
