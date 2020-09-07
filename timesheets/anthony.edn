@@ -36,4 +36,5 @@
  {:date "2020-09-02" :description "chat with tony, form-hash" :timespans [[900 1030]]}
  {:date "2020-09-02" :description "only changed & >ftag clojure.core" :timespans [[1900 2140]]}
  {:date "2020-09-03" :description "pairing, fixing only changed, >ftag clojure core, return-sample-generator" :timespans [[900 1200] [1430 1800] [1900 2120]]}
+ {:date "2020-09-04" :description "hofs & >fn >fspec parsing" :timespans [[800 1200] [1400 1830] [2030 2300]]}
  ]

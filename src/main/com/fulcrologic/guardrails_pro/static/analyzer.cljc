@@ -167,33 +167,7 @@
 (defmethod analyze-mm 'let [env sexpr] (analyze-let-like-form! env sexpr))
 (defmethod analyze-mm 'clojure.core/let [env sexpr] (analyze-let-like-form! env sexpr))
 
-(defmethod analyze-mm '-> [env [_ subject & args]]
-  (analyze! env
-    (reduce (fn [acc form]
-              (with-meta
-                (if (seq? form)
-                  (apply list (first form) acc (rest form))
-                  (list form acc))
-                (meta form)))
-      subject args)))
-
-;; HOF notes
-;(>defn f [m]
-;  (let [a (range 1 2)                                       ;; (s/coll-of int?)
-;        (>fn [a] [int? => string?]) (comp
-;                                      (>fn [a] [map? => string?])
-;                                      (>fn [a] [(>fspec [n] [int? => int?]) => map?])
-;                                      some-f
-;                                      #_(>fn [a] [int? => (>fspec [x] [number? => number?] string?)]))
-;        bb (into #{}
-;             (comp
-;               (map f) ;; >fspec ...
-;               (filter :person/fat?))
-;             people)
-;        new-seq (map (>fn [x] ^:boo [int? => int?]
-;                       (map (fn ...) ...)
-;                       m) a)]))
-
+;; TODO macros
 (comment
   and
   case
@@ -209,8 +183,84 @@
   recur
   or
   try
+  catch
+  finally
   throw
   when
   when-let
   when-not
+  )
+
+(defmethod analyze-mm '-> [env [_ subject & args]]
+  (analyze! env
+    (reduce (fn [acc form]
+              (with-meta
+                (if (seq? form)
+                  (apply list (first form) acc (rest form))
+                  (list form acc))
+                (meta form)))
+      subject args)))
+
+;; TODO thread macros
+(comment
+  ->>
+  some->
+  some->>
+  cond->
+  cond->>
+  as->
+  )
+
+;; TODO HOFs fn -> val
+(comment
+  map
+  reduce
+  filter
+  apply
+  update
+  sort-by
+  group-by
+  split-with
+  partition-by
+  swap!
+  )
+
+;; TODO HOFs * -> fn
+(comment
+  comp
+  complement
+  constantly
+  partial
+  fnil
+  juxt
+  repeatedly
+  iterate
+  )
+
+;; TODO transducers
+(comment
+  into
+  sequence
+  transduce
+  eduction
+  map
+  cat
+  mapcat
+  filter
+  remove
+  take
+  take-while
+  take-nth
+  drop
+  drop-while
+  replace
+  partition-by
+  partition-all
+  keep
+  keep-indexed
+  map-indexed
+  distinct
+  interpose
+  dedupe
+  random-sample
   )

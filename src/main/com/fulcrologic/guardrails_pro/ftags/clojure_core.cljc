@@ -1,11 +1,11 @@
 (ns com.fulcrologic.guardrails-pro.ftags.clojure-core
   (:require
     [clojure.spec.alpha :as s]
-    [com.fulcrologic.guardrails.core :refer [=> | <- ?]]
+    [com.fulcrologic.guardrails.core :refer [=> | ?]]
     [com.fulcrologic.guardrails-pro.core :refer [>ftag >defn]]))
 
 (>ftag ^:pure? clojure.core/str
-  ([] [=> string? <- :pure])
+  ([] [=> string?])
   ([x] [any? => string?])
   ([x & ys] [any? (s/* any?) => string?]))
 
@@ -86,11 +86,6 @@
   ([coll k v] [map? any? any? => map?])
   ([coll k v & kvs] [map? any? any? (s/* any?) | #(even? (count kvs)) => map?]))
 
-(>ftag ^:pure? cljs.core/assoc
-  ([coll k v] [map? any? any? => map?])
-  ([coll k v & kvs] [map? any? any? (s/* any?) | #(even? (count kvs)) => map?]))
-
-;; TASK: pure can fail so try catch
 (>defn test:assoc [m]
   [map? => keyword?]
   (assoc m :k :v))
@@ -252,10 +247,10 @@
   [coll] [coll? => any?])
 
 (>ftag ^:pure? clojure.core/range
-  ([] [=> seq?])
-  ([end] [number? => seq?])
-  ([start end] [number? number? => seq?])
-  ([start end step] [number? number? number? => seq?]))
+  ([] [=> (s/coll-of number? :kind seq?)])
+  ([end] [number? => (s/coll-of number? :kind seq?)])
+  ([start end] [number? number? => (s/coll-of number? :kind seq?)])
+  ([start end step] [number? number? number? => (s/coll-of number? :kind seq?)]))
 
 ;; TODO: objects
 #_(>ftag ^:pure? clojure.core/re-find)
@@ -288,10 +283,10 @@
 (>ftag ^:pure? clojure.core/some?
   [x] [any? => boolean?])
 
-;;TODO: HOFs / interface Comparator
-#_(>ftag ^:pure? clojure.core/sort cljs.core/sort)
+;;TODO: interface Comparator
+#_(>ftag ^:pure? clojure.core/sort)
 
-;;TODO: HOFs / interface Comparator
+;;TODO: HOFs + interface Comparator
 #_(>ftag ^:pure? clojure.core/sort-by)
 
 (>ftag ^:pure? clojure.core/symbol

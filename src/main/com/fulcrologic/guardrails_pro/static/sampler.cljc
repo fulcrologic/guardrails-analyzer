@@ -29,13 +29,39 @@
   (log/info "Using merge-arg return sample generator")
   (merge return-sample (nth args (or N 0) {})))
 
-;(defmethod rv-generator :map-like (fn [_ _ return-sample & args] (let [arg1 (first args)] (merge return-sample arg1))))
-
-; HOFs (might) need argument type descriptors
+; NOTE: HOFs (might) need argument type descriptors
+;; HOF notes
+;(>defn f [m]
+;  (let [a (range 1 2)
+;        g (>fn [a] [int? => string?])
+;        f (comp
+;            (>fn [a] [map? => string?])
+;            (>fn [a] [(>fspec [n] [int? => int?]) => map?])
+;            some-f
+;            #_(>fn [a] [int? => (>fspec [x] [number? => number?] string?)]))
+;        bb (into #{}
+;             (comp
+;               (map f) ;; >fspec ...
+;               (filter :person/fat?))
+;             people)
+;        new-seq (map (>fn [x] ^:boo [int? => int?]
+;                       (map (fn ...) ...)
+;                       m) a)]))
+;; GAME PLAN:
+;; (>defn incr ...)
+;; (map incr (range 10))
+;; NOTE: WIP
+(defmethod return-sample-generator :map-like
+  [env x {:keys [fn-ref args argtypes return-sample]}]
+  (let [{::grp.art/keys [arities]} (first argtypes)
+        {::grp.art/keys [gspec]} (get arities 1)
+        {::grp.art/keys [generator return-spec]} gspec]
+    (map (fn [_] (gen/generate (or generator (s/gen return-spec))))
+      (second args))))
 
 (s/def ::generator gen/generator?)
 
-(defn try-sampling!
+(>defn try-sampling!
   ([env gen] [::grp.art/env ::generator => (? ::grp.art/samples)]
    (try-sampling! env gen {}))
   ([env gen extra]

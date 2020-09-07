@@ -108,3 +108,17 @@
   "Tag an existing function that has a spec with a guardrails-pro spec."
   [& args]
   (>ftag-impl &env args))
+
+(defn >fn-impl [env args]
+  (let [fn> (grp.parser/parse-fn args)]
+    `(do nil)))
+
+(defmacro >fn [& args]
+  (>fn-impl &env args))
+
+(defn >fspec-impl [env args]
+  (let [fspec> (grp.parser/parse-fspec args)]
+    `(do nil)))
+
+(defmacro >fspec [& args]
+  (>fspec-impl &env args))
