@@ -35,9 +35,8 @@
 
 (>defn test-person [input-id]
   ^:pure [pos-int? => int?]
-  (let [p (new-person input-id "Joe" "Bob")
+  (let [p (new-person input-id "Tom" "Bob")
         b (with-full-name p)
-
         d (get b :person/id)]
     d))
 
@@ -48,7 +47,5 @@
 (defn refresh []
   (reporter/hot-reload!)
   (grp.intrp/check-all!)
-  (reporter/report-problems! @grp.art/problems)
-  (reporter/report-bindings! @grp.art/binding-annotations)
-  )
+  (reporter/report-analysis!))
 
