@@ -17,10 +17,6 @@
   ([map key] [map? any? => any?])
   ([map key not-found] [map? any? any? => any?]))
 
-(>ftag ^:pure? cljs.core/get
-  ([map key] [map? any? => any?])
-  ([map key not-found] [map? any? any? => any?]))
-
 (>defn test:get [x]
   [int? => keyword?]
   (get {:a x} :a))

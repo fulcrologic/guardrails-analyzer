@@ -23,7 +23,7 @@
       (grp.art/record-warning! _ warning) => (swap! warnings conj warning)
       (cb warnings))))
 
-(specification "analyze-let-like-form!"
+(specification "analyze-let-like-form!" :integration
   (component "A simple let"
     (with-mocked-errors
       (fn [errors]
@@ -42,7 +42,7 @@
 (s/def ::polygon (s/keys :req [::points]
                    :opt [::color]))
 
-(specification "Analyzing literal data structures"
+(specification "Analyzing literal data structures" :integration
   (component "A non-nested literal map"
     (let [data   {:x 1
                   :y "hello"}

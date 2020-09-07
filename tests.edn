@@ -3,6 +3,12 @@
              :ns-patterns  ["-test$" "-spec$"]
              :test-paths   ["src/test"]
              :skip-meta    [:integration]
+             :source-paths ["src/main"]}
+            {:id           :integration
+             :ns-patterns  ["-test$" "-spec$"]
+             :test-paths   ["src/test"]
+             :focus-meta   [:integration]
+             :skip-meta    [:unit]
              :source-paths ["src/main"]}]
  ;:reporter [kaocha.report/documentation]
  ;:reporter [fulcro-spec.reporters.terminal/fulcro-report]
@@ -10,4 +16,4 @@
  :bindings {kaocha.stacktrace/*stacktrace-filters*
             ["java.lang." "java.util.concurrent."
              "clojure.test$" "clojure.lang." "clojure.core" "clojure.main"
-             "orchestra." "kaocha."]}}
+             "orchestra." "kaocha." "lambdaisland.tools.namespace.reload"]}}

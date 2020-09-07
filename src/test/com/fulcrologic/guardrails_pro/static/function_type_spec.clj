@@ -38,7 +38,7 @@
       (grp.art/record-error! _ error) => (swap! errors conj error)
       (cb errors))))
 
-(specification "calculate-function-type"
+(specification "calculate-function-type" :integration
   (behavior "Uses the function's return spec to generate the type description"
     (let [arg-type-description (type-description "int?" 42 int? #{42})
           env                  (grp.art/build-env)

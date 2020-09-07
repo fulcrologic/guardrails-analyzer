@@ -50,7 +50,7 @@
     @extern-symbol-map))
 
 (defn parse-defn [form file]
-  (grp.parser/parse-defn-args
+  (grp.parser/parse-defn
     (rest
       (if (enc/compiling-cljs?)
         form
@@ -92,7 +92,7 @@
 
 ;;TODO: guardrails >fdef should emit call to >ftag-impl if pro?
 (defn >ftag-impl [env [sym :as args]]
-  (let [arities (grp.parser/parse-fdef-args args)
+  (let [arities (grp.parser/parse-fdef args)
         resolution (cljc-resolve env sym)]
     (if resolution
       `(grp.art/register-external-function! '~sym
@@ -101,7 +101,7 @@
                     :arities      ~arities
                     :last-changed ~(inst-ms (Date.))})
       (do
-        (log/warn ">ftag Cannot resolve: " sym)
+        (log/warn ">ftag failed to resolve: " sym)
         nil))))
 
 (defmacro >ftag
@@ -110,14 +110,14 @@
   (>ftag-impl &env args))
 
 (defn >fn-impl [env args]
-  (let [fn> (grp.parser/parse-fn-args args)]
+  (let [fn> (grp.parser/parse-fn args)]
     `(do nil)))
 
 (defmacro >fn [& args]
   (>fn-impl &env args))
 
 (defn >fspec-impl [env args]
-  (let [fspec> (grp.parser/parse-fspec-args args)]
+  (let [fspec> (grp.parser/parse-fspec args)]
     `(do nil)))
 
 (defmacro >fspec [& args]

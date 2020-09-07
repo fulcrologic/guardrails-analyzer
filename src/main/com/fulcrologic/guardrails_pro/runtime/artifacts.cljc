@@ -91,7 +91,7 @@
                        ::arg-predicates ::return-predicates]))
 (s/def ::body any?)
 (s/def ::raw-body vector?)
-(s/def ::arity-detail (s/keys :req [::arglist ::gspec ::body]))
+(s/def ::arity-detail (s/keys :req [::arglist ::gspec] :opt [::body]))
 (s/def ::arity #{0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 :n})
 (s/def ::arities (s/map-of ::arity ::arity-detail))
 (s/def ::last-changed posint?)

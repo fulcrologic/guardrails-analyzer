@@ -1,201 +1,215 @@
 (ns com.fulcrologic.guardrails-pro.parser
   "Implementation of reading >defn for macro expansion."
   (:require
-    [clojure.spec.alpha :as s]
+    [clojure.set :as set]
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.static.forms :as forms]
-    [com.fulcrologic.guardrails.core :refer [>defn =>]]
-    [taoensso.timbre :as log])
+    [taoensso.timbre :as log]
+    [taoensso.encore :as enc])
   (:import
     (clojure.lang Cons)))
 
+(def gen? #{:gen '<-})
+(def ret? #{:ret '=>})
+(def such-that? #{:st '|})
+
+(def append (fnil conj []))
+
+(defn init-parser-state
+  ([args] (init-parser-state args {}))
+  ([args opts] (init-parser-state {} args opts))
+  ([result args opts]
+   {::result result
+    ::args   args
+    ::opts   opts}))
+
+(defn next-args
+  ([state] (next-args state next))
+  ([state next-fn]
+   (update state ::args next-fn)))
+
+(defn update-result [state f & args]
+  (update state ::result (partial apply f) args))
+
+(defn sym-meta
+  [{:as state [sym] ::args}]
+  (assoc state ::fn-meta (meta sym)))
+
+(defn var-name
+  [{:as state [nm] ::args}]
+  (if (qualified-symbol? nm)
+    (-> state
+      (sym-meta)
+      (next-args))
+    (throw (ex-info (format "%s is not fully qualified symbol" nm) {}))))
+
 (defn function-name
-  [[result [nm :as args]] & {:keys [optional?]}]
+  [{:as state, [nm] ::args {:keys [optional-fn-name?]} ::opts}]
   (if (simple-symbol? nm)
-    [result (next args)]
-    (if optional? result
-      (throw (ex-info (format "%s is missing function name." nm) {})))))
+    (-> state
+      (sym-meta)
+      (next-args))
+    (if optional-fn-name? state
+      (throw (ex-info (format "%s is not a simple symbol, therefore is an invalid function name." nm) state)))))
 
-(defn optional-docstring [[result [candidate :as args]]]
-  (if (string? candidate)
-    [result (next args)]
-    [result args]))
+(defn optional-docstring
+  [{:as state, [candidate] ::args}]
+  (cond-> state
+    (string? candidate)
+    (next-args)))
 
-(defn derive-sampler-type [m]
-  (if-let [hard-value (get m ::grp.art/dispatch)]
-    hard-value
-    (let [possible-values (reduce-kv (fn [acc k v]
-                                       (cond-> acc
-                                         (true? v) (conj k))) #{} m)]
-      ;; TASK: if we do this analysis at runtime we can know all installed dispatch extensions. Little flaky to
-      ;; do it at macro expansion time
-      (when (< 1 (count possible-values))
-        (log/warn "Multiple possible type propagation candidates for spec list" possible-values))
-      (first possible-values))))
+(defn gspec-typecalc
+  [{:as state gspec ::args}]
+  (let [typecalc (merge (::fn-meta state) (meta gspec))]
+    (cond-> state (some? typecalc)
+      (update-result assoc ::grp.art/typecalc typecalc))))
 
-(defn arg-specs [[result argspecs :as env]]
-  (let [sampler-type (log/spy :info (derive-sampler-type (meta argspecs)))]
-    (loop [r        (cond-> result
-                      sampler-type (assoc ::grp.art/sampler sampler-type))
-           argspecs argspecs
-           a        (first argspecs)
-           as       (next argspecs)]
-      (if (#{'| '=> :st :ret} a)
-        [r argspecs]
-        (if a
-          (recur
-            (-> r
-              (update ::grp.art/arg-types (fnil conj []) (pr-str a))
-              (update ::grp.art/arg-specs (fnil conj []) a))
-            as
-            (first as)
-            (next as))
-          (throw (ex-info "Syntax error in argument spec. Expected a return type." {})))))))
+(defn loop-over-args
+  [state done? result-fn]
+  (loop [{:as state, [arg] ::args} state]
+    (cond
+      (done? arg) state
+      (not arg) (throw (ex-info (format "syntax error: expected %s" done?) state))
+      :else (recur (-> state (update-result result-fn arg) next-args)))))
 
-(defn replace-args [lambda new-arglist]
+(defn arg-specs
+  [{:as state, ::keys [args]}]
+  (loop-over-args state
+    (set/union ret? such-that?)
+    (fn [result arg]
+      (-> result
+        (update ::grp.art/arg-types append (pr-str arg))
+        (update ::grp.art/arg-specs append arg)))))
+
+(defn replace-arglist [lambda new-arglist]
   (apply list (first lambda) new-arglist (rest (rest lambda))))
 
-(defn arg-predicates [[result [lookahead & remainder :as args] :as env] arglist]
-  (if (#{:st '|} lookahead)
-    (loop [r    result
-           args remainder
-           a    (first remainder)
-           as   (next remainder)]
-      (if (#{:ret '=>} a)
-        [r args]
-        (if a
-          (recur
-            (update r ::grp.art/arg-predicates (fnil conj []) (replace-args a arglist))
-            as
-            (first as)
-            (next as))
-          (throw (ex-info "Syntax error. Expected return type." {})))))
-    env))
+(defn arg-predicates
+  [{:as state, [lookahead & remainder] ::args} arglist]
+  (if (such-that? lookahead)
+    (-> state
+      (next-args)
+      (loop-over-args ret?
+        (fn [result arg]
+          (update result ::grp.art/arg-predicates
+            append (replace-arglist arg arglist)))))
+    state))
 
-(defn return-type [[result [lookahead t & remainder :as args]]]
-  (if (#{:ret '=>} lookahead)
-    [(assoc result
-       ::grp.art/return-spec t
-       ::grp.art/return-type (pr-str t)) remainder]
-    (throw (ex-info "Syntax error. Expected return type" {}))))
+(defn return-type
+  [{:as state, [lookahead return-spec] ::args}]
+  (if (ret? lookahead)
+    (-> state
+      (next-args nnext)
+      (update-result assoc ::grp.art/return-spec return-spec)
+      (update-result assoc ::grp.art/return-type (pr-str return-spec)))
+    (throw (ex-info "Syntax error: expected a return type!" state))))
 
-(defn such-that [[result [lookahead & remainder :as args] :as env]]
-  (if (#{:st '|} lookahead)
-    (loop [r    result
-           args remainder
-           a    (first args)
-           as   (next args)]
-      (if (#{:gen '<-} a)
-        [r args]
-        (if a
-          (recur
-            (update r ::grp.art/return-predicates (fnil conj []) a)
-            as
-            (first as)
-            (next as))
-          [r args])))
-    env))
+(defn such-that
+  [{:as state, ::keys [result], [lookahead & remainder :as args] ::args}]
+  (if (such-that? lookahead)
+    (-> state
+      (next-args)
+      (loop-over-args (some-fn not gen?)
+        (fn [result arg]
+          (update result ::grp.art/return-predicates append arg))))
+    state))
 
-(defn generator [[result [lookahead & remainder :as args] :as env]]
-  (if (#{:gen '<-} lookahead)
-    [(assoc result ::grp.art/generator (first remainder)) []]
-    env))
+(defn generator
+  [{:as state, [lookahead & remainder] ::args}]
+  (cond-> state (gen? lookahead)
+    (->
+      (next-args nnext)
+      (update-result assoc ::grp.art/generator (first remainder)))))
 
-(defn parse-gspec [result spec arglist]
-  (let [md (merge (::fn-meta result {})
-             (or (meta spec) {}))]
-    (log/spy :info :GSPEC (first
-                            (-> [md spec]
-                              (arg-specs)
-                              (arg-predicates arglist)
-                              (return-type)
-                              (such-that)
-                              (generator))))))
+(defn gspec-parser
+  [{:as state, gspec ::args} arglist]
+  (-> state
+    (gspec-typecalc)
+    (arg-specs)
+    (arg-predicates arglist)
+    (return-type)
+    (such-that)
+    (generator)))
 
 (defn arity-body? [b] (or (instance? Cons b) (list? b)))
 
-(defn body-arity
-  [[arglist & _]]
+(defn body-arity [arglist]
   (if (contains? (set arglist) '&)
-    :n
-    (count arglist)))
+    :n (count arglist)))
 
-(defn single-arity [[result [arglist spec & forms :as args]]]
-  [(assoc result (body-arity args)
-                 (with-meta
-                   {::grp.art/arglist (forms/form-expression arglist)
-                    ::grp.art/gspec   (parse-gspec result spec arglist)
-                    ::grp.art/body    (forms/form-expression (vec forms))}
-                   {::grp.art/raw-body `(quote ~(vec forms))}))])
+(defn single-arity
+  [{:as state , ::keys [result]
+    , {:keys [assert-no-body?]} ::opts
+    , [arglist gspec & forms :as args] ::args}]
+  (if (and (seq forms) assert-no-body?)
+    (throw (ex-info "Syntax error: function body not expected!" state))
+    (update-result state assoc (body-arity arglist)
+      (cond-> {::grp.art/arglist (forms/form-expression arglist)
+               ::grp.art/gspec   (-> state
+                                   (assoc ::args gspec)
+                                   (gspec-parser arglist)
+                                   ::result)}
+        (seq forms)
+        (-> (assoc ::grp.art/body (forms/form-expression (vec forms)))
+          (with-meta {::grp.art/raw-body `(quote ~(vec forms))}))))))
 
-(defn multiple-arities [[result args]]
-  (loop [r           result
-         next-body   (first args)
-         addl-bodies (next args)]
-    (if next-body
-      (do
-        (when-not (arity-body? next-body)
-          (throw (ex-info "Syntax error. Multi-arity function body expected." {})))
-        (recur
-          (first (single-arity [r next-body]))
-          (first addl-bodies)
-          (next addl-bodies)))
-      [r []])))
+(defn multiple-arities
+  [{:as state, ::keys [result args]}]
+  (reduce
+    (fn [state arity-body]
+      (when-not (arity-body? arity-body)
+        (throw (ex-info "Syntax error: multi-arity function body expected!" state)))
+      (-> state
+        (assoc ::args arity-body)
+        (single-arity)))
+    state args))
 
-(defn function-content [[result [lookahead :as args] :as env]]
+(defn function-content
+  [{:as state [lookahead] ::args}]
   (if (arity-body? lookahead)
-    (multiple-arities env)
-    (single-arity env)))
+    (multiple-arities state)
+    (single-arity state)))
 
-;; NOTE: Cannot have a spec from artifacts, because this is dealing with syntax parsing at macro time
-(defn parse-defn-args
+(defn parse-defn
   "Takes the body of a defn and returns parsed arities and top level location information."
   [[defn-sym :as args]]
-  (let [arities (first
-                  (-> [{} args]
-                    (function-name)
-                    (optional-docstring)
-                    (function-content)))]
+  (let [arities (-> (init-parser-state args)
+                  (function-name)
+                  (optional-docstring)
+                  (function-content)
+                  ::result)]
     {::grp.art/arities  arities
      ::grp.art/location (grp.art/new-location (meta defn-sym))}))
 
-(defn var-name
-  [[result [nm :as args]]]
-  (if (qualified-symbol? nm)
-    [(assoc result ::fn-meta
-                   (cond-> (meta nm)
-                     (:pure? (meta nm)) (assoc ::grp.art/sampler :pure)))
-     (next args)]
-    (throw (ex-info (format "%s is not fully qualified symbol" nm) {}))))
+(defn parse-fn [args]
+  (-> (init-parser-state args {:optional-fn-name? true})
+    (function-name)
+    (function-content)
+    ::result))
 
-(defn parse-fdef-args [args]
-  (-> [{} args]
+(defn parse-fdef [args]
+  (-> (init-parser-state args {:assert-no-body? true})
     (var-name)
     (function-content)
-    first
-    (dissoc ::fn-meta)))
+    ::result))
 
-(defn parse-fn-args [args]
-  (-> [{} args]
-    (function-name :optional? true)
+(defn parse-fspec [args]
+  (when (symbol? (first args))
+    (throw (ex-info "Should not contain a function name, expected an arglist!" {})))
+  (-> (init-parser-state args {:assert-no-body? true})
     (function-content)
-    first
-    (dissoc ::fn-meta)))
+    ::result))
 
-(defn parse-fspec-args [args]
-  (-> [{} args]
-    (function-content)
-    first
-    (dissoc ::fn-meta)))
 
-(comment
-  (parse-fdef-args '(x/nm [a] [a => c]))
-  (parse-fdef-args '(x/nm ([a] [a => c]) ([a b] [a b => c])))
 
-  (parse-defn-args '(nm "hello"
-                      [a] [string? | #(not (empty? a)) => int?]
-                      (str a)))
-  (parse-defn-args '(nm "hello"
-                      ([a] [string? | #(> 1 a) => int? | #(pos-int? %)] (+ 1 a))
-                      ([a b] [string? string? => int?] (+ a b))
-                      ([a b & more] [string? string? (s/+ int?) => int?] (apply + a b more)))))
+;; TASK: do this at runtime
+(defn derive-sampler-type [m]
+  (if-let [hard-value (get m ::grp.art/dispatch)]
+    hard-value
+    ;;TODO: try: enc/filter-keys
+    (let [possible-values (reduce-kv (fn [acc k v]
+                                       (cond-> acc
+                                         (true? v) (conj k))) #{} m)]
+      (when (< 1 (count possible-values))
+        (log/warn "Multiple possible type propagation candidates for spec list" possible-values))
+      (first possible-values))))
