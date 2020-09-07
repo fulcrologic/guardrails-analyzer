@@ -67,20 +67,20 @@
                                         :return-type "foo?"}}))
 
 
-(specification "gspec-typecalc" :unit
+(specification "gspec-metadata" :unit
   (assertions
-    "stores the gspec metadata under typecalc"
+    "stores the gspec metadata under ::grp.art/metadata"
     (-> (grp.parser/init-parser-state
           (with-meta '[int? => pos? <- gen/pos]
             {:pure? true}))
-      (grp.parser/gspec-typecalc)
-      (get-in [::grp.parser/result ::grp.art/typecalc]))
+      (grp.parser/gspec-metadata)
+      (get-in [::grp.parser/result ::grp.art/metadata]))
     => {:pure? true}
-    "does not put nil under typecalc (if no metadata)"
+    "does not put nil under metadata (if no metadata)"
     (-> (grp.parser/init-parser-state
           '[int? => pos? <- gen/pos])
-      (grp.parser/gspec-typecalc)
-      (get-in [::grp.parser/result ::grp.art/typecalc] ::not-found))
+      (grp.parser/gspec-metadata)
+      (get-in [::grp.parser/result ::grp.art/metadata] ::not-found))
     => ::not-found))
 
 (specification "gspec-parser" :unit
@@ -214,7 +214,7 @@
   (assertions
     "parses var-name"
     (-> (grp.parser/parse-fdef '[^:test/pure foo/bar [] [=> int?]])
-      (get-in  [0 ::grp.art/gspec ::grp.art/typecalc]))
+      (get-in  [0 ::grp.art/gspec ::grp.art/metadata]))
     => {:test/pure true}
     "should not contain function bodies"
     (-> (grp.parser/parse-fdef '[foo/bar [x] [int? => int?] :errant/body])

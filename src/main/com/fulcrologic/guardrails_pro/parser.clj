@@ -4,7 +4,6 @@
     [clojure.set :as set]
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.static.forms :as forms]
-    [taoensso.timbre :as log]
     [taoensso.encore :as enc])
   (:import
     (clojure.lang Cons)))
@@ -58,12 +57,14 @@
     (string? candidate)
     (next-args)))
 
-(defn gspec-typecalc
-  [{:as state gspec ::args}]
-  (let [typecalc (merge (::fn-meta state) (meta gspec))]
-    (cond-> state (some? typecalc)
-      (update-result assoc ::grp.art/typecalc typecalc))))
+(defn gspec-metadata
+  [{:as state, gspec ::args}]
+  (let [metadata (some->> (merge (::fn-meta state) (meta gspec))
+                   (enc/remove-keys #{:file :line :end-line :column :end-column}))]
+    (cond-> state (some? metadata)
+      (update-result assoc ::grp.art/metadata metadata))))
 
+;; NOTE: needs better name
 (defn loop-over-args
   [state done? result-fn]
   (loop [{:as state, [arg] ::args} state]
@@ -124,7 +125,7 @@
 (defn gspec-parser
   [{:as state, gspec ::args} arglist]
   (-> state
-    (gspec-typecalc)
+    (gspec-metadata)
     (arg-specs)
     (arg-predicates arglist)
     (return-type)
@@ -199,17 +200,3 @@
   (-> (init-parser-state args {:assert-no-body? true})
     (function-content)
     ::result))
-
-
-
-;; TASK: do this at runtime
-(defn derive-sampler-type [m]
-  (if-let [hard-value (get m ::grp.art/dispatch)]
-    hard-value
-    ;;TODO: try: enc/filter-keys
-    (let [possible-values (reduce-kv (fn [acc k v]
-                                       (cond-> acc
-                                         (true? v) (conj k))) #{} m)]
-      (when (< 1 (count possible-values))
-        (log/warn "Multiple possible type propagation candidates for spec list" possible-values))
-      (first possible-values))))

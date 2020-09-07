@@ -81,13 +81,10 @@
 (s/def ::return-spec ::spec)
 (s/def ::return-predicates (s/with-gen (s/coll-of fn? :kind vector?) fn-gen))
 (s/def ::generator any?)
-(s/def ::dispatch keyword?)
-(s/def ::sampler (s/or
-                   :kw ::dispatch
-                   :vec (s/and vector? #(s/valid? ::dispatch (first %)))))
+(s/def ::metadata map?)
 (s/def ::gspec (s/keys :req [::return-type ::return-spec]
                  :opt [::arg-types ::arg-specs
-                       ::sampler ::generator
+                       ::metadata ::generator
                        ::arg-predicates ::return-predicates]))
 (s/def ::body any?)
 (s/def ::raw-body vector?)

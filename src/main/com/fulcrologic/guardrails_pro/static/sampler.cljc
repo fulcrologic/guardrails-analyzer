@@ -1,5 +1,6 @@
 (ns com.fulcrologic.guardrails-pro.static.sampler
   (:require
+    [clojure.set :as set]
     [clojure.spec.alpha :as s]
     [clojure.test.check.generators :as gen]
     [com.fulcrologic.guardrails.core :refer [>defn => ?]]
@@ -19,12 +20,12 @@
   (log/info "Using default return sample generator")
   return-sample)
 
-(defmethod return-sample-generator :pure
+(defmethod return-sample-generator ::pure
   [env x {:keys [fn-ref args]}]
   (log/info "Using pure return sample generator")
   (apply fn-ref args))
 
-(defmethod return-sample-generator :merge-arg
+(defmethod return-sample-generator ::merge-arg
   [env _ {:keys [args return-sample] N :params}]
   (log/info "Using merge-arg return sample generator")
   (merge return-sample (nth args (or N 0) {})))
@@ -47,11 +48,9 @@
 ;        new-seq (map (>fn [x] ^:boo [int? => int?]
 ;                       (map (fn ...) ...)
 ;                       m) a)]))
-;; GAME PLAN:
-;; (>defn incr ...)
-;; (map incr (range 10))
+
 ;; NOTE: WIP
-(defmethod return-sample-generator :map-like
+(defmethod return-sample-generator ::map-like
   [env x {:keys [fn-ref args argtypes return-sample]}]
   (let [{::grp.art/keys [arities]} (first argtypes)
         {::grp.art/keys [gspec]} (get arities 1)
@@ -76,12 +75,45 @@
            extra))
        #{}))))
 
+(s/def ::dispatch keyword?)
+(s/def ::sampler (s/or
+                   :kw ::dispatch
+                   :vec (s/and vector? #(s/valid? ::dispatch (first %)))))
+
+(>defn convert-shorthand-metadata [m] [map? => map?]
+  (let [remap {:pure      ::pure
+               :pure?     ::pure
+               :merge-arg ::merge-arg}
+        rename-key (fn [disp]
+                     (cond->> disp
+                       (contains? remap disp)
+                       (get remap)))]
+    (-> (set/rename-keys m remap)
+      (cond-> (::sampler m)
+        (update ::sampler
+          #(if (vector? %)
+             (update % 0 rename-key)
+             (rename-key %)))))))
+
+(>defn derive-sampler-type [m] [map? => (? ::sampler)]
+  (if-let [sampler (get m ::sampler)]
+    sampler
+    (let [valid-samplers (set (keys (methods return-sample-generator)))
+          possible-values (keep (fn [[k v]]
+                                  (when (and (valid-samplers k) (true? v)) k))
+                            m)]
+      (when (< 1 (count possible-values))
+        (log/warn "Multiple possible type propagation candidates for spec list"
+          (seq possible-values)))
+      (first possible-values))))
+
 (>defn sample! [env fd argtypes]
   [::grp.art/env (s/keys :req [::grp.art/name ::grp.art/arities ::grp.art/fn-ref]) (s/coll-of ::grp.art/type-description)
    => ::grp.art/samples]
   (let [{::grp.art/keys [name arities fn-ref]} fd
         {::grp.art/keys [gspec]} (grp.art/get-arity arities argtypes)
-        {::grp.art/keys [sampler return-spec generator]} gspec
+        {::grp.art/keys [metadata return-spec generator]} gspec
+        sampler (-> metadata convert-shorthand-metadata derive-sampler-type)
         generator (try
                     (when (seq argtypes)
                       (gen/fmap (partial return-sample-generator env sampler)
@@ -97,10 +129,3 @@
     (if generator
       (try-sampling! env generator {::grp.art/original-expression name})
       #{})))
-
-#_(>defn hashmap-permutation-generator [sample-map]
-  [(s/map-of any? ::grp.art/samples) => ::generator]
-  (->> sample-map
-    (enc/map-vals gen/elements)
-    (apply concat)
-    (apply gen/hash-map)))
