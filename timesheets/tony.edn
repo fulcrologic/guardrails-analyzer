@@ -31,6 +31,6 @@
  {:date "2020-09-03" :description "pairing, experiments with adv compile" :timespans [[520 1130]]}
  {:date "2020-09-04" :description "pairing" :timespans [[900 930]]}
  {:date "2020-09-05" :description "IntelliJ plugin, some bug tweaks" :timespans [[1245 1900]]}
- {:date "2020-09-06" :description "IntelliJ plugin, type annotations on bindings" :timespans [[950 1840]]}
+ {:date "2020-09-06" :description "IntelliJ plugin, type annotations on bindings" :timespans [[950 1900]]}
  ]
 
