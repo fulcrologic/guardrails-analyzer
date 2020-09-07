@@ -1,7 +1,7 @@
 (ns com.fulcrologic.guardrails-pro.core
   (:require
     [clojure.walk :as walk]
-    [com.fulcrologic.guardrails-pro.parser :as parser]
+    [com.fulcrologic.guardrails-pro.parser :as grp.parser]
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.static.clojure-reader :as clj-reader]
     [taoensso.encore :as enc]
@@ -50,7 +50,7 @@
     @extern-symbol-map))
 
 (defn parse-defn [form file]
-  (parser/parse-defn-args
+  (grp.parser/parse-defn-args
     (rest
       (if (enc/compiling-cljs?)
         form
@@ -92,7 +92,7 @@
 
 ;;TODO: guardrails >fdef should emit call to >ftag-impl if pro?
 (defn >ftag-impl [env [sym :as args]]
-  (let [arities (parser/parse-fdef-args args)
+  (let [arities (grp.parser/parse-fdef-args args)
         resolution (cljc-resolve env sym)]
     (if resolution
       `(grp.art/register-external-function! '~sym
@@ -110,14 +110,14 @@
   (>ftag-impl &env args))
 
 (defn >fn-impl [env args]
-  (let [fn> (grp.parser/parse-fn args)]
+  (let [fn> (grp.parser/parse-fn-args args)]
     `(do nil)))
 
 (defmacro >fn [& args]
   (>fn-impl &env args))
 
 (defn >fspec-impl [env args]
-  (let [fspec> (grp.parser/parse-fspec args)]
+  (let [fspec> (grp.parser/parse-fspec-args args)]
     `(do nil)))
 
 (defmacro >fspec [& args]

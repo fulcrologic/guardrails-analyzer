@@ -10,10 +10,11 @@
     (clojure.lang Cons)))
 
 (defn function-name
-  [[result [nm :as args]]]
+  [[result [nm :as args]] & {:keys [optional?]}]
   (if (simple-symbol? nm)
     [result (next args)]
-    (throw (ex-info (format "%s is missing function name." nm) {}))))
+    (if optional? result
+      (throw (ex-info (format "%s is missing function name." nm) {})))))
 
 (defn optional-docstring [[result [candidate :as args]]]
   (if (string? candidate)
@@ -170,6 +171,19 @@
 (defn parse-fdef-args [args]
   (-> [{} args]
     (var-name)
+    (function-content)
+    first
+    (dissoc ::fn-meta)))
+
+(defn parse-fn-args [args]
+  (-> [{} args]
+    (function-name :optional? true)
+    (function-content)
+    first
+    (dissoc ::fn-meta)))
+
+(defn parse-fspec-args [args]
+  (-> [{} args]
     (function-content)
     first
     (dissoc ::fn-meta)))
