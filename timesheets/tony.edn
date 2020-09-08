@@ -1,5 +1,4 @@
-[
- {:date "2020-06-17" :description "Planning on form tracking" :timespans [[1345 1420]]}
+[{:date "2020-06-17" :description "Planning on form tracking" :timespans [[1345 1420]]}
  {:date "2020-06-18" :description "Review/Planning, wrote docs on form capture" :timespans [[815 836]]}
  {:date "2020-06-19" :description "SWOT and docs" :timespans [[910 930]]}
  {:date "2020-06-20" :description "More docs laying out things like requirements" :timespans [[2000 2030]]}
@@ -32,5 +31,6 @@
  {:date "2020-09-04" :description "pairing" :timespans [[900 930]]}
  {:date "2020-09-05" :description "IntelliJ plugin, some bug tweaks" :timespans [[1245 1900]]}
  {:date "2020-09-06" :description "IntelliJ plugin, type annotations on bindings" :timespans [[950 1900]]}
+ {:date "2020-09-07" :description "check-in, HOF work" :timespans [[930 1000] [1710 1815]]}
  ]
 
