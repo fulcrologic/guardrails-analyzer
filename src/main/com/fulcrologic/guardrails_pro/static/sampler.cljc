@@ -8,6 +8,7 @@
     [taoensso.encore :as enc]
     [taoensso.timbre :as log]))
 
+;; TASK: Consider if this should be called `propagate-data`, or `data-propagation-strategy`, etc.
 (defmulti return-sample-generator
   (fn [env x params]
     (cond

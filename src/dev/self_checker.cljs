@@ -49,3 +49,8 @@
   (grp.intrp/check-all!)
   (reporter/report-analysis!))
 
+;; TASK: Version 1: Do this relatively soon...but not until HOF working. Might be hard enough to need to be v2
+;; 1. We do what we're doing for capture, but no longer bother with body.
+;; 2. Analyze runs against real source, but "interprets it" via the checker runtime which has all of the real compiled functions in it, and
+;; the spec registry.
+;; 3. This also helps the out-of-sync issues with editors like IntelliJ

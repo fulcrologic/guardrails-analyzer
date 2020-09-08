@@ -10,9 +10,14 @@
 (defn >fspec [& args])
 (defn generate [typ])
 
-(>defn sample [f]
+(>ftag map
+  [f s]
+  ^:pure-if-arg1-pure [[any? => any?] (s/coll-of any?)]
+  )
+
+(>defn sample [f m]
   ;; We may get f via a param, in which case it is just a pure stub that when called generates the output type
-  [[pos-int? => pos-int?] => map?]
+  [[pos-int? => pos-int?] map? => map?]
   (let [b  44
         c  {:a 1
             :b {:c (inc b)
@@ -24,6 +29,8 @@
                 ;; if :g was nsed, then it could have a spec of coll-of fpsec, which would generalize our ability to
                 ;; analyze in cases where a function call was used here to make the list of functions.
                 :g [inc dec]}}
+        h  (map f [1 2 3] [4 5 6] [7 8 9])
+        f  (get-in m [:thing/bob :stupid/function])
         c2 (update-in c [:b :g] conj f)
         g  (get-in c [:b :f])
         g2 (get-in c2 [:b :g 2])                            ; VERY context-dependent on c2 being a literal we can analyze
@@ -39,11 +46,10 @@
 
 ;; as we gen the sample, we can check the args of anything
 ;; A sample of a function is the function itself.
-{::grp.art/samples #{{:a {::grp.art/samples #{1}}
-                      :b {:c {::grp.art/samples #{45}}
-                          :d {::grp.art/samples #{(lazy-seq -39 0 29485 -33)}} ; random, since f isn't a real f in analysis
-                          ;; TASK: was in the middle of playing with how nesting should work in data...
-                          :e {::grp.art/samples #{[45 47 49]}}
+{::grp.art/samples #{{:a 1
+                      :b {:c 45
+                          :d (lazy-seq -39 0 29485 -33)     ; random, since f isn't a real f in analysis
+                          :e [45 47 49]
                           ;; We make up a pure function
                           :f (with-meta
                                (fn [x] (generate pos-int?))
