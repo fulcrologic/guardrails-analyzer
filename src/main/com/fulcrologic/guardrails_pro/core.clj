@@ -5,7 +5,9 @@
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.static.clojure-reader :as clj-reader]
     [taoensso.encore :as enc]
-    [taoensso.timbre :as log])
+    [taoensso.timbre :as log]
+    [clojure.spec.alpha :as s]
+    [clojure.string :as str])
   (:import
     (java.util Date)))
 
@@ -92,7 +94,7 @@
 
 ;;TODO: guardrails >fdef should emit call to >ftag-impl if pro?
 (defn >ftag-impl [env [sym :as args]]
-  (let [arities (grp.parser/parse-fdef args)
+  (let [arities    (grp.parser/parse-fdef args)
         resolution (cljc-resolve env sym)]
     (if resolution
       `(grp.art/register-external-function! '~sym
@@ -112,6 +114,31 @@
 (defn >fn-impl [env args]
   (let [fn> (grp.parser/parse-fn args)]
     `(do nil)))
+
+(comment
+  (>defn g []
+    (let [s (map (>fn [x] [int? => string?]) [1 2 3])]
+      s))
+
+  `(do
+     (defn g []
+       (let [a 23
+             s (map (>fn *gennm [x] [int? => string?]
+                      (str/includes? a x)) [1 2 3])]
+         s))
+     (register! `g
+       {::arities       {1 {::gspec ...}}
+        :extern-symbols {'int?                         clojure.core/int?
+                         's/keys                       clojure.spec.alpha/keys
+                         '(s/keys :req [:person/name]) (s/keys :req [:person/name])}
+        :lambdas        {'*gennm {::arities {...}
+                                  :env->fn  #(let [a (from-env 'a %)]
+                                               (fn [x] ^:pure [int? => string?]
+                                                 (str/includes? a x)))}}
+        ;; metadata on the >fn form says its name
+        :body           '(let [s (map (>fn *gennm [x] [(s/keys :req [:person/name])
+                                                       => string?]) [1 2 3])]
+                           s)})))
 
 (defmacro >fn [& args]
   (>fn-impl &env args))

@@ -167,6 +167,21 @@
 (defmethod analyze-mm 'let [env sexpr] (analyze-let-like-form! env sexpr))
 (defmethod analyze-mm 'clojure.core/let [env sexpr] (analyze-let-like-form! env sexpr))
 
+(comment
+  (map (>fn [x] [int? => string?] ...) [1 2 3]))
+
+(defn analyze-mm '>fn [env [_ args types & body :as form]]
+  (let [{::grp.art/keys [runnable-arg-specs]} (meta form)
+        (mapv (partial grp.art/symbol-detail env) types)]
+    )
+
+  {::grp.art/arities}
+  )
+
+(defmethod analyze-mm 'clojure.core/map [env [_ fqsym-f & args]]
+  (let [td (get-function-type-descriptor (analyze! env fqsym-f))])
+  )
+
 ;; TODO macros
 (comment
   and

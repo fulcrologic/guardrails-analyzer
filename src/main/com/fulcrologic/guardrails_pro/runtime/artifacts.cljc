@@ -45,10 +45,24 @@
                  :opt [::expected ::actual ::source
                        ::column-start ::column-end]))
 (s/def ::warning ::error)
+
+(s/def ::key (s/or
+               :offset int?
+               :typed-key qualified-keyword?
+               :homogenous ::homogenous
+               :arbitrary any?))
+(s/def ::positional-types (s/map-of ::key ::type-description))
+(s/def ::recursive-description (s/keys :req [::positional-types]))
 (s/def ::type-description (s/or
                             ;; NOTE: A gspec CAN be returned if an argument is a LAMBDA. HOF.
                             :function ::gspec
-                            :value (s/keys :opt [::spec ::type ::samples ::literal-value ::original-expression])))
+                            ;; NOTE: We can use a generated sample to in turn generate a recursive description
+                            :value (s/keys :opt [::spec
+                                                 ::recursive-description
+                                                 ::type
+                                                 ::samples
+                                                 ::literal-value
+                                                 ::original-expression])))
 (s/def ::expected ::type-description)
 (s/def ::actual (s/keys :opt [::type-description ::failing-samples]))
 (s/def ::registry map?)
