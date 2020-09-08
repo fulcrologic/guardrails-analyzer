@@ -3,7 +3,7 @@
     [com.fulcrologic.guardrails-pro.parser :as grp.parser]
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.static.forms :as forms]
-    [fulcro-spec.core :refer [specification behavior assertions provided when-mocking! => =throws=>]]))
+    [fulcro-spec.core :refer [specification behavior assertions provided when-mocking when-mocking! => =fn=> =throws=>]]))
 
 (specification "function-name"
   (assertions
@@ -96,6 +96,52 @@
                                         :return-type "pos?"
                                         :generator   'gen/pos}}))
 
+(specification "lambda:env->fn"
+  (assertions
+    ;(grp.parser/lambda:env->fn:impl '[a] '(fn [x] [int? => int?] (inc a))) => :for-debugging
+    (((grp.parser/lambda:env->fn [a]
+        (fn [x] [int? => int?] (inc a)))
+      {'a 42}) 0)
+    => 43))
+
+(specification "parse-body-for-lambdas"
+  (when-mocking!
+    (gensym _) => 'MOCK_LAMBDA
+    (assertions
+      "returns an empty map if there are no >fn's"
+      (-> (grp.parser/init-parser-state '[])
+        (grp.parser/parse-body-for-lambdas)
+        (get-in [::grp.parser/result ::grp.art/lambdas]))
+      => {}
+      "names lambda with gensym"
+      (-> (grp.parser/init-parser-state '[(>fn [x] [int? => int?] (inc x))])
+        (grp.parser/parse-body-for-lambdas)
+        (get-in [::grp.parser/result ::grp.art/lambdas])
+        ffirst)
+      => '(quote MOCK_LAMBDA)
+      "if lambda name += gensym"
+      (-> (grp.parser/init-parser-state '[(>fn foo [x] [int? => int?] (inc x))])
+        (grp.parser/parse-body-for-lambdas)
+        (get-in [::grp.parser/result ::grp.art/lambdas])
+        ffirst)
+      => '(quote foo$$MOCK_LAMBDA)))
+  (when-mocking!
+    (grp.parser/parse-fn _) => {::grp.art/arities ::MOCK_ARITIES}
+    (assertions
+      "parses >fn into arities, etc"
+      (-> (grp.parser/init-parser-state '[(>fn foo [x] [int? => int?] (inc x))])
+        (grp.parser/parse-body-for-lambdas)
+        (get-in [::grp.parser/result ::grp.art/lambdas])
+        first second ::grp.art/arities)
+      => ::MOCK_ARITIES))
+  (assertions
+    "creates an env->fn"
+    (-> (grp.parser/init-parser-state '[(>fn foo [x] [int? => int?] (inc x))])
+      (grp.parser/parse-body-for-lambdas)
+      (get-in [::grp.parser/result ::grp.art/lambdas])
+      first second ::grp.art/env->fn first)
+    => `fn))
+
 (specification "body-arity"
   (assertions
     "returns :n if the arglist contains an ampersand <&>"
@@ -113,7 +159,8 @@
     (assertions
       (-> (grp.parser/init-parser-state '[[:stub/arglist] :stub/gspec :stub/body])
         (grp.parser/single-arity)
-        ::grp.parser/result (get 1)
+        ::grp.parser/result
+        ::grp.art/arities (get 1)
         ::grp.art/gspec)
       => ::MOCK_GSPEC)
     (when-mocking!
@@ -122,19 +169,22 @@
         "returns an arglist with metadata preserved for runtime"
         (-> (grp.parser/init-parser-state [[:stub/arglist] :stub/gspec :stub/body])
           (grp.parser/single-arity)
-          ::grp.parser/result (get 1)
+          ::grp.parser/result
+          ::grp.art/arities (get 1)
           ::grp.art/arglist)
         => [::with-meta [:stub/arglist]]
         "returns the body with metadata preserved for runtime"
         (-> (grp.parser/init-parser-state [[:stub/arglist] :stub/gspec :stub/body])
           (grp.parser/single-arity)
-          ::grp.parser/result (get 1)
+          ::grp.parser/result
+          ::grp.art/arities (get 1)
           ::grp.art/body)
         => [::with-meta [:stub/body]]
         "stores the raw body in the arity's metadata"
         (-> (grp.parser/init-parser-state [[:stub/arglist] :stub/gspec :stub/body])
           (grp.parser/single-arity)
-          ::grp.parser/result (get 1)
+          ::grp.parser/result
+          ::grp.art/arities (get 1)
           meta ::grp.art/raw-body)
         => '(quote [:stub/body])))))
 
@@ -197,31 +247,18 @@
           (grp.parser/function-content))
         => ::MOCK_MULTIPLE))))
 
-(specification "parse-fn" :unit
-  (assertions
-    (grp.parser/parse-fn '[[x] [int? => int?] :stub/body])
-    => {1 #::grp.art {:arglist '[(quote x)]
-                      :gspec   #::grp.art{:arg-types   ["int?"]
-                                          :arg-specs   ['int?]
-                                          :return-spec 'int?
-                                          :return-type "int?"}
-                      :body    [:stub/body]}}
-    "optional parses a function-name"
-    (grp.parser/parse-fn '[foo [x] [int? => int?] :stub/body])
-    => (grp.parser/parse-fn '[[x] [int? => int?] :stub/body])))
-
 (specification "parse-fdef" :unit
   (assertions
     "parses var-name"
     (-> (grp.parser/parse-fdef '[^:test/pure foo/bar [] [=> int?]])
-      (get-in  [0 ::grp.art/gspec ::grp.art/metadata]))
+      (get-in [::grp.art/arities 0 ::grp.art/gspec ::grp.art/metadata]))
     => {:test/pure true}
     "should not contain function bodies"
     (-> (grp.parser/parse-fdef '[foo/bar [x] [int? => int?] :errant/body])
-      (get-in [1 ::grp.art/body] ::not-found))
+      (get-in [::grp.art/arities 1 ::grp.art/body] ::not-found))
     =throws=> #"function body not expected"
     (-> (grp.parser/parse-fdef '[foo/bar [x] [int? => int?]])
-      (get-in [1 ::grp.art/body] ::not-found))
+      (get-in [::grp.art/arities 1 ::grp.art/body] ::not-found))
     => ::not-found))
 
 (specification "parse-fspec" :unit

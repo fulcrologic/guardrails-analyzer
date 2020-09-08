@@ -108,8 +108,12 @@
 (s/def ::last-changed posint?)
 (s/def ::last-checked posint?)
 (s/def ::last-seen posint?)
+(s/def ::env->fn fn?)
+(s/def ::lambda (s/keys
+                  :req [::env->fn ::arities]))
+(s/def ::lambdas (s/map-of symbol? ::lambda))
 (s/def ::function (s/keys
-                    :req [::name ::fn-ref
+                    :req [::name ::fn-ref ::lambdas
                           ::arities ::extern-symbols
                           ::last-changed ::last-seen ::location]
                     :opt [::last-checked]))

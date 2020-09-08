@@ -2,6 +2,7 @@
   "Implementation of reading >defn for macro expansion."
   (:require
     [clojure.set :as set]
+    [clojure.walk :as walk]
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.static.forms :as forms]
     [taoensso.encore :as enc])
@@ -43,9 +44,13 @@
     (throw (ex-info (format "%s is not fully qualified symbol" nm) {}))))
 
 (defn function-name
-  [{:as state, [nm] ::args {:keys [optional-fn-name?]} ::opts}]
+  [{:as state, [nm] ::args
+    , {:keys [optional-fn-name?
+              record-fn-name?]} ::opts}]
   (if (simple-symbol? nm)
     (-> state
+      (cond-> record-fn-name?
+        (update-result assoc ::grp.art/name nm))
       (sym-meta)
       (next-args))
     (if optional-fn-name? state
@@ -138,21 +143,81 @@
   (if (contains? (set arglist) '&)
     :n (count arglist)))
 
+
+(comment
+  (>defn g ...)
+  `(register! `g
+     {::arities       ...
+      :extern-symbols ...
+      :lambdas        {'*gennm {::arities ...
+                                :env->fn  #(let [a (from-env 'a %)]
+                                             (fn [x] ^:pure [int? => string?]
+                                               (str/includes? a x)))}}
+      :body           '(let [s (map (>fn *gennm [x] [(s/keys :req [:person/name])
+                                                     => string?]) [1 2 3])]
+                         s)}))
+
+(defn lambda:env->fn:impl [binds fn-form]
+  (let [env (gensym "env$")]
+    `(fn [~env]
+       (let [~@(mapcat (fn [sym] [sym `(get ~env '~sym)]) binds)]
+         ~fn-form))))
+
+(defmacro lambda:env->fn [binds fn-form]
+  (lambda:env->fn:impl binds fn-form))
+
+(defn record-symbols [body]
+  (let [symbols-map (atom [])]
+    (walk/postwalk (fn [f]
+                     (when (symbol? f)
+                       (swap! symbols-map conj f)))
+      body)
+    @symbols-map))
+
+(declare parse-fn)
+
+(defn lambda-name [nm]
+  (let [gen (gensym ">fn$")]
+    (if-not nm gen
+      (symbol (str nm "$$" (name gen))))))
+
+(defn parse-body-for-lambdas
+  [{:as state, body ::args}]
+  (let [lambdas (atom {})]
+    (-> (walk/prewalk
+          (fn [x]
+            (if (and (seq? x) (= '>fn (first x)))
+              (let [function (parse-fn (rest x))
+                    binds (record-symbols x)
+                    fn-name (lambda-name (::grp.art/name function))]
+                (swap! lambdas assoc
+                  `(quote ~fn-name)
+                  (merge function
+                    #::grp.art{:env->fn (lambda:env->fn:impl binds x)}))
+                (if (::grp.art/name function)
+                  (list* '>fn fn-name (rest (next x)))
+                  (list* '>fn fn-name (rest x))))
+              x))
+          state)
+      (update-result assoc ::grp.art/lambdas @lambdas))))
+
 (defn single-arity
-  [{:as state , ::keys [result]
-    , {:keys [assert-no-body?]} ::opts
+  [{:as state, {:keys [assert-no-body?]} ::opts
     , [arglist gspec & forms :as args] ::args}]
   (if (and (seq forms) assert-no-body?)
     (throw (ex-info "Syntax error: function body not expected!" state))
-    (update-result state assoc (body-arity arglist)
-      (cond-> {::grp.art/arglist (forms/form-expression arglist)
-               ::grp.art/gspec   (-> state
-                                   (assoc ::args gspec)
-                                   (gspec-parser arglist)
-                                   ::result)}
-        (seq forms)
-        (-> (assoc ::grp.art/body (forms/form-expression (vec forms)))
-          (with-meta {::grp.art/raw-body `(quote ~(vec forms))}))))))
+    (-> state
+      (update-result assoc-in [::grp.art/arities (body-arity arglist)]
+        (cond-> {::grp.art/arglist (forms/form-expression arglist)
+                 ::grp.art/gspec   (-> state
+                                     (assoc ::args gspec)
+                                     (gspec-parser arglist)
+                                     ::result)}
+          (seq forms)
+          (-> (assoc ::grp.art/body (forms/form-expression (vec forms)))
+            (with-meta {::grp.art/raw-body `(quote ~(vec forms))}))))
+      (next-args nnext)
+      (parse-body-for-lambdas))))
 
 (defn multiple-arities
   [{:as state, ::keys [result args]}]
@@ -174,23 +239,24 @@
 (defn parse-defn
   "Takes the body of a defn and returns parsed arities and top level location information."
   [[defn-sym :as args]]
-  (let [arities (-> (init-parser-state args)
-                  (function-name)
-                  (optional-docstring)
-                  (function-content)
-                  ::result)]
-    {::grp.art/arities  arities
-     ::grp.art/location (grp.art/new-location (meta defn-sym))}))
-
-(defn parse-fn [args]
-  (-> (init-parser-state args {:optional-fn-name? true})
+  (-> (init-parser-state args)
     (function-name)
+    (optional-docstring)
     (function-content)
-    ::result))
+    ::result
+    (assoc ::grp.art/location (grp.art/new-location (meta defn-sym)))))
 
 (defn parse-fdef [args]
   (-> (init-parser-state args {:assert-no-body? true})
     (var-name)
+    (function-content)
+    ::result))
+
+(defn parse-fn [args]
+  (-> (init-parser-state args
+        {:optional-fn-name? true
+         :record-fn-name?   true})
+    (function-name)
     (function-content)
     ::result))
 

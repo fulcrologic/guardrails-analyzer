@@ -2,7 +2,14 @@
   (:require
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [=> | ?]]
-    [com.fulcrologic.guardrails-pro.core :refer [>ftag >defn]]))
+    [com.fulcrologic.guardrails-pro.core :refer [>ftag >defn >fn]]))
+
+(>defn test:map [n]
+  [int? => keyword?]
+  (let [q 100]
+    (map (>fn [x] [int? => int?]
+           (+ n q x))
+      (range 7))))
 
 (>ftag ^:pure? clojure.core/str
   ([] [=> string?])

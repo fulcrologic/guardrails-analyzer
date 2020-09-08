@@ -1,15 +1,12 @@
 (ns com.fulcrologic.guardrails-pro.core
   (:require
+    [clojure.string :as str]
     [clojure.walk :as walk]
     [com.fulcrologic.guardrails-pro.parser :as grp.parser]
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.static.clojure-reader :as clj-reader]
     [taoensso.encore :as enc]
-    [taoensso.timbre :as log]
-    [clojure.spec.alpha :as s]
-    [clojure.string :as str])
-  (:import
-    (java.util Date)))
+    [taoensso.timbre :as log]))
 
 (try
   (require 'cljs.analyzer.api)
@@ -68,7 +65,7 @@
           now        (grp.art/now-ms)
           fqsym      `(symbol ~current-ns ~(name defn-sym))
           fn-ref     (symbol current-ns (name defn-sym))]
-      (let [{::grp.art/keys [arities location]} (parse-defn form *file*)
+      (let [{::grp.art/keys [arities location lambdas]} (parse-defn form *file*)
             extern-symbols (record-extern-symbols env arities)]
         `(do
            (defn ~@args)
@@ -76,6 +73,7 @@
              (grp.art/register-function! ~fqsym
                ~{::grp.art/name           fqsym
                  ::grp.art/fn-ref         fn-ref
+                 ::grp.art/lambdas        lambdas
                  ::grp.art/arities        arities
                  ::grp.art/location       location
                  ::grp.art/last-changed   now
@@ -94,14 +92,14 @@
 
 ;;TODO: guardrails >fdef should emit call to >ftag-impl if pro?
 (defn >ftag-impl [env [sym :as args]]
-  (let [arities    (grp.parser/parse-fdef args)
+  (let [{::grp.art/keys [arities]} (grp.parser/parse-fdef args)
         resolution (cljc-resolve env sym)]
     (if resolution
       `(grp.art/register-external-function! '~sym
          #::grp.art{:name         '~sym
                     :fn-ref       ~sym
                     :arities      ~arities
-                    :last-changed ~(inst-ms (Date.))})
+                    :last-changed ~(grp.art/now-ms)})
       (do
         (log/warn ">ftag failed to resolve: " sym)
         nil))))
@@ -111,37 +109,8 @@
   [& args]
   (>ftag-impl &env args))
 
-(defn >fn-impl [env args]
-  (let [fn> (grp.parser/parse-fn args)]
-    `(do nil)))
-
-(comment
-  (>defn g []
-    (let [s (map (>fn [x] [int? => string?]) [1 2 3])]
-      s))
-
-  `(do
-     (defn g []
-       (let [a 23
-             s (map (>fn *gennm [x] [int? => string?]
-                      (str/includes? a x)) [1 2 3])]
-         s))
-     (register! `g
-       {::arities       {1 {::gspec ...}}
-        :extern-symbols {'int?                         clojure.core/int?
-                         's/keys                       clojure.spec.alpha/keys
-                         '(s/keys :req [:person/name]) (s/keys :req [:person/name])}
-        :lambdas        {'*gennm {::arities {...}
-                                  :env->fn  #(let [a (from-env 'a %)]
-                                               (fn [x] ^:pure [int? => string?]
-                                                 (str/includes? a x)))}}
-        ;; metadata on the >fn form says its name
-        :body           '(let [s (map (>fn *gennm [x] [(s/keys :req [:person/name])
-                                                       => string?]) [1 2 3])]
-                           s)})))
-
 (defmacro >fn [& args]
-  (>fn-impl &env args))
+  `(fn ~@args))
 
 (defn >fspec-impl [env args]
   (let [fspec> (grp.parser/parse-fspec args)]

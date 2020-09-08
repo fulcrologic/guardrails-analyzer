@@ -15,5 +15,5 @@
  :plugins  []
  :bindings {kaocha.stacktrace/*stacktrace-filters*
             ["java.lang." "java.util.concurrent."
-             "clojure.test$" "clojure.lang." "clojure.core" "clojure.main"
+             "clojure.test$" "clojure.lang." "clojure.core" "clojure.main" "clojure.walk"
              "orchestra." "kaocha." "lambdaisland.tools.namespace.reload"]}}

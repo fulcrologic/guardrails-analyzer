@@ -10,10 +10,11 @@
 (defn >fspec [& args])
 (defn generate [typ])
 
-(>ftag map
-  [f s]
-  ^:pure-if-arg1-pure [[any? => any?] (s/coll-of any?)]
-  )
+(comment
+  (>ftag map
+    [f s]
+    ^:pure-if-arg1-pure [[any? => any?] (s/coll-of any?)]
+    ))
 
 (>defn sample [f m]
   ;; We may get f via a param, in which case it is just a pure stub that when called generates the output type
@@ -23,7 +24,8 @@
              :b {:c (inc b)
                  :d (map f [1 2 (+ 1 (inc b))])
                  :e (filterv (>fn [y] ^:pure [int? => boolean?]
-                               (odd? (+ b y)))
+                               ;; 1 => b
+                               (odd? (+ 1 y)))
                       (range 1 20))
                  :f f
                  ;; if :g was nsed, then it could have a spec of coll-of fpsec, which would generalize our ability to
@@ -39,11 +41,11 @@
         i   (g2 11)]
     c))
 
-(>defn some-f [x]
-  [(s/select ::person [:person/name :person/address [:address/id :address/function]])
-   => ])
 
 (comment
+  (>defn some-f [x]
+    [(s/select ::person [:person/name :person/address [:address/id :address/function]])
+     => any?])
   ;; What is the type description for c?
   ;; 1. We need to be able to generate a sample
   ;; 2. We need to be able to check the body of the anon functions:
