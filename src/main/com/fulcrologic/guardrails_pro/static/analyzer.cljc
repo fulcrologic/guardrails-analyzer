@@ -167,12 +167,11 @@
 (defmethod analyze-mm 'let [env sexpr] (analyze-let-like-form! env sexpr))
 (defmethod analyze-mm 'clojure.core/let [env sexpr] (analyze-let-like-form! env sexpr))
 
-(defmethod analyze-mm 'map [env sexpr]
-  (prn :MAP_LIKE)
+(defn analyze-map! [env sexpr]
+  (prn :map_like sexpr)
   {})
-(defmethod analyze-mm 'clojure.core/map [env sexpr]
-  (prn :MAP_LIKE)
-  {})
+(defmethod analyze-mm 'map [env sexpr] (analyze-map! env sexpr))
+(defmethod analyze-mm 'clojure.core/map [env sexpr] (analyze-map! env sexpr))
 
 ;; TODO macros
 (comment

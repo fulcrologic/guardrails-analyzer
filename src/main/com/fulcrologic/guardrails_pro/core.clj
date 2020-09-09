@@ -1,6 +1,5 @@
 (ns com.fulcrologic.guardrails-pro.core
   (:require
-    [clojure.string :as str]
     [clojure.walk :as walk]
     [com.fulcrologic.guardrails-pro.parser :as grp.parser]
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]

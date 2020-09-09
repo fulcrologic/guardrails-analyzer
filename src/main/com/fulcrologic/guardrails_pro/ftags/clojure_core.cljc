@@ -4,13 +4,6 @@
     [com.fulcrologic.guardrails.core :refer [=> | ?]]
     [com.fulcrologic.guardrails-pro.core :refer [>ftag >defn >fn]]))
 
-(>defn test:map [n]
-  [int? => keyword?]
-  (let [q 100]
-    (map (>fn [x] [int? => int?]
-           (+ n q x))
-      (range 7))))
-
 (>ftag ^:pure? clojure.core/str
   ([] [=> string?])
   ([x] [any? => string?])
@@ -19,6 +12,14 @@
 (>defn test:str [x]
   [int? => keyword?]
   (str "x = " x))
+
+(>defn ^:pure test:map [n]
+  [int? => keyword?]
+  (let [q 100]
+    (map (>fn [x] [int? => int?]
+           (+ n q x))
+      (range 7))))
+#_(test:map 10000)
 
 (>ftag ^:pure? clojure.core/get
   ([map key] [map? any? => any?])

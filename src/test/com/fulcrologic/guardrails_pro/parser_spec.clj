@@ -5,7 +5,7 @@
     [com.fulcrologic.guardrails-pro.static.forms :as forms]
     [fulcro-spec.core :refer [specification behavior assertions provided when-mocking when-mocking! => =fn=> =throws=>]]))
 
-(specification "function-name"
+(specification "function-name" :unit
   (assertions
     "if the name is required, it must be a simple symbol"
     (-> (grp.parser/init-parser-state '[123])
@@ -96,7 +96,7 @@
                                         :return-type "pos?"
                                         :generator   'gen/pos}}))
 
-(specification "lambda:env->fn"
+(specification "lambda:env->fn" :unit
   (assertions
     ;(grp.parser/lambda:env->fn:impl '[a] '(fn [x] [int? => int?] (inc a))) => :for-debugging
     (((grp.parser/lambda:env->fn [a]
@@ -104,45 +104,50 @@
       {'a 42}) 0)
     => 43))
 
-(specification "parse-body-for-lambdas"
+ (specification "name-lambdas" :unit
   (when-mocking!
-    (gensym _) => 'MOCK_LAMBDA
+    (grp.parser/lambda-gensym-name sym) => (symbol (str sym "$$" "MOCK_GENSYM"))
     (assertions
-      "returns an empty map if there are no >fn's"
-      (-> (grp.parser/init-parser-state '[])
-        (grp.parser/parse-body-for-lambdas)
-        (get-in [::grp.parser/result ::grp.art/lambdas]))
-      => {}
-      "names lambda with gensym"
-      (-> (grp.parser/init-parser-state '[(>fn [x] [int? => int?] (inc x))])
-        (grp.parser/parse-body-for-lambdas)
-        (get-in [::grp.parser/result ::grp.art/lambdas])
-        ffirst)
-      => '(quote MOCK_LAMBDA)
-      "if lambda name += gensym"
-      (-> (grp.parser/init-parser-state '[(>fn foo [x] [int? => int?] (inc x))])
-        (grp.parser/parse-body-for-lambdas)
-        (get-in [::grp.parser/result ::grp.art/lambdas])
-        ffirst)
-      => '(quote foo$$MOCK_LAMBDA)))
+      (grp.parser/name-lambdas
+        '(>fn [a] b c))
+      => '(>fn $$MOCK_GENSYM [a] b c)
+      (grp.parser/name-lambdas
+        '(>fn foo [a] b c))
+      => '(>fn foo$$MOCK_GENSYM [a] b c)
+      (-> (grp.parser/name-lambdas
+            '(let [x 0] (>fn bar [a] b c)))
+        last)
+      => '(>fn bar$$MOCK_GENSYM [a] b c))))
+
+(specification "parse-lambdas" :unit
+  (assertions
+    "returns an empty map if there are no >fn's"
+    (-> '[(let [a 42] a)]
+      (grp.parser/parse-lambdas))
+    => {})
   (when-mocking!
     (grp.parser/parse-fn _) => {::grp.art/arities ::MOCK_ARITIES}
     (assertions
       "parses >fn into arities, etc"
-      (-> (grp.parser/init-parser-state '[(>fn foo [x] [int? => int?] (inc x))])
-        (grp.parser/parse-body-for-lambdas)
-        (get-in [::grp.parser/result ::grp.art/lambdas])
+      (-> '[(>fn foo [x] [int? => int?] (inc x))]
+        (grp.parser/parse-lambdas)
         first second ::grp.art/arities)
       => ::MOCK_ARITIES))
-  (assertions
-    "creates an env->fn"
-    (-> (grp.parser/init-parser-state '[(>fn foo [x] [int? => int?] (inc x))])
-      (grp.parser/parse-body-for-lambdas)
-      (get-in [::grp.parser/result ::grp.art/lambdas])
-      first second ::grp.art/env->fn first)
-    => `fn))
+  (when-mocking!
+    (grp.parser/select-simple-symbols _)
+    => '[MOCK_SYMBOLS]
+    (grp.parser/lambda:env->fn:impl binds _)
+    => (do (assertions
+             binds => '[MOCK_SYMBOLS])
+         ::MOCK_ENV->FN)
+    (assertions
+      "creates an env->fn"
+      (-> '[(>fn foo [x] [int? => int?] (inc x))]
+        (grp.parser/parse-lambdas)
+        first second ::grp.art/env->fn)
+      => ::MOCK_ENV->FN)))
 
-(specification "body-arity"
+(specification "body-arity" :unit
   (assertions
     "returns :n if the arglist contains an ampersand <&>"
     (grp.parser/body-arity '[& _]) => :n
@@ -153,7 +158,7 @@
     "returns the count of the arglist otherwise"
     (grp.parser/body-arity (range 3)) => 3))
 
-(specification "single-arity"
+(specification "single-arity" :unit
   (provided "parses a gspec with gspec-parser"
     (grp.parser/gspec-parser & _) => {::grp.parser/result ::MOCK_GSPEC}
     (assertions
@@ -188,7 +193,7 @@
           meta ::grp.art/raw-body)
         => '(quote [:stub/body])))))
 
-(specification "multiple-aritites"
+(specification "multiple-aritites" :unit
   (provided "calls single-arity to parse each arity"
     (grp.parser/single-arity x) => [::MOCK_ARITY (::grp.parser/args x)]
     (assertions
@@ -200,7 +205,7 @@
         (grp.parser/multiple-arities))
       =throws=> #"multi-arity function body expected")))
 
-(specification "such-that"
+(specification "such-that" :unit
   (assertions
     "only parses if the lookahead satisfies `such-that?`"
     (-> (grp.parser/init-parser-state [:foo even?])
@@ -221,7 +226,7 @@
                      :args ['<- odd?]
                      :opts {}}))
 
-(specification "generator"
+(specification "generator" :unit
   (assertions
     "only parses if the lookahead satisfies `gen?`"
     (-> (grp.parser/init-parser-state [:foo even?])
@@ -232,7 +237,7 @@
       grp.parser/generator)
     => #::grp.parser{:result #::grp.art{:generator even?} :args nil :opts {}}))
 
-(specification "function-content"
+(specification "function-content" :unit
   (behavior "dispatches based on `arity-body?` to"
     (provided "single-arity"
       (grp.parser/single-arity _) => ::MOCK_SINGLE

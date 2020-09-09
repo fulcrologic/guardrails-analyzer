@@ -156,7 +156,8 @@
         (if (arities-match? old-desc fn-desc)
           old-desc
           fn-desc)
-        ::last-seen (now-ms)))))
+        ::last-seen (now-ms))))
+  nil)
 
 (defmulti cljc-rewrite-sym-ns-mm identity)
 (defmethod cljc-rewrite-sym-ns-mm "clojure.core" [ns] #?(:cljs "cljs.core" :clj ns))
@@ -170,7 +171,8 @@
 (>defn register-external-function!
   [fn-sym fn-desc]
   [qualified-symbol? (s/keys :req [::name ::fn-ref ::arities ::last-changed]) => any?]
-  (swap! external-registry assoc (cljc-rewrite-sym-ns fn-sym) fn-desc))
+  (swap! external-registry assoc (cljc-rewrite-sym-ns fn-sym) fn-desc)
+  nil)
 
 (>defn qualify-extern
   "Attempt to find a qualified symbol that goes with the given simple symbol.

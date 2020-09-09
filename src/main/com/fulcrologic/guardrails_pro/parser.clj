@@ -2,10 +2,11 @@
   "Implementation of reading >defn for macro expansion."
   (:require
     [clojure.set :as set]
-    [clojure.walk :as walk]
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.static.forms :as forms]
-    [taoensso.encore :as enc])
+    [com.rpl.specter :as sp]
+    [taoensso.encore :as enc]
+    [taoensso.timbre :as log])
   (:import
     (clojure.lang Cons)))
 
@@ -143,81 +144,65 @@
   (if (contains? (set arglist) '&)
     :n (count arglist)))
 
-
-(comment
-  (>defn g ...)
-  `(register! `g
-     {::arities       ...
-      :extern-symbols ...
-      :lambdas        {'*gennm {::arities ...
-                                :env->fn  #(let [a (from-env 'a %)]
-                                             (fn [x] ^:pure [int? => string?]
-                                               (str/includes? a x)))}}
-      :body           '(let [s (map (>fn *gennm [x] [(s/keys :req [:person/name])
-                                                     => string?]) [1 2 3])]
-                         s)}))
-
 (defn lambda:env->fn:impl [binds fn-form]
   (let [env (gensym "env$")]
     `(fn [~env]
        (let [~@(mapcat (fn [sym] [sym `(get ~env '~sym)]) binds)]
          ~fn-form))))
 
-(defmacro lambda:env->fn [binds fn-form]
-  (lambda:env->fn:impl binds fn-form))
+(defmacro lambda:env->fn [& args]
+  (apply lambda:env->fn:impl args))
 
-(defn record-symbols [body]
-  (let [symbols-map (atom [])]
-    (walk/postwalk (fn [f]
-                     (when (symbol? f)
-                       (swap! symbols-map conj f)))
-      body)
-    @symbols-map))
+(defn select-simple-symbols [body]
+  (sp/select (sp/walker simple-symbol?) body))
 
-(declare parse-fn)
-
-(defn lambda-name [nm]
+(defn lambda-gensym-name [nm]
   (let [gen (gensym ">fn$")]
     (if-not nm gen
       (symbol (str nm "$$" (name gen))))))
 
-(defn parse-body-for-lambdas
-  [{:as state, body ::args}]
-  (let [lambdas (atom {})]
-    (-> (walk/prewalk
-          (fn [x]
-            (if (and (seq? x) (= '>fn (first x)))
-              (let [function (parse-fn (rest x))
-                    binds (record-symbols x)
-                    fn-name (lambda-name (::grp.art/name function))]
-                (swap! lambdas assoc
-                  `(quote ~fn-name)
-                  (merge function
-                    #::grp.art{:env->fn (lambda:env->fn:impl binds x)}))
-                (if (::grp.art/name function)
-                  (list* '>fn fn-name (rest (next x)))
-                  (list* '>fn fn-name (rest x))))
-              x))
-          state)
-      (update-result assoc ::grp.art/lambdas @lambdas))))
+(defn- >fn? [x] (and (seq? x) (= '>fn (first x))))
+
+(defn name-lambdas [body]
+  (sp/transform
+    [(sp/codewalker >fn?)
+     (sp/if-path [(sp/nthpath 1) symbol?]
+       (sp/nthpath 1)
+       [(sp/before-index 1)
+        (sp/view (constantly nil))])]
+    lambda-gensym-name
+    body))
+
+(declare parse-fn)
+
+(defn parse-lambdas
+  [body]
+  (into {}
+    (for [lambda (sp/select (sp/codewalker >fn?) body)]
+      (let [function (parse-fn (rest lambda))
+            fn-name  (::grp.art/name function)
+            binds    (select-simple-symbols lambda)]
+        (vector `(quote ~fn-name)
+          (merge function #::grp.art{:env->fn (lambda:env->fn:impl binds lambda)}))))))
 
 (defn single-arity
   [{:as state, {:keys [assert-no-body?]} ::opts
     , [arglist gspec & forms :as args] ::args}]
-  (if (and (seq forms) assert-no-body?)
+  (if (and assert-no-body? (seq forms))
     (throw (ex-info "Syntax error: function body not expected!" state))
-    (-> state
-      (update-result assoc-in [::grp.art/arities (body-arity arglist)]
-        (cond-> {::grp.art/arglist (forms/form-expression arglist)
-                 ::grp.art/gspec   (-> state
-                                     (assoc ::args gspec)
-                                     (gspec-parser arglist)
-                                     ::result)}
-          (seq forms)
-          (-> (assoc ::grp.art/body (forms/form-expression (vec forms)))
-            (with-meta {::grp.art/raw-body `(quote ~(vec forms))}))))
-      (next-args nnext)
-      (parse-body-for-lambdas))))
+    (let [body (forms/form-expression (name-lambdas (vec forms)))]
+      (-> state
+        (update-result assoc-in [::grp.art/arities (body-arity arglist)]
+          (cond-> {::grp.art/arglist (forms/form-expression arglist)
+                   ::grp.art/gspec   (-> state
+                                       (assoc ::args gspec)
+                                       (gspec-parser arglist)
+                                       ::result)}
+            (seq forms)
+            (-> (assoc ::grp.art/body body)
+              (with-meta {::grp.art/raw-body `(quote ~(vec forms))}))))
+        (update-result assoc ::grp.art/lambdas (parse-lambdas body))
+        (next-args nnext)))))
 
 (defn multiple-arities
   [{:as state, ::keys [result args]}]
