@@ -1,9 +1,9 @@
 (ns com.fulcrologic.guardrails-pro.core
   (:require
-    [clojure.walk :as walk]
     [com.fulcrologic.guardrails-pro.parser :as grp.parser]
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.static.clojure-reader :as clj-reader]
+    [com.rpl.specter :as sp]
     [taoensso.encore :as enc]
     [taoensso.timbre :as log]))
 
@@ -35,26 +35,22 @@
                    ::grp.art/macro?      macro?}
             (not macro?) (assoc ::grp.art/value (symbol sym-var))))))))
 
-(defn record-extern-symbols [env arities]
-  (let [extern-symbol-map (atom {})]
-    (walk/postwalk (fn [f]
-                     (when (symbol? f)
-                       (when-let [extern (cljc-resolve env f)]
-                         (swap! extern-symbol-map assoc `(quote ~f) extern))))
-      (vec
-        (->> (vals arities)
-          (filter #(and (map? %) (contains? (meta %) ::grp.art/raw-body)))
-          (mapcat #(-> % meta ::grp.art/raw-body)))))
-    @extern-symbol-map))
+(defn record-extern-symbols [env args]
+  (into {}
+    (keep (fn [sym]
+            (when-let [extern (cljc-resolve env sym)]
+              (vector `(quote ~sym) extern))))
+    (sp/select [(sp/codewalker symbol?)] args)))
 
-(defn parse-defn [form file]
+(defn parse-defn [form file extern-symbols]
   (grp.parser/parse-defn
     (rest
       (if (enc/compiling-cljs?)
         form
         (clj-reader/read-form
           ;; FIXME: might be broken (not tested yet)
-          file (:line (meta form)))))))
+          file (:line (meta form)))))
+    extern-symbols))
 
 (defn >defn-impl [env form [defn-sym :as args]]
   (try
@@ -64,8 +60,9 @@
           now        (grp.art/now-ms)
           fqsym      `(symbol ~current-ns ~(name defn-sym))
           fn-ref     (symbol current-ns (name defn-sym))]
-      (let [{::grp.art/keys [arities location lambdas]} (parse-defn form *file*)
-            extern-symbols (record-extern-symbols env arities)]
+      (let [extern-symbols (record-extern-symbols env args)
+            {::grp.art/keys [arities location lambdas]} (parse-defn form *file* (map second (keys extern-symbols)))
+            ]
         `(do
            (defn ~@args)
            (try

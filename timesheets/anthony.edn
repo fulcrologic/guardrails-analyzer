@@ -40,4 +40,5 @@
  {:date "2020-09-07" :description "pairing, parsing & gspec metadata" :timespans [[930 1230] [1340 1640] [1710 1750] [1945 2100]]}
  {:date "2020-09-08" :description ">fn" :timespans [[915 1340] [1520 1600]]}
  {:date "2020-09-09" :description ">fn & form-expression" :timespans [[900 1200] [1300 1500]]}
+ {:date "2020-09-10" :description "analyze! >fn & map" :timespans [[900 1030] [1130 1330] [1415 1530] [1630 1800]]}
  ]

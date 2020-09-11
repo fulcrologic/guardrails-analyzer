@@ -2,6 +2,7 @@
   (:require
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [>defn => ?]]
+    [com.fulcrologic.guardrails-pro.core :as grp]
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.static.function-type :as grp.fnt]
     [com.fulcrologic.guardrails-pro.static.sampler :as grp.sampler]
@@ -45,7 +46,9 @@
 
 (>defn analyze!
   [env sexpr]
-  [::grp.art/env any? => ::grp.art/type-description]
+  [::grp.art/env any? => (s/or
+                           :type-desc ::grp.art/type-description
+                           :lambda ::grp.art/lambda)]
   (log/info "analyzing:" (pr-str sexpr))
   (-> env
     (grp.art/update-location (meta sexpr))
@@ -167,12 +170,6 @@
 (defmethod analyze-mm 'let [env sexpr] (analyze-let-like-form! env sexpr))
 (defmethod analyze-mm 'clojure.core/let [env sexpr] (analyze-let-like-form! env sexpr))
 
-(defn analyze-map! [env sexpr]
-  (prn :map_like sexpr)
-  {})
-(defmethod analyze-mm 'map [env sexpr] (analyze-map! env sexpr))
-(defmethod analyze-mm 'clojure.core/map [env sexpr] (analyze-map! env sexpr))
-
 ;; TODO macros
 (comment
   and
@@ -197,16 +194,6 @@
   when-not
   )
 
-(defmethod analyze-mm '-> [env [_ subject & args]]
-  (analyze! env
-    (reduce (fn [acc form]
-              (with-meta
-                (if (seq? form)
-                  (apply list (first form) acc (rest form))
-                  (list form acc))
-                (meta form)))
-      subject args)))
-
 ;; TODO thread macros
 (comment
   ->>
@@ -216,6 +203,16 @@
   cond->>
   as->
   )
+
+(defmethod analyze-mm '-> [env [_ subject & args]]
+  (analyze! env
+    (reduce (fn [acc form]
+              (with-meta
+                (if (seq? form)
+                  (apply list (first form) acc (rest form))
+                  (list form acc))
+                (meta form)))
+      subject args)))
 
 ;; TODO HOFs fn -> val
 (comment
@@ -230,6 +227,23 @@
   partition-by
   swap!
   )
+
+(defn analyze-lambda! [env [_ fn-name]]
+  (let [{::grp.art/keys [lambdas]} (grp.art/function-detail env (::grp.art/checking-sym env))]
+    (get lambdas fn-name {})))
+
+(defmethod analyze-mm '>fn [env sexpr] (analyze-lambda! env sexpr))
+(defmethod analyze-mm `grp/>fn [env sexpr] (analyze-lambda! env sexpr))
+
+(defn analyze-map-like! [env [map-like-sym f & colls]]
+  (let [lambda (analyze! env f)
+        colls (map (partial analyze! env) colls)]
+    (grp.sampler/sample! env
+      (grp.art/external-function-detail env map-like-sym)
+      (cons lambda colls))
+    {}))
+(defmethod analyze-mm 'map [env sexpr] (analyze-map-like! env sexpr))
+(defmethod analyze-mm 'clojure.core/map [env sexpr] (analyze-map-like! env sexpr))
 
 ;; TODO HOFs * -> fn
 (comment

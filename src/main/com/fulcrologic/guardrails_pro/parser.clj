@@ -47,11 +47,14 @@
 (defn function-name
   [{:as state, [nm] ::args
     , {:keys [optional-fn-name?
-              record-fn-name?]} ::opts}]
+              record-fn-name?
+              as-lambda-name?]} ::opts}]
   (if (simple-symbol? nm)
     (-> state
       (cond-> record-fn-name?
-        (update-result assoc ::grp.art/name nm))
+        (update-result assoc (if as-lambda-name?
+                               ::grp.art/lambda-name
+                               ::grp.art/name) nm))
       (sym-meta)
       (next-args))
     (if optional-fn-name? state
@@ -147,50 +150,55 @@
 (defn lambda:env->fn:impl [binds fn-form]
   (let [env (gensym "env$")]
     `(fn [~env]
-       (let [~@(mapcat (fn [sym] [sym `(get ~env '~sym)]) binds)]
-         ~fn-form))))
+       (let [~@(mapcat (fn [sym] [sym `(grp.art/lookup-symbol ~env '~sym)]) binds)]
+         (fn ~@(rest fn-form))))))
 
 (defmacro lambda:env->fn [& args]
   (apply lambda:env->fn:impl args))
 
 (defn select-simple-symbols [body]
-  (sp/select (sp/walker simple-symbol?) body))
+  (sp/select (sp/walker simple-symbol?) (nnext body)))
 
-(defn lambda-gensym-name [nm]
-  (let [gen (gensym ">fn$")]
-    (if-not nm gen
-      (symbol (str nm "$$" (name gen))))))
+(defn lambda-gensym-name [& _] (gensym ">fn$"))
 
-(defn- >fn? [x] (and (seq? x) (= '>fn (first x))))
+(defn- >fn? [x]
+  (and (seq? x) (symbol? (first x))
+    (= ">fn" (name (first x)))))
 
+;; TASK:
+;; - use their symbol as is
+;; - if they use the same lambda name record-error!
+;; - but continue analyzing
 (defn name-lambdas [body]
   (sp/transform
     [(sp/codewalker >fn?)
-     (sp/if-path [(sp/nthpath 1) symbol?]
-       (sp/nthpath 1)
-       [(sp/before-index 1)
-        (sp/view (constantly nil))])]
+     (sp/if-path [(sp/nthpath 1) vector?]
+       (sp/before-index 1))]
     lambda-gensym-name
     body))
 
 (declare parse-fn)
 
 (defn parse-lambdas
-  [body]
+  [body extern-symbols]
   (into {}
     (for [lambda (sp/select (sp/codewalker >fn?) body)]
       (let [function (parse-fn (rest lambda))
-            fn-name  (::grp.art/name function)
+            fn-name  (::grp.art/lambda-name function)
             binds    (select-simple-symbols lambda)]
-        (vector `(quote ~fn-name)
-          (merge function #::grp.art{:env->fn (lambda:env->fn:impl binds lambda)}))))))
+        (let [binds (set/difference (set binds) (set extern-symbols))]
+          (vector `(quote ~fn-name)
+            (-> (sp/transform (sp/codewalker #{fn-name})
+                  #(do `(quote ~%))
+                  function)
+              (merge #::grp.art{:env->fn (lambda:env->fn:impl binds lambda)}))))))))
 
 (defn single-arity
-  [{:as state, {:keys [assert-no-body?]} ::opts
+  [{:as state, {:keys [assert-no-body? extern-symbols]} ::opts
     , [arglist gspec & forms :as args] ::args}]
   (if (and assert-no-body? (seq forms))
     (throw (ex-info "Syntax error: function body not expected!" state))
-    (let [body (forms/form-expression (name-lambdas (vec forms)))]
+    (let [body (name-lambdas (vec forms))]
       (-> state
         (update-result assoc-in [::grp.art/arities (body-arity arglist)]
           (cond-> {::grp.art/arglist (forms/form-expression arglist)
@@ -199,9 +207,9 @@
                                        (gspec-parser arglist)
                                        ::result)}
             (seq forms)
-            (-> (assoc ::grp.art/body body)
+            (-> (assoc ::grp.art/body (forms/form-expression body))
               (with-meta {::grp.art/raw-body `(quote ~(vec forms))}))))
-        (update-result assoc ::grp.art/lambdas (parse-lambdas body))
+        (update-result assoc ::grp.art/lambdas (parse-lambdas body extern-symbols))
         (next-args nnext)))))
 
 (defn multiple-arities
@@ -223,8 +231,8 @@
 
 (defn parse-defn
   "Takes the body of a defn and returns parsed arities and top level location information."
-  [[defn-sym :as args]]
-  (-> (init-parser-state args)
+  [[defn-sym :as args] & [extern-symbols]]
+  (-> (init-parser-state args {:extern-symbols extern-symbols})
     (function-name)
     (optional-docstring)
     (function-content)
@@ -240,7 +248,8 @@
 (defn parse-fn [args]
   (-> (init-parser-state args
         {:optional-fn-name? true
-         :record-fn-name?   true})
+         :record-fn-name?   true
+         :as-lambda-name?   true})
     (function-name)
     (function-content)
     ::result))

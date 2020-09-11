@@ -11,53 +11,23 @@
 ;; TASK: Consider if this should be called `propagate-data`, or `data-propagation-strategy`, etc.
 (defmulti return-sample-generator
   (fn [env x params]
-    (cond
-      (keyword? x) x
-      (vector? x) (first x)
-      :else :default)))
+    (log/spy :debug ::dispatch
+      (cond
+        (keyword? x) x
+        (vector? x) (first x)
+        :else :default))))
 
 (defmethod return-sample-generator :default
   [env x {:keys [return-sample]}]
-  (log/info "Using default return sample generator")
   return-sample)
 
 (defmethod return-sample-generator ::pure
   [env x {:keys [fn-ref args]}]
-  (log/info "Using pure return sample generator")
   (apply fn-ref args))
 
 (defmethod return-sample-generator ::merge-arg
   [env _ {:keys [args return-sample] N :params}]
-  (log/info "Using merge-arg return sample generator")
   (merge return-sample (nth args (or N 0) {})))
-
-; NOTE: HOFs (might) need argument type descriptors
-;; HOF notes
-;(>defn f [m]
-;  (let [a (range 1 2)
-;        g (>fn [a] [int? => string?])
-;        f (comp
-;            (>fn [a] [map? => string?])
-;            (>fn [a] [(>fspec [n] [int? => int?]) => map?])
-;            some-f
-;            #_(>fn [a] [int? => (>fspec [x] [number? => number?] string?)]))
-;        bb (into #{}
-;             (comp
-;               (map f) ;; >fspec ...
-;               (filter :person/fat?))
-;             people)
-;        new-seq (map (>fn [x] ^:boo [int? => int?]
-;                       (map (fn ...) ...)
-;                       m) a)]))
-
-;; NOTE: WIP
-(defmethod return-sample-generator ::map-like
-  [env x {:keys [fn-ref args argtypes return-sample]}]
-  (let [{::grp.art/keys [arities]} (first argtypes)
-        {::grp.art/keys [gspec]} (get arities 1)
-        {::grp.art/keys [generator return-spec]} gspec]
-    (map (fn [_] (gen/generate (or generator (s/gen return-spec))))
-      (second args))))
 
 (s/def ::generator gen/generator?)
 
@@ -84,7 +54,8 @@
 (>defn convert-shorthand-metadata [m] [map? => map?]
   (let [remap {:pure      ::pure
                :pure?     ::pure
-               :merge-arg ::merge-arg}
+               :merge-arg ::merge-arg
+               :map-like  ::map-like}
         rename-key (fn [disp]
                      (cond->> disp
                        (contains? remap disp)
@@ -108,10 +79,24 @@
           (seq possible-values)))
       (first possible-values))))
 
+(defn get-samples [argtype]
+  (cond
+    (::grp.art/lambda-name argtype) [(::grp.art/env->fn {})]
+    :else (::grp.art/samples argtype)))
+
+(defn get-fn-ref [env {::grp.art/keys [fn-ref env->fn]}]
+  (or fn-ref (env->fn env)))
+
 (>defn sample! [env fd argtypes]
-  [::grp.art/env (s/keys :req [::grp.art/name ::grp.art/arities ::grp.art/fn-ref]) (s/coll-of ::grp.art/type-description)
+  [::grp.art/env
+   (s/keys :req [::grp.art/arities
+                 (or ::grp.art/fn-ref ::grp.art/env->fn)
+                 (or ::grp.art/name ::grp.art/lambda-name)])
+   (s/coll-of ::grp.art/type-description)
    => ::grp.art/samples]
-  (let [{::grp.art/keys [name arities fn-ref]} fd
+  (log/debug "SAMPLE!/fd" fd)
+  (log/debug "SAMPLE!/argtypes" argtypes)
+  (let [{::grp.art/keys [arities]} fd
         {::grp.art/keys [gspec]} (grp.art/get-arity arities argtypes)
         {::grp.art/keys [metadata return-spec generator]} gspec
         sampler (-> metadata convert-shorthand-metadata derive-sampler-type)
@@ -119,14 +104,30 @@
                     (when (seq argtypes)
                       (gen/fmap (partial return-sample-generator env sampler)
                         (gen/hash-map
-                          :args (apply gen/tuple (map gen/elements (map ::grp.art/samples argtypes)))
-                          :fn-ref (gen/return fn-ref)
+                          :args (apply gen/tuple (map gen/elements (map get-samples argtypes)))
+                          :fn-ref (gen/return (get-fn-ref env fd))
                           :params (gen/return (and sampler (if (vector? sampler) (second sampler) sampler)))
+                          :argtypes (gen/return argtypes)
                           :return-sample (or generator (s/gen return-spec)))))
                     (catch #?(:clj  Exception
                               :cljs :default) e
                       (log/error e "Unable to build generator from " [sampler return-spec generator])
                       nil))]
     (if generator
-      (try-sampling! env generator {::grp.art/original-expression name})
+      (try-sampling! env generator {::grp.art/original-expression ((some-fn ::grp.art/name ::grp.art/lambda-name) fd)})
       #{})))
+
+(defmethod return-sample-generator ::map-like
+  [env _ {:keys [args argtypes return-sample]}]
+  (prn :MAP_LIKE_SMPLR (first argtypes))
+  (let [{::grp.art/keys [arities]} (first argtypes)
+        {::grp.art/keys [gspec]} (grp.art/get-arity arities (rest argtypes))
+        {::grp.art/keys [metadata return-spec generator]} gspec
+        sampler (-> metadata convert-shorthand-metadata derive-sampler-type)
+        ]
+    (prn :f/sampler sampler)
+    (if sampler
+      (sample! env (first argtypes)
+        (map #(update % ::grp.art/samples (comp set (partial mapcat identity)))
+          (rest argtypes)))
+      (gen/sample (or generator (s/gen return-spec))))))

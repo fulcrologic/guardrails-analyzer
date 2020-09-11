@@ -3,7 +3,7 @@
     [com.fulcrologic.guardrails-pro.parser :as grp.parser]
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.static.forms :as forms]
-    [fulcro-spec.core :refer [specification behavior assertions provided when-mocking when-mocking! => =fn=> =throws=>]]))
+    [fulcro-spec.core :refer [specification behavior assertions provided when-mocking! => =throws=>]]))
 
 (specification "function-name" :unit
   (assertions
@@ -97,40 +97,42 @@
                                         :generator   'gen/pos}}))
 
 (specification "lambda:env->fn" :unit
-  (assertions
-    ;(grp.parser/lambda:env->fn:impl '[a] '(fn [x] [int? => int?] (inc a))) => :for-debugging
-    (((grp.parser/lambda:env->fn [a]
-        (fn [x] [int? => int?] (inc a)))
-      {'a 42}) 0)
-    => 43))
+  (when-mocking!
+    (grp.art/lookup-symbol env sym) => (get env sym)
+    (assertions
+      ;(grp.parser/lambda:env->fn:impl '[a] '(fn [x] [int? => int?] (inc a))) => :for-debugging
+      (((grp.parser/lambda:env->fn [a]
+          (fn [x] [int? => int?] (inc a)))
+        {'a 42}) 0)
+      => 43)))
 
  (specification "name-lambdas" :unit
   (when-mocking!
-    (grp.parser/lambda-gensym-name sym) => (symbol (str sym "$$" "MOCK_GENSYM"))
+    (grp.parser/lambda-gensym-name _) => 'MOCK_GENSYM
     (assertions
       (grp.parser/name-lambdas
         '(>fn [a] b c))
-      => '(>fn $$MOCK_GENSYM [a] b c)
+      => '(>fn MOCK_GENSYM [a] b c)
       (grp.parser/name-lambdas
         '(>fn foo [a] b c))
-      => '(>fn foo$$MOCK_GENSYM [a] b c)
+      => '(>fn foo [a] b c)
       (-> (grp.parser/name-lambdas
-            '(let [x 0] (>fn bar [a] b c)))
+            '(let [x 0] (>fn [a] b c)))
         last)
-      => '(>fn bar$$MOCK_GENSYM [a] b c))))
+      => '(>fn MOCK_GENSYM [a] b c))))
 
 (specification "parse-lambdas" :unit
   (assertions
     "returns an empty map if there are no >fn's"
     (-> '[(let [a 42] a)]
-      (grp.parser/parse-lambdas))
+      (grp.parser/parse-lambdas []))
     => {})
   (when-mocking!
     (grp.parser/parse-fn _) => {::grp.art/arities ::MOCK_ARITIES}
     (assertions
       "parses >fn into arities, etc"
       (-> '[(>fn foo [x] [int? => int?] (inc x))]
-        (grp.parser/parse-lambdas)
+        (grp.parser/parse-lambdas [])
         first second ::grp.art/arities)
       => ::MOCK_ARITIES))
   (when-mocking!
@@ -138,12 +140,12 @@
     => '[MOCK_SYMBOLS]
     (grp.parser/lambda:env->fn:impl binds _)
     => (do (assertions
-             binds => '[MOCK_SYMBOLS])
+             binds => '#{MOCK_SYMBOLS})
          ::MOCK_ENV->FN)
     (assertions
       "creates an env->fn"
       (-> '[(>fn foo [x] [int? => int?] (inc x))]
-        (grp.parser/parse-lambdas)
+        (grp.parser/parse-lambdas [])
         first second ::grp.art/env->fn)
       => ::MOCK_ENV->FN)))
 

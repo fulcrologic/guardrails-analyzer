@@ -109,8 +109,8 @@
 (s/def ::last-checked posint?)
 (s/def ::last-seen posint?)
 (s/def ::env->fn fn?)
-(s/def ::lambda (s/keys
-                  :req [::env->fn ::arities]))
+(s/def ::lambda-name simple-symbol?)
+(s/def ::lambda (s/keys :req [::lambda-name ::env->fn ::arities]))
 (s/def ::lambdas (s/map-of symbol? ::lambda))
 (s/def ::function (s/keys
                     :req [::name ::fn-ref ::lambdas
@@ -196,8 +196,15 @@
 (>defn symbol-detail [env sym]
   [::env symbol? => (? ::type-description)]
   (or
-    (log/spy :info :LOCAL (get-in env [::local-symbols sym]))
+    (log/spy :info :locals (get-in env [::local-symbols sym]))
     (get-in env [::extern-symbols sym ::type-description])))
+
+(defn lookup-symbol [env sym]
+  (prn :lookup-symbol/sym sym)
+  (let [{::keys [literal-value samples]} (log/spy :debug :lookup-symbol/type-desc
+                                           (get-in env [::local-symbols sym]))]
+    (log/spy :debug :lookup-symbol/result
+      (and (seq samples) (rand-nth (vec samples))))))
 
 (>defn remember-local [env sym td]
   [::env symbol? ::type-description => ::env]

@@ -20,7 +20,7 @@
 (s/def ::person (s/keys :req [:person/id :person/fname :person/lname]
                   :opt [:person/full-name]))
 
-(>defn new-person
+#_(>defn new-person
   [id fn ln]
   ^:pure [pos-int? ::non-empty-string ::non-empty-string => ::person]
   (let [p  {:person/id    id
@@ -28,12 +28,12 @@
         p2 (assoc p :person/fname fn)]
     p2))
 
-(>defn with-full-name [person]
+#_(>defn with-full-name [person]
   ^:pure [(s/keys :req [:person/fname :person/lname])
           => (s/keys :req [:person/full-name])]
   (assoc person :person/full-name (str (get person :person/fname) " " (get person :person/lname))))
 
-(>defn test-person [input-id]
+#_(>defn test-person [input-id]
   ^:pure [pos-int? => int?]
   (let [p (new-person input-id "Tom" "Bob")
         b (with-full-name p)

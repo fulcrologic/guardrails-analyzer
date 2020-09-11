@@ -9,15 +9,21 @@
   ([x] [any? => string?])
   ([x & ys] [any? (s/* any?) => string?]))
 
-(>defn test:str [x]
+#_(>defn test:str [x]
   [int? => keyword?]
   (str "x = " x))
 
-(>defn ^:pure test:map [n]
-  [int? => keyword?]
-  (let [q 100]
-    (map (>fn [x] [int? => int?]
-           (+ n q x))
+(>ftag ^:map-like clojure.core/map
+  ([f coll & colls] [fn? sequential? (s/+ sequential?) => (s/coll-of any?)]))
+
+(>defn ^:pure test:map [arg]
+  [int? => (s/coll-of int?)]
+  (let [const 100
+        random (rand-int const)]
+    (map (>fn ^:pure foo [i] ^:pure [int? => int?]
+           (prn :i i :arg arg :const const :random random)
+           i
+           (+ i arg const random))
       (range 7))))
 #_(test:map 10000)
 
@@ -25,7 +31,7 @@
   ([map key] [map? any? => any?])
   ([map key not-found] [map? any? any? => any?]))
 
-(>defn test:get [x]
+#_(>defn test:get [x]
   [int? => keyword?]
   (get {:a x} :a))
 
@@ -33,9 +39,9 @@
   ([] [=> number?])
   ([x] [number? => number?])
   ([x y] [number? number? => number?])
-  ([x y & more] [number? number? (s/coll-of number?) => number?]))
+  ([x y & more] [number? number? (s/+ number?) => number?]))
 
-(>defn test:+ [x]
+#_(>defn test:+ [x]
   [int? => keyword?]
   (+ x 1000))
 
@@ -43,54 +49,54 @@
   ([] [=> number?])
   ([x] [number? => number?])
   ([x y] [number? number? => number?])
-  ([x y & more] [number? number? (s/coll-of number?) => number?]))
+  ([x y & more] [number? number? (s/+ number?) => number?]))
 
 (>ftag ^:pure? clojure.core/*
   ([] [=> number?])
   ([x] [number? => number?])
   ([x y] [number? number? => number?])
-  ([x y & more] [number? number? (s/coll-of number?) => number?]))
+  ([x y & more] [number? number? (s/+ number?) => number?]))
 
 (>ftag ^:pure? clojure.core//
   ([x] [number? => number?])
   ([x y] [number? number? => number?])
-  ([x y & more] [number? number? (s/coll-of number?) => number?]))
+  ([x y & more] [number? number? (s/+ number?) => number?]))
 
 (>ftag ^:pure? clojure.core/=
   ([x] [any? => boolean?])
   ([x y] [any? any? => boolean?])
-  ([x y & more] [any? any? (s/coll-of any?) => boolean?]))
+  ([x y & more] [any? any? (s/+ any?) => boolean?]))
 
 (>ftag ^:pure? clojure.core/==
   ([x] [any? => boolean?])
   ([x y] [any? any? => boolean?])
-  ([x y & more] [any? any? (s/coll-of any?) => boolean?]))
+  ([x y & more] [any? any? (s/+ any?) => boolean?]))
 
 (>ftag ^:pure? clojure.core/<
   ([x] [any? => boolean?])
   ([x y] [any? any? => boolean?])
-  ([x y & more] [any? any? (s/coll-of any?) => boolean?]))
+  ([x y & more] [any? any? (s/+ any?) => boolean?]))
 
 (>ftag ^:pure? clojure.core/<=
   ([x] [any? => boolean?])
   ([x y] [any? any? => boolean?])
-  ([x y & more] [any? any? (s/coll-of any?) => boolean?]))
+  ([x y & more] [any? any? (s/+ any?) => boolean?]))
 
 (>ftag ^:pure? clojure.core/>
   ([x] [any? => boolean?])
   ([x y] [any? any? => boolean?])
-  ([x y & more] [any? any? (s/coll-of any?) => boolean?]))
+  ([x y & more] [any? any? (s/+ any?) => boolean?]))
 
 (>ftag ^:pure? clojure.core/>=
   ([x] [any? => boolean?])
   ([x y] [any? any? => boolean?])
-  ([x y & more] [any? any? (s/coll-of any?) => boolean?]))
+  ([x y & more] [any? any? (s/+ any?) => boolean?]))
 
 (>ftag ^:pure? clojure.core/assoc
   ([coll k v] [map? any? any? => map?])
   ([coll k v & kvs] [map? any? any? (s/* any?) | #(even? (count kvs)) => map?]))
 
-(>defn test:assoc [m]
+#_(>defn test:assoc [m]
   [map? => keyword?]
   (assoc m :k :v))
 
@@ -222,7 +228,7 @@
 (>ftag ^:pure? clojure.core/not=
   ([x] [any? => boolean?])
   ([x y] [any? any? => boolean?])
-  ([x y & more] [any? any? (s/coll-of any?) => boolean?]))
+  ([x y & more] [any? any? (s/+ any?) => boolean?]))
 
 (>ftag ^:pure? clojure.core/nth
   ([coll index] [coll? number? => any?])
