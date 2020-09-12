@@ -3,7 +3,6 @@
   and acts as the central control for finding, caching, renewing and expiring things from the runtime. These routines
   must work in CLJ and CLJS, and should typically not be hot reloaded during updates."
   (:require
-    [clojure.pprint :refer [pprint]]
     [clojure.set :as set]
     [clojure.spec.alpha :as s]
     [clojure.spec.gen.alpha :as gen]
@@ -270,7 +269,7 @@
 (>defn record-error!
   [env error]
   [::env (s/keys :req [::message ::original-expression]) => any?]
-  (log/info (log/color-str :red :record-error!) (::checking-sym env) "\n" (::location env) "\n" error)
+  (log/info :record-error! (::checking-sym env) "\n" (::location env) "\n" error)
   (swap! problems update-in
     [(::checking-sym env) ::errors]
     (fnil conj [])
