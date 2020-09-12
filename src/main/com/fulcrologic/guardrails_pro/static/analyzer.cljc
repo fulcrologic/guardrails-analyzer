@@ -6,7 +6,6 @@
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.static.function-type :as grp.fnt]
     [com.fulcrologic.guardrails-pro.static.sampler :as grp.sampler]
-    [com.fulcrologic.guardrails-pro.utils :as grp.u]
     [taoensso.timbre :as log]
     [taoensso.encore :as enc])
   (:import
@@ -164,7 +163,7 @@
     (reduce (fn [env [bind-sexpr sexpr]]
               ;; TODO: update location & test
               (reduce-kv grp.art/remember-local
-                env (grp.u/destructure* env bind-sexpr
+                env (grp.fnt/destructure! env bind-sexpr
                       (analyze! env sexpr))))
       env (partition 2 bindings))
     body))

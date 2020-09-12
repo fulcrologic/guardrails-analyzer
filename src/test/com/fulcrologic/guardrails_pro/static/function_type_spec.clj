@@ -1,11 +1,12 @@
 (ns com.fulcrologic.guardrails-pro.static.function-type-spec
   (:require
+    [clojure.spec.alpha :as s]
     [clojure.spec.gen.alpha :as gen]
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.static.function-type :as grp.fnt]
     [com.fulcrologic.guardrails.core :as gr :refer [=> | <-]]
     [com.fulcrologic.guardrails-pro.core :as grp]
-    [fulcro-spec.core :refer [specification assertions behavior =fn=> when-mocking!]]))
+    [fulcro-spec.core :refer [specification behavior component assertions =fn=> when-mocking!]]))
 
 (grp/>defn test_int->int [x]
   [int? => int?]
@@ -90,3 +91,69 @@
               (count @errors) => 1
               (::grp.art/original-expression error) => '(x y)
               (::grp.art/actual error) => {::grp.art/failing-samples #{-42 "88"}})))))))
+
+(s/def :NS/foo keyword?)
+(s/def ::foo int?)
+(s/def ::bar string?)
+
+(specification "destructure*"
+  (let [test-env (grp.art/build-env)
+        test-td {::grp.art/type "test type desc"}]
+    (assertions
+      "simple symbol"
+      (grp.fnt/destructure! test-env 'foo test-td)
+      => {'foo (assoc test-td
+                 ::grp.art/original-expression 'foo)})
+    (component "vector destructuring"
+      (assertions
+        "returns the symbol used to bind to the entire collection"
+        (grp.fnt/destructure! test-env '[foo bar :as coll] test-td)
+        => {'coll (assoc test-td ::grp.art/original-expression '[foo bar :as coll])}
+        "ignores all other symbols"
+        (grp.fnt/destructure! test-env '[foo bar] test-td)
+        => {}))
+    (component "map destructuring"
+      (assertions
+        "simple keyword"
+        (-> (grp.fnt/destructure! test-env '{foo ::foo} test-td)
+          (get-in ['foo ::grp.art/spec]))
+        => (s/get-spec ::foo)
+        (-> (grp.fnt/destructure! test-env '{foo ::foo} test-td)
+          (get-in ['foo ::grp.art/samples]))
+        =fn=> #(every? int? %)
+        "if the keyword does not have a spec it returns no entry for it"
+        (grp.fnt/destructure! test-env '{foo :ERROR} test-td)
+        => {})
+      (component ":as binding"
+        (assertions
+          (grp.fnt/destructure! test-env '{:as foo} test-td)
+          => {'foo (assoc test-td ::grp.art/original-expression 'foo)}
+          (grp.fnt/destructure! test-env '{:ERROR/as foo} test-td)
+          => {}))
+      (component "keys destructuring"
+        (assertions
+          "not namespaced keywords are ignored"
+          (grp.fnt/destructure! test-env '{:keys [foo]} test-td)
+          => {}
+          "can lookup specs by namespace"
+          (-> (grp.fnt/destructure! test-env '{:NS/keys [foo]} test-td)
+            (get-in ['foo ::grp.art/spec]))
+          => (s/get-spec :NS/foo)
+          (-> (grp.fnt/destructure! test-env '{:NS/keys [foo]} test-td)
+            (get-in ['foo ::grp.art/samples]))
+          =fn=> #(every? keyword? %)
+          (-> (grp.fnt/destructure! test-env '{::keys [foo]} test-td)
+            (get-in ['foo ::grp.art/spec]))
+          => (s/get-spec ::foo)
+          (-> (grp.fnt/destructure! test-env '{::keys [foo]} test-td)
+            (get-in ['foo ::grp.art/samples]))
+          =fn=> #(every? int? %)
+          (-> (grp.fnt/destructure! test-env '{::keys [foo bar]} test-td)
+            (get-in ['foo ::grp.art/spec]))
+          => (s/get-spec ::foo)
+          (-> (grp.fnt/destructure! test-env '{::keys [foo bar]} test-td)
+            (get-in ['bar ::grp.art/spec]))
+          => (s/get-spec ::bar)
+          "ignores symbol if it has no spec"
+          (grp.fnt/destructure! test-env '{:FAKE/keys [foo]} test-td)
+          => {})))))
