@@ -1,11 +1,46 @@
 (ns com.fulcrologic.guardrails-pro.static.function-type
   (:require
-    [clojure.pprint :refer [pprint]]
     [clojure.spec.alpha :as s]
     [taoensso.timbre :as log]
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.static.sampler :as grp.sampler]
+    [com.fulcrologic.guardrails-pro.utils :as grp.u]
     [com.fulcrologic.guardrails.core :refer [>defn =>]]))
+
+(>defn bind-type-desc
+  [env typename clojure-spec err]
+  [::grp.art/env ::grp.art/type ::grp.art/spec map? => ::grp.art/type-description]
+  (let [samples (grp.sampler/try-sampling! env (s/gen clojure-spec) err)]
+    (cond-> {::grp.art/spec clojure-spec
+             ::grp.art/type typename}
+      (seq samples) (assoc ::grp.art/samples samples))))
+
+(>defn bind-argument-types
+  [env arity-detail]
+  [::grp.art/env ::grp.art/arity-detail => ::grp.art/env]
+  (let [{::grp.art/keys [gspec arglist]} arity-detail
+        {::grp.art/keys [arg-specs arg-types]} gspec]
+    (log/spy :warn [arglist (meta arglist) (meta (first arglist))])
+    (reduce
+      (fn [env [bind-sexpr arg-type arg-spec]]
+        (reduce-kv grp.art/remember-local
+          env (grp.u/destructure* env bind-sexpr
+                (bind-type-desc env arg-type arg-spec
+                  {::grp.art/original-expression arglist}))))
+      env
+      (map vector arglist arg-types arg-specs))))
+
+(>defn check-return-type! [env {::grp.art/keys [body gspec]} {::grp.art/keys [samples]}]
+  [::grp.art/env ::grp.art/arity-detail ::grp.art/type-description => any?]
+  (let [{::grp.art/keys [return-spec return-type]} gspec
+        sample-failure (some #(when-not (s/valid? return-spec %) {:failing-case %}) samples)]
+    (when (contains? sample-failure :failing-case)
+      (let [sample-failure (:failing-case sample-failure)]
+        (grp.art/record-error! env
+          {::grp.art/original-expression (last body)
+           ::grp.art/actual              {::grp.art/failing-samples #{sample-failure}}
+           ::grp.art/expected            {::grp.art/type return-type ::grp.art/spec return-spec}
+           ::grp.art/message             (str "Return value (e.g. " (pr-str sample-failure) ") does not always satisfy the return spec of " return-type ".")})))))
 
 (>defn validate-argtypes!
   [env sym actual-argument-type-descriptors]
@@ -47,7 +82,6 @@
   (let [{::grp.art/keys [arities] :as fd} (grp.art/function-detail env sym)
         {::grp.art/keys [gspec]} (grp.art/get-arity arities argtypes)
         {::grp.art/keys [return-type return-spec]} gspec]
-    (log/info "Function type description: " sym ": " (with-out-str (pprint fd)))
     (validate-argtypes! env sym argtypes)
     {::grp.art/spec    return-spec
      ::grp.art/type    return-type

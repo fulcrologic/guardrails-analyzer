@@ -11,11 +11,10 @@
 ;; TASK: Consider if this should be called `propagate-data`, or `data-propagation-strategy`, etc.
 (defmulti return-sample-generator
   (fn [env x params]
-    (log/spy :debug ::dispatch
-      (cond
-        (keyword? x) x
-        (vector? x) (first x)
-        :else :default))))
+    (cond
+      (keyword? x) x
+      (vector? x) (first x)
+      :else :default)))
 
 (defmethod return-sample-generator :default
   [env x {:keys [return-sample]}]
@@ -94,8 +93,6 @@
                  (or ::grp.art/name ::grp.art/lambda-name)])
    (s/coll-of ::grp.art/type-description)
    => ::grp.art/samples]
-  (log/debug "SAMPLE!/fd" fd)
-  (log/debug "SAMPLE!/argtypes" argtypes)
   (let [{::grp.art/keys [arities]} fd
         {::grp.art/keys [gspec]} (grp.art/get-arity arities argtypes)
         {::grp.art/keys [metadata return-spec generator]} gspec
@@ -104,14 +101,14 @@
                     (when (seq argtypes)
                       (gen/fmap (partial return-sample-generator env sampler)
                         (gen/hash-map
-                          :args (apply gen/tuple (map gen/elements (map get-samples argtypes)))
+                          :args (apply gen/tuple (map gen/elements (mapv get-samples argtypes)))
                           :fn-ref (gen/return (get-fn-ref env fd))
                           :params (gen/return (and sampler (if (vector? sampler) (second sampler) sampler)))
                           :argtypes (gen/return argtypes)
                           :return-sample (or generator (s/gen return-spec)))))
-                    (catch #?(:clj  Exception
-                              :cljs :default) e
-                      (log/error e "Unable to build generator from " [sampler return-spec generator])
+                    (catch #?(:clj  Throwable :cljs :default) e
+                      (log/error e "Unable to sample for" ((some-fn ::grp.art/name ::grp.art/lambda-name) fd)
+                        "from" {:sampler sampler :gen (or generator return-spec) :argtypes argtypes})
                       nil))]
     (if generator
       (try-sampling! env generator {::grp.art/original-expression ((some-fn ::grp.art/name ::grp.art/lambda-name) fd)})
@@ -123,8 +120,7 @@
   (let [{::grp.art/keys [arities]} (first argtypes)
         {::grp.art/keys [gspec]} (grp.art/get-arity arities (rest argtypes))
         {::grp.art/keys [metadata return-spec generator]} gspec
-        sampler (-> metadata convert-shorthand-metadata derive-sampler-type)
-        ]
+        sampler (-> metadata convert-shorthand-metadata derive-sampler-type)]
     (prn :f/sampler sampler)
     (if sampler
       (sample! env (first argtypes)

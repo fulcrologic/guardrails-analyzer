@@ -41,4 +41,6 @@
  {:date "2020-09-08" :description ">fn" :timespans [[915 1340] [1520 1600]]}
  {:date "2020-09-09" :description ">fn & form-expression" :timespans [[900 1200] [1300 1500]]}
  {:date "2020-09-10" :description "analyze! >fn & map" :timespans [[900 1030] [1130 1330] [1415 1530] [1630 1800]]}
+ {:date "2020-09-11" :description "chat with tony" :timespans [[900 1000]]}
+ {:date "2020-09-11" :description "test fixtures & analyze! >fn" :timespans [[930 1420]]}
  ]

@@ -2,36 +2,25 @@
   (:require
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [=> | ?]]
-    [com.fulcrologic.guardrails-pro.core :refer [>ftag >defn >fn]]))
+    [com.fulcrologic.guardrails-pro.core :refer [>ftag >defn]]))
 
 (>ftag ^:pure? clojure.core/str
   ([] [=> string?])
   ([x] [any? => string?])
   ([x & ys] [any? (s/* any?) => string?]))
 
-#_(>defn test:str [x]
+(>defn test:str [x]
   [int? => keyword?]
   (str "x = " x))
 
 (>ftag ^:map-like clojure.core/map
   ([f coll & colls] [fn? sequential? (s/+ sequential?) => (s/coll-of any?)]))
 
-(>defn ^:pure test:map [arg]
-  [int? => (s/coll-of int?)]
-  (let [const 100
-        random (rand-int const)]
-    (map (>fn ^:pure foo [i] ^:pure [int? => int?]
-           (prn :i i :arg arg :const const :random random)
-           i
-           (+ i arg const random))
-      (range 7))))
-#_(test:map 10000)
-
 (>ftag ^:pure? clojure.core/get
   ([map key] [map? any? => any?])
   ([map key not-found] [map? any? any? => any?]))
 
-#_(>defn test:get [x]
+(>defn test:get [x]
   [int? => keyword?]
   (get {:a x} :a))
 
@@ -41,7 +30,7 @@
   ([x y] [number? number? => number?])
   ([x y & more] [number? number? (s/+ number?) => number?]))
 
-#_(>defn test:+ [x]
+(>defn test:+ [x]
   [int? => keyword?]
   (+ x 1000))
 
@@ -96,7 +85,7 @@
   ([coll k v] [map? any? any? => map?])
   ([coll k v & kvs] [map? any? any? (s/* any?) | #(even? (count kvs)) => map?]))
 
-#_(>defn test:assoc [m]
+(>defn test:assoc [m]
   [map? => keyword?]
   (assoc m :k :v))
 

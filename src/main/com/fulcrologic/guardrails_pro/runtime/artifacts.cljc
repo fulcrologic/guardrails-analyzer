@@ -153,9 +153,9 @@
   (swap! registry update fn-sym
     (fn [old-desc]
       (assoc
-        (if (arities-match? old-desc fn-desc)
-          old-desc
-          fn-desc)
+        ;FIXME: does not handle metadata changes
+        ;(if (arities-match? old-desc fn-desc) old-desc fn-desc)
+        fn-desc
         ::last-seen (now-ms))))
   nil)
 
@@ -196,13 +196,15 @@
 (>defn symbol-detail [env sym]
   [::env symbol? => (? ::type-description)]
   (or
-    (log/spy :info :locals (get-in env [::local-symbols sym]))
-    (get-in env [::extern-symbols sym ::type-description])))
+    (log/spy :info (str "symbol-detail for local: " sym)
+      (get-in env [::local-symbols sym]))
+    (log/spy :info (str "symbol-detail for extern: " sym)
+      (get-in env [::extern-symbols sym ::type-description]))))
 
 (defn lookup-symbol [env sym]
-  (prn :lookup-symbol/sym sym)
-  (let [{::keys [literal-value samples]} (log/spy :debug :lookup-symbol/type-desc
-                                           (get-in env [::local-symbols sym]))]
+  (log/debug :lookup-symbol/sym sym)
+  (let [{::keys [samples]} (log/spy :debug :lookup-symbol/type-desc
+                             (get-in env [::local-symbols sym]))]
     (log/spy :debug :lookup-symbol/result
       (and (seq samples) (rand-nth (vec samples))))))
 
@@ -268,7 +270,7 @@
 (>defn record-error!
   [env error]
   [::env (s/keys :req [::message ::original-expression]) => any?]
-  (log/info :record-error! error (::checking-sym env) (::location env))
+  (log/info (log/color-str :red :record-error!) (::checking-sym env) "\n" (::location env) "\n" error)
   (swap! problems update-in
     [(::checking-sym env) ::errors]
     (fnil conj [])

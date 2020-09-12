@@ -5,7 +5,7 @@
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.static.sampler :as grp.sampler]
     [com.fulcrologic.guardrails.core :as gr :refer [=>]]
-    [fulcro-spec.core :refer [specification component assertions when-mocking! =fn=>]]))
+    [fulcro-spec.core :refer [specification component assertions when-mocking!]]))
 
 (defn with-mocked-errors [cb]
   (let [errors (atom [])]

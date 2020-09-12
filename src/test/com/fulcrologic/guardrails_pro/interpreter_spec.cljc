@@ -1,29 +1,51 @@
 (ns com.fulcrologic.guardrails-pro.interpreter-spec
   (:require
-    [com.fulcrologic.guardrails-pro.core :as grp]
+    [clojure.spec.alpha :as s]
+    [com.fulcrologic.guardrails-pro.core :refer [>defn >fn]]
     [com.fulcrologic.guardrails-pro.interpreter :refer [check!]]
     [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
+    [com.fulcrologic.guardrails-pro.test-fixtures :as tf]
     [com.fulcrologic.guardrails.core :as gr :refer [=>]]
-    [fulcro-spec.core :refer [specification component assertions behavior =fn=> when-mocking!]]))
+    [fulcro-spec.core :refer [specification assertions]]))
 
-(grp/>defn g [x]
+(tf/use-fixtures :once tf/with-default-test-logging-config)
+
+(>defn ^:pure greet [x]
   [string? => string?]
-  "hello")
+  (str "hello: <" x ">"))
 
-(grp/>defn f [x]
-  [int? => int?]
-  (let [a x]
-    (g a)))
+(>defn ^:pure test:map:>fn [arg]
+  [int? => (s/coll-of int?)]
+  (let [const 100
+        random (rand-int const)
+        maaap (map (>fn ^:pure foo [i] [int? => int?]
+                     (+ i const random arg))
+                (range 7))]
+    maaap))
+#_(test:map:>fn 10000)
 
-#_(specification "Checking a function"
-    (let [errors (atom [])]
-      (when-mocking!
-        (grp.art/record-error! _ problem) => (swap! errors conj problem)
+;; TODO: WIP
+#_(>defn test:nested-fns [arg]
+  [int? => (s/coll-of int?)]
+  (let [const 300]
+    (map (>fn ^:pure foo [i] [int? => int?]
+           (let [c 23]
+             (map (>fn ^:pure bar [j] [int? => int?]
+                    (+ j c i const arg))
+               [1 2 3 4 5])))
+      (range 1000 1005 1))))
+#_(test:nested-fns 10000)
 
-        (check! (grp.art/build-env) `f))
-      (assertions
-        "finds errors"
-        @errors => ["boo"])))
+(defn with-mocked-errors [sym]
+  (let [errors (atom [])]
+    (with-redefs
+      [grp.art/record-error! (fn [_ error] (swap! errors conj error))]
+      (check! sym))
+    @errors))
 
-(comment
-  )
+;; NOTE: dont check error message, will change
+;; TODO: add & use :error/type (machine readable)
+(specification "Checking a function"
+  (let [errors (with-mocked-errors `test:map:>fn)]
+    (assertions
+      errors => [])))

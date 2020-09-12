@@ -18,8 +18,10 @@
 
 (defn list-dispatch-type [env [f :as _sexpr]]
   (cond
+    ;; TODO: seq?
     (grp.art/function-detail env f) :function-call
     (grp.art/external-function-detail env f) :external-function
+    ;; TODO: local?
     (symbol? f) (grp.art/cljc-rewrite-sym-ns f)
     ;; TODO: ifn? eg: :kw 'sym {} ...
     :else :unknown))
@@ -229,19 +231,27 @@
   )
 
 (defn analyze-lambda! [env [_ fn-name]]
-  (let [{::grp.art/keys [lambdas]} (grp.art/function-detail env (::grp.art/checking-sym env))]
-    (get lambdas fn-name {})))
+  (let [{::grp.art/keys [lambdas]} (grp.art/function-detail env (::grp.art/checking-sym env))
+        lambda (get lambdas fn-name {})]
+    (doseq [{::grp.art/keys [body] :as arity-detail} (vals (::grp.art/arities lambda))]
+      (let [env    (grp.fnt/bind-argument-types env arity-detail)
+            result (analyze-statements! env body)]
+        (log/info "Locals for " fn-name ":" (::grp.art/local-symbols env))
+        (grp.fnt/check-return-type! env arity-detail (log/spy :info result))))
+    ;; - should return a type description, ie: a :function ::gspec
+    ;; - maybe the return still needs samples? (the fn itself ?)
+    lambda))
 
 (defmethod analyze-mm '>fn [env sexpr] (analyze-lambda! env sexpr))
 (defmethod analyze-mm `grp/>fn [env sexpr] (analyze-lambda! env sexpr))
 
 (defn analyze-map-like! [env [map-like-sym f & colls]]
-  (let [lambda (analyze! env f)
+  (let [lambda (log/spy :debug :lambda (analyze! env f))
         colls (map (partial analyze! env) colls)]
-    (grp.sampler/sample! env
-      (grp.art/external-function-detail env map-like-sym)
-      (cons lambda colls))
-    {}))
+    {::grp.art/samples (grp.sampler/sample! env
+                         (grp.art/external-function-detail env map-like-sym)
+                         (cons lambda colls))}))
+
 (defmethod analyze-mm 'map [env sexpr] (analyze-map-like! env sexpr))
 (defmethod analyze-mm 'clojure.core/map [env sexpr] (analyze-map-like! env sexpr))
 
