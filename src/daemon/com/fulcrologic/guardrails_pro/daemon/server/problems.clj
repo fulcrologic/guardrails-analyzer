@@ -1,7 +1,7 @@
 (ns com.fulcrologic.guardrails-pro.daemon.server.problems
   (:require
     [clojure.set :as set]
-    [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
+    [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.static.clojure-reader :as clj-reader]
     [taoensso.timbre :as log]))
 

@@ -1,9 +1,9 @@
-(ns com.fulcrologic.guardrails-pro.static.function-type
+(ns com.fulcrologic.guardrails-pro.analysis.function-type
   (:require
     [clojure.spec.alpha :as s]
     [taoensso.timbre :as log]
-    [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
-    [com.fulcrologic.guardrails-pro.static.sampler :as grp.sampler]
+    [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
+    [com.fulcrologic.guardrails-pro.analysis.sampler :as grp.sampler]
     [com.fulcrologic.guardrails.core :refer [>defn =>]]))
 
 (s/def ::destructurable

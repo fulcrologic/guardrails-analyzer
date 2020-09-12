@@ -2,9 +2,9 @@
   (:require
     [com.fulcrologic.guardrails.core :refer [=>]]
     [com.fulcrologic.guardrails-pro.core :refer [>defn]]
-    [com.fulcrologic.guardrails-pro.runtime.reporter :as reporter]
-    [com.fulcrologic.guardrails-pro.interpreter :as grp.intrp]
-    [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
+    [com.fulcrologic.guardrails-pro.ui.reporter :as reporter]
+    [com.fulcrologic.guardrails-pro.analysis.interpreter :as grp.intrp]
+    [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.ftags.clojure-core]
     [cljs.spec.gen.alpha :as gen]
     [cljs.spec.alpha :as s]))

@@ -1,6 +1,6 @@
-(ns com.fulcrologic.guardrails-pro.runtime.artifacts-spec
+(ns com.fulcrologic.guardrails-pro.artifacts-spec
   (:require
-    [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
+    [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails.core :refer [=>]]
     [com.fulcrologic.guardrails-pro.core :refer [>defn]]
     [fulcro-spec.core :refer [specification component assertions when-mocking! =fn=>]]

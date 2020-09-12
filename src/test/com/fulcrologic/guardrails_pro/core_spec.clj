@@ -2,8 +2,8 @@
   (:require
     [com.fulcrologic.guardrails.core :as gr :refer [=>]]
     [com.fulcrologic.guardrails-pro.core :as grp]
-    [com.fulcrologic.guardrails-pro.interpreter :as grp.int]
-    [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
+    [com.fulcrologic.guardrails-pro.analysis.interpreter :as grp.int]
+    [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [fulcro-spec.core :refer [specification assertions when-mocking!]]))
 
 (grp/>ftag clojure.core/inc [x] [number? => number?])

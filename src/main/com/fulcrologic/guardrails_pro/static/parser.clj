@@ -1,8 +1,8 @@
-(ns com.fulcrologic.guardrails-pro.parser
+(ns com.fulcrologic.guardrails-pro.static.parser
   "Implementation of reading >defn for macro expansion."
   (:require
     [clojure.set :as set]
-    [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
+    [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.static.forms :as forms]
     [com.rpl.specter :as sp]
     [taoensso.encore :as enc]

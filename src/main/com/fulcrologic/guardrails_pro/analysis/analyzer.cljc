@@ -1,11 +1,11 @@
-(ns com.fulcrologic.guardrails-pro.static.analyzer
+(ns com.fulcrologic.guardrails-pro.analysis.analyzer
   (:require
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [>defn => ?]]
     [com.fulcrologic.guardrails-pro.core :as grp]
-    [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
-    [com.fulcrologic.guardrails-pro.static.function-type :as grp.fnt]
-    [com.fulcrologic.guardrails-pro.static.sampler :as grp.sampler]
+    [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
+    [com.fulcrologic.guardrails-pro.analysis.function-type :as grp.fnt]
+    [com.fulcrologic.guardrails-pro.analysis.sampler :as grp.sampler]
     [taoensso.timbre :as log]
     [taoensso.encore :as enc])
   (:import

@@ -1,7 +1,7 @@
-(ns com.fulcrologic.guardrails-pro.parser-spec
+(ns com.fulcrologic.guardrails-pro.static.parser-spec
   (:require
-    [com.fulcrologic.guardrails-pro.parser :as grp.parser]
-    [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
+    [com.fulcrologic.guardrails-pro.static.parser :as grp.parser]
+    [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.static.forms :as forms]
     [fulcro-spec.core :refer [specification behavior assertions provided when-mocking! => =throws=>]]))
 
@@ -280,3 +280,4 @@
     (-> (grp.parser/parse-fspec '[[x] [int? => int?]])
       (get-in [1 ::grp.art/body] ::not-found))
     => ::not-found))
+

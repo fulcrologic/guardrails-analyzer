@@ -1,9 +1,9 @@
-(ns com.fulcrologic.guardrails-pro.static.function-type-spec
+(ns com.fulcrologic.guardrails-pro.analysis.function-type-spec
   (:require
     [clojure.spec.alpha :as s]
     [clojure.spec.gen.alpha :as gen]
-    [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
-    [com.fulcrologic.guardrails-pro.static.function-type :as grp.fnt]
+    [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
+    [com.fulcrologic.guardrails-pro.analysis.function-type :as grp.fnt]
     [com.fulcrologic.guardrails.core :as gr :refer [=> | <-]]
     [com.fulcrologic.guardrails-pro.core :as grp]
     [fulcro-spec.core :refer [specification behavior component assertions =fn=> when-mocking!]]))

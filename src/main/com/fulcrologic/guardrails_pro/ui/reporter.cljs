@@ -1,4 +1,4 @@
-(ns com.fulcrologic.guardrails-pro.runtime.reporter
+(ns com.fulcrologic.guardrails-pro.ui.reporter
   (:require
     [clojure.pprint :refer [pprint]]
     [com.fulcrologic.guardrails.core :refer [=> | ?]]
@@ -6,7 +6,7 @@
     [com.fulcrologic.fulcro.application :as app]
     [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
     [com.fulcrologic.fulcro.mutations :as f.m]
-    [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
+    [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [taoensso.timbre :as log]
     [taoensso.encore :as enc]
     [com.fulcrologic.fulcro.dom :as dom :refer [div h3 h4 label input]]

@@ -1,10 +1,10 @@
-(ns com.fulcrologic.guardrails-pro.static.sampler
+(ns com.fulcrologic.guardrails-pro.analysis.sampler
   (:require
     [clojure.set :as set]
     [clojure.spec.alpha :as s]
     [clojure.test.check.generators :as gen]
     [com.fulcrologic.guardrails.core :refer [>defn => ?]]
-    [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
+    [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [taoensso.encore :as enc]
     [taoensso.timbre :as log]))
 

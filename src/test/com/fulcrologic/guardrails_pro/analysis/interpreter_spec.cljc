@@ -1,9 +1,9 @@
-(ns com.fulcrologic.guardrails-pro.interpreter-spec
+(ns com.fulcrologic.guardrails-pro.analysis.interpreter-spec
   (:require
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails-pro.core :refer [>defn >fn]]
-    [com.fulcrologic.guardrails-pro.interpreter :refer [check!]]
-    [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
+    [com.fulcrologic.guardrails-pro.analysis.interpreter :refer [check!]]
+    [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.test-fixtures :as tf]
     [com.fulcrologic.guardrails.core :as gr :refer [=>]]
     [fulcro-spec.core :refer [specification assertions]]))

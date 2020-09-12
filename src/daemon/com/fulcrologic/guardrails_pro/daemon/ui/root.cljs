@@ -2,7 +2,7 @@
   (:require
     [com.fulcrologic.fulcro.components :as f.c :refer [defsc]]
     [com.fulcrologic.fulcro.dom :as dom]
-    [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]))
+    [com.fulcrologic.guardrails-pro.artifacts :as grp.art]))
 
 (defn ui-error-part [[part-key part]]
   (dom/tr {:key (name part-key)}

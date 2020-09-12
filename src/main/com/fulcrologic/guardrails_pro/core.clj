@@ -1,7 +1,7 @@
 (ns com.fulcrologic.guardrails-pro.core
   (:require
-    [com.fulcrologic.guardrails-pro.parser :as grp.parser]
-    [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
+    [com.fulcrologic.guardrails-pro.static.parser :as grp.parser]
+    [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.static.clojure-reader :as clj-reader]
     [com.rpl.specter :as sp]
     [taoensso.encore :as enc]

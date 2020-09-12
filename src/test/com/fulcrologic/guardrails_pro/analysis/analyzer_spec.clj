@@ -1,7 +1,7 @@
-(ns com.fulcrologic.guardrails-pro.static.analyzer-spec
+(ns com.fulcrologic.guardrails-pro.analysis.analyzer-spec
   (:require
-    [com.fulcrologic.guardrails-pro.runtime.artifacts :as grp.art]
-    [com.fulcrologic.guardrails-pro.static.analyzer :as grp.ana]
+    [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
+    [com.fulcrologic.guardrails-pro.analysis.analyzer :as grp.ana]
     [com.fulcrologic.guardrails.core :as gr :refer [=>]]
     [com.fulcrologic.guardrails-pro.core :as grp]
     [fulcro-spec.core :refer [specification component assertions when-mocking! =fn=>]]

@@ -1,4 +1,4 @@
-(ns com.fulcrologic.guardrails-pro.runtime.artifacts
+(ns com.fulcrologic.guardrails-pro.artifacts
   "The runtime storage of artifacts to analyze. This namespace is what caches the forms in the runtime environment
   and acts as the central control for finding, caching, renewing and expiring things from the runtime. These routines
   must work in CLJ and CLJS, and should typically not be hot reloaded during updates."
