@@ -133,7 +133,7 @@
       "parses >fn into arities, etc"
       (-> '[(>fn foo [x] [int? => int?] (inc x))]
         (grp.parser/parse-lambdas [])
-        first second ::grp.art/arities)
+        first val ::grp.art/arities)
       => ::MOCK_ARITIES))
   (when-mocking!
     (grp.parser/select-simple-symbols _)
@@ -146,8 +146,21 @@
       "creates an env->fn"
       (-> '[(>fn foo [x] [int? => int?] (inc x))]
         (grp.parser/parse-lambdas [])
-        first second ::grp.art/env->fn)
-      => ::MOCK_ENV->FN)))
+        first val ::grp.art/env->fn)
+      => ::MOCK_ENV->FN))
+  (assertions
+    "parses nested lambdas into top level lambdas map"
+    (-> '[(>fn foo [x] [int? => int?]
+            ((>fn bar [y] [string? => string?] (str x y))))]
+      (grp.parser/parse-lambdas [])
+      keys)
+    => '['foo 'bar]
+    "lambdas do not have nested lambdas"
+    (-> '[(>fn foo [x] [int? => int?]
+            ((>fn bar [y] [string? => string?] (str x y))))]
+      (grp.parser/parse-lambdas [])
+      first val keys)
+    =fn=> (comp not #{::grp.art/lambdas})))
 
 (specification "body-arity" :unit
   (assertions

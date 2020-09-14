@@ -54,7 +54,8 @@
       (cond-> record-fn-name?
         (update-result assoc (if as-lambda-name?
                                ::grp.art/lambda-name
-                               ::grp.art/name) nm))
+                               ::grp.art/name)
+          `(quote ~nm)))
       (sym-meta)
       (next-args))
     (if optional-fn-name? state
@@ -182,16 +183,18 @@
 (defn parse-lambdas
   [body extern-symbols]
   (into {}
-    (for [lambda (sp/select (sp/codewalker >fn?) body)]
-      (let [function (parse-fn (rest lambda))
-            fn-name  (::grp.art/lambda-name function)
-            binds    (select-simple-symbols lambda)]
-        (let [binds (set/difference (set binds) (set extern-symbols))]
-          (vector `(quote ~fn-name)
-            (-> (sp/transform (sp/codewalker #{fn-name})
-                  #(do `(quote ~%))
-                  function)
-              (merge #::grp.art{:env->fn (lambda:env->fn:impl binds lambda)}))))))))
+    (mapcat
+      (fn [lambda]
+        (let [function (parse-fn (rest lambda))
+              fn-name  (::grp.art/lambda-name function)
+              binds    (select-simple-symbols lambda)
+              binds    (set/difference (set binds) (set extern-symbols))]
+            (conj
+              (seq (::grp.art/lambdas function))
+              (vector fn-name
+                (->> (dissoc function ::grp.art/lambdas)
+                  (merge #::grp.art{:env->fn (lambda:env->fn:impl binds lambda)})))))))
+    (sp/select (sp/codewalker >fn?) body)))
 
 (defn single-arity
   [{:as state, {:keys [assert-no-body? extern-symbols]} ::opts
