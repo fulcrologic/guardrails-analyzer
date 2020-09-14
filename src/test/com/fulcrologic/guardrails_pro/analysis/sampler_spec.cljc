@@ -1,11 +1,10 @@
 (ns com.fulcrologic.guardrails-pro.analysis.sampler-spec
   (:require
     [clojure.spec.alpha :as s]
-    [clojure.spec.gen.alpha :as gen]
+    [clojure.test.check.generators :as tc.gen]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.analysis.sampler :as grp.sampler]
-    [com.fulcrologic.guardrails.core :as gr :refer [=>]]
-    [fulcro-spec.core :refer [specification component assertions when-mocking!]]))
+    [fulcro-spec.core :refer [specification component assertions when-mocking! when-mocking provided]]))
 
 (defn with-mocked-errors [cb]
   (let [errors (atom [])]
@@ -18,7 +17,7 @@
     (with-mocked-errors
       (fn [errors]
         (grp.sampler/try-sampling! env
-          (gen/fmap #(assoc % :k :v) (s/gen int?))
+          (tc.gen/fmap #(assoc % :k :v) (s/gen int?))
           {::grp.art/original-expression :TEST})
         (assertions
           @errors => [#::grp.art{:message "Failed to generate samples!"
@@ -85,4 +84,27 @@
         {:args [:db {:person/name "john"}]
          :params 1
          :return-sample {:person/full-name "john doe"}})
-      => #:person{:name "john" :full-name "john doe"})))
+      => #:person{:name "john" :full-name "john doe"})
+    (component "map-like"
+      (when-mocking
+        (grp.sampler/get-gspec _ _) => nil
+        (assertions
+          "returns :return-sample if no sampler"
+          (grp.sampler/return-sample-generator env ::grp.sampler/map-like
+            {:return-sample ::STUB_RETURN_SAMPLE
+             :argtypes [{}]})
+          => ::STUB_RETURN_SAMPLE))
+      (provided "calls sample! on function if sampler metadata"
+        (grp.sampler/make-generator _env _fn argtypes)
+        => (do (assertions
+                 (map ::grp.art/samples argtypes)
+                 => [#{1 2 3} #{4 5 6 7 8 9}])
+             ::MOCK_GENERATOR)
+        (tc.gen/generate _) => ::MOCK_SAMPLES
+        (grp.sampler/get-gspec _ _) => {::grp.art/sampler ::grp.sampler/pure}
+        (assertions
+          (grp.sampler/return-sample-generator env ::grp.sampler/map-like
+            {:argtypes [{:STUB :FUNCTION}
+                        {::grp.art/samples #{[1 2 3]}}
+                        {::grp.art/samples #{[4 5 6] [7 8 9]}}]})
+          => ::MOCK_SAMPLES)))))

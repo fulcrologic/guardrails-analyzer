@@ -24,13 +24,12 @@
     maaap))
 #_(test:map:>fn 10000)
 
-;; TODO: WIP
-#_(>defn test:nested-fns [arg]
+(>defn test:nested-fns [arg]
   [int? => (s/coll-of int?)]
   (let [const 300]
-    (map (>fn ^:pure foo [i] [int? => int?]
+    (map (>fn ^:pure FOO [i] [int? => int?]
            (let [c 23]
-             (map (>fn ^:pure bar [j] [int? => int?]
+             (map (>fn ^:pure BAR [j] [int? => int?]
                     (+ j c i const arg))
                [1 2 3 4 5])))
       (range 1000 1005 1))))
@@ -46,6 +45,6 @@
 ;; NOTE: dont check error message, will change
 ;; TODO: add & use :error/type (machine readable)
 (specification "Checking a function"
-  (let [errors (with-mocked-errors `test:map:>fn)]
+  (let [errors (with-mocked-errors `test:nested-fns)]
     (assertions
       errors => [])))

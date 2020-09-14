@@ -200,8 +200,9 @@
     (log/spy :info (str "symbol-detail for extern: " sym)
       (get-in env [::extern-symbols sym ::type-description]))))
 
-(defn lookup-symbol [env sym]
-  (log/debug :lookup-symbol/sym sym)
+(>defn lookup-symbol [env sym]
+  [::env symbol? => (? any?)]
+  (log/debug :lookup-symbol/sym (pr-str sym))
   (let [{::keys [samples]} (log/spy :debug :lookup-symbol/type-desc
                              (get-in env [::local-symbols sym]))]
     (log/spy :debug :lookup-symbol/result
@@ -239,7 +240,7 @@
 (>defn update-location
   [env location]
   [::env (? map?) => ::env]
-  (log/info :update-location (::checking-sym env) location)
+  (log/trace :update-location (::checking-sym env) location)
   (cond-> env location
     (assoc ::location
            (new-location location))))

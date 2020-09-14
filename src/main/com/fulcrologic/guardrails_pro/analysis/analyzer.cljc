@@ -217,7 +217,6 @@
 
 ;; TODO HOFs fn -> val
 (comment
-  map
   reduce
   filter
   apply

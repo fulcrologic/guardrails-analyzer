@@ -158,7 +158,12 @@
   (apply lambda:env->fn:impl args))
 
 (defn select-simple-symbols [body]
-  (sp/select (sp/walker simple-symbol?) (nnext body)))
+  (sp/select (sp/walker simple-symbol?)
+    (drop 4 body)))
+
+(defn binds-for-lambda [lambda-body extern-symbols]
+  (-> (select-simple-symbols lambda-body) set
+    (set/difference (set extern-symbols))))
 
 (defn lambda-gensym-name [& _] (gensym ">fn$"))
 
@@ -185,15 +190,14 @@
   (into {}
     (mapcat
       (fn [lambda]
-        (let [function (parse-fn (rest lambda))
+        (let [function (parse-fn (rest lambda) extern-symbols)
               fn-name  (::grp.art/lambda-name function)
-              binds    (select-simple-symbols lambda)
-              binds    (set/difference (set binds) (set extern-symbols))]
-            (conj
-              (seq (::grp.art/lambdas function))
-              (vector fn-name
-                (->> (dissoc function ::grp.art/lambdas)
-                  (merge #::grp.art{:env->fn (lambda:env->fn:impl binds lambda)})))))))
+              binds    (binds-for-lambda lambda extern-symbols)]
+          (conj
+            (seq (::grp.art/lambdas function))
+            (vector fn-name
+              (->> (dissoc function ::grp.art/lambdas)
+                (merge #::grp.art{:env->fn (lambda:env->fn:impl binds lambda)})))))))
     (sp/select (sp/codewalker >fn?) body)))
 
 (defn single-arity
@@ -248,11 +252,12 @@
     (function-content)
     ::result))
 
-(defn parse-fn [args]
+(defn parse-fn [args & [extern-symbols]]
   (-> (init-parser-state args
         {:optional-fn-name? true
          :record-fn-name?   true
-         :as-lambda-name?   true})
+         :as-lambda-name?   true
+         :extern-symbols    extern-symbols})
     (function-name)
     (function-content)
     ::result))

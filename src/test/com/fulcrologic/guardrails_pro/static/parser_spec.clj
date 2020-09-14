@@ -3,7 +3,7 @@
     [com.fulcrologic.guardrails-pro.static.parser :as grp.parser]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.static.forms :as forms]
-    [fulcro-spec.core :refer [specification behavior assertions provided when-mocking! => =throws=>]]))
+    [fulcro-spec.core :refer [specification behavior assertions provided when-mocking when-mocking! => =throws=>]]))
 
 (specification "function-name" :unit
   (assertions
@@ -97,7 +97,7 @@
                                         :generator   'gen/pos}}))
 
 (specification "lambda:env->fn" :unit
-  (when-mocking!
+  (when-mocking
     (grp.art/lookup-symbol env sym) => (get env sym)
     (assertions
       ;(grp.parser/lambda:env->fn:impl '[a] '(fn [x] [int? => int?] (inc a))) => :for-debugging
@@ -128,7 +128,7 @@
       (grp.parser/parse-lambdas []))
     => {})
   (when-mocking!
-    (grp.parser/parse-fn _) => {::grp.art/arities ::MOCK_ARITIES}
+    (grp.parser/parse-fn _ _) => {::grp.art/arities ::MOCK_ARITIES}
     (assertions
       "parses >fn into arities, etc"
       (-> '[(>fn foo [x] [int? => int?] (inc x))]
@@ -293,4 +293,3 @@
     (-> (grp.parser/parse-fspec '[[x] [int? => int?]])
       (get-in [1 ::grp.art/body] ::not-found))
     => ::not-found))
-

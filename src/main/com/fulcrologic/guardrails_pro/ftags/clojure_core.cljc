@@ -2,7 +2,7 @@
   (:require
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [=> | ?]]
-    [com.fulcrologic.guardrails-pro.core :refer [>ftag >defn]]))
+    [com.fulcrologic.guardrails-pro.core :refer [>ftag >defn >fn]]))
 
 (>ftag ^:pure? clojure.core/str
   ([] [=> string?])
