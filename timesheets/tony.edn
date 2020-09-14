@@ -36,5 +36,6 @@
  {:date "2020-09-09" :description "check-in" :timespans [[900 945]]}
  {:date "2020-09-10" :description "check-in" :timespans [[915 945]]}
  {:date "2020-09-11" :description "check-in" :timespans [[921 950]]}
+ {:date "2020-09-13" :description "GR free's bloat problems" :timespans [[1611 1730]]}
  ]
 
