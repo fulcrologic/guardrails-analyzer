@@ -5,6 +5,7 @@
     [com.fulcrologic.guardrails-pro.analysis.interpreter :refer [check!]]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.test-fixtures :as tf]
+    [com.fulcrologic.guardrails-pro.test-checkers :as tc]
     [com.fulcrologic.guardrails.core :as gr :refer [=>]]
     [fulcro-spec.check :as _]
     [fulcro-spec.core :refer [specification assertions]]))
@@ -29,7 +30,7 @@
   (assertions
     (tf/capture-errors check! `test:map:>fn)
     =check=> (_/all*
-               (tf/of-length?* 1))))
+               (tc/of-length?* 1))))
 
 (>defn ^:pure test:nested-fns [arg]
   [int? => (s/coll-of int?)]
@@ -46,7 +47,7 @@
   (assertions
     (tf/capture-errors check! `test:nested-fns)
     =check=> (_/all*
-               (tf/of-length?* 2))))
+               (tc/of-length?* 2))))
 
 (>defn test:constantly [arg]
   [int? => int?]
@@ -56,7 +57,7 @@
   (assertions
     (tf/capture-errors check! `test:constantly)
     =check=> (_/all*
-               (tf/of-length?* 1)
+               (tc/of-length?* 1)
                (_/seq-matches?*
                  [(_/embeds?*
                     {::grp.art/actual {::grp.art/failing-samples #{:kw}}
@@ -71,7 +72,7 @@
   (assertions
     (tf/capture-errors check! `test:map:constantly)
     =check=> (_/all*
-               (tf/of-length?* 1)
+               (tc/of-length?* 1)
                (_/seq-matches?*
                  [(_/embeds?*
                     {::grp.art/actual {::grp.art/failing-samples #{[:kw]}}

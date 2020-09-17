@@ -1,10 +1,10 @@
 (ns com.fulcrologic.guardrails-pro.analysis.sampler-spec
   (:require
-    [clojure.spec.alpha :as s]
     [clojure.test.check.generators :as gen]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.analysis.sampler :as grp.sampler]
     [com.fulcrologic.guardrails-pro.test-fixtures :as tf]
+    [com.fulcrologic.guardrails-pro.test-checkers :as tc]
     [fulcro-spec.check :as _ :refer [checker]]
     [fulcro-spec.core :refer [specification component assertions when-mocking]]))
 
@@ -86,20 +86,20 @@
     (assertions
       (gen/sample (grp.sampler/args-gen env [#{:a :b :c}]))
       =check=> (_/every?*
-                 (tf/of-length?* 1)
+                 (tc/of-length?* 1)
                  (_/seq-matches?*
                    [(_/is?* #{:a :b :c})]))
       (gen/sample (grp.sampler/args-gen env [#{:a :b :c}
                                              #{1 2 3}]))
       =check=> (_/every?*
-                 (tf/of-length?* 2)
+                 (tc/of-length?* 2)
                  (_/seq-matches?*
                    [(_/is?* #{:a :b :c})
                     (_/is?* #{1 2 3})]))
       (gen/sample (grp.sampler/args-gen env [[identity]
                                              #{:a :b :c}]))
       =check=> (_/every?*
-                 (tf/of-length?* 2)
+                 (tc/of-length?* 2)
                  (_/seq-matches?*
                    [(_/equals?* identity)
                     (_/is?* #{:a :b :c})])))))

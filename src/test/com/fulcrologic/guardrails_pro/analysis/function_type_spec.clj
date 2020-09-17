@@ -7,8 +7,9 @@
     [com.fulcrologic.guardrails.core :as gr :refer [=> | <-]]
     [com.fulcrologic.guardrails-pro.core :as grp]
     [com.fulcrologic.guardrails-pro.test-fixtures :as tf]
+    [com.fulcrologic.guardrails-pro.test-checkers :as tc]
     [fulcro-spec.core :refer [specification behavior component assertions]]
-    [fulcro-spec.check :as _ :refer [checker]]))
+    [fulcro-spec.check :as _]))
 
 (grp/>defn test_int->int [x]
   [int? => int?]
@@ -66,7 +67,7 @@
         `test_pos-int->int
         [(->td "int?" 'x int? #{"3" 22})])
       =check=> (_/all*
-                 (tf/of-length?* 1)
+                 (tc/of-length?* 1)
                  (_/seq-matches?*
                    [(_/embeds?*
                       {::grp.art/original-expression 'x
@@ -79,7 +80,7 @@
           `test_pos-int->int
           [(->td "int?" 'x int? #{3 -42})])
         =check=> (_/all*
-                   (tf/of-length?* 1)
+                   (tc/of-length?* 1)
                    (_/seq-matches?*
                      [(_/embeds?*
                         {::grp.art/original-expression '(x)
@@ -89,7 +90,7 @@
           [(->td "int?" 'x int? #{3 -42})
            (->td "string?" 'y string? #{"77" "88"})])
         =check=> (_/all*
-                   (tf/of-length?* 1)
+                   (tc/of-length?* 1)
                    (_/seq-matches?*
                      [(_/embeds?*
                         {::grp.art/original-expression '(x y)

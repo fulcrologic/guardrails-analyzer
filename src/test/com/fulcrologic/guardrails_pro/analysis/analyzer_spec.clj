@@ -5,6 +5,7 @@
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.core :as grp]
     [com.fulcrologic.guardrails-pro.test-fixtures :as tf]
+    [com.fulcrologic.guardrails-pro.test-checkers :as tc]
     [com.fulcrologic.guardrails.core :as gr :refer [=>]]
     [fulcro-spec.core :refer [specification component assertions when-mocking]]))
 
@@ -38,7 +39,7 @@
     (assertions
       (tf/capture-errors grp.ana/analyze! (grp.art/build-env)
         `(let [a# :a-kw] (test_int->int a#)))
-      =check=> (tf/of-length?* 1))))
+      =check=> (tc/of-length?* 1))))
 
 (s/def ::number number?)
 (s/def ::x ::number)
