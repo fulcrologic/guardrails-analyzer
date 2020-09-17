@@ -68,9 +68,10 @@
       (apply f args)
       @errors)))
 
-(defn of-length?* [n]
+(defn of-length?* [exp-len]
   (checker [actual]
-    (when-not (= n (count actual))
-      {:actual actual
-       :expected `(of-length?* ~n)
-       :message (str "Expected count of collection to be " n)})))
+    (let [length (count actual)]
+      (when-not (= exp-len length)
+        {:actual actual
+         :expected `(~'of-length?* ~exp-len)
+         :message (format "Expected count to be %d was %d" exp-len length)}))))

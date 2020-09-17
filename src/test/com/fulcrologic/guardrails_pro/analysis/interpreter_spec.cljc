@@ -16,7 +16,7 @@
   (str "hello: <" x ">"))
 
 (>defn ^:pure test:map:>fn [arg]
-  [int? => (s/coll-of int?)]
+  [int? => (s/coll-of keyword?)]
   (let [const 100
         random (rand-int const)
         maaap (map (>fn ^:pure foo [i] [int? => int?]
@@ -25,7 +25,7 @@
     maaap))
 #_(test:map:>fn 10000)
 
-#_(specification "test:map:>fn"
+(specification "test:map:>fn"
   (assertions
     (tf/capture-errors check! `test:map:>fn)
     =check=> (_/all*
@@ -42,17 +42,17 @@
       (range 1000 1005 1))))
 #_(test:nested-fns 10000)
 
-#_(specification "test:nested-fns"
+(specification "test:nested-fns"
   (assertions
     (tf/capture-errors check! `test:nested-fns)
     =check=> (_/all*
-               (tf/of-length?* 1))))
+               (tf/of-length?* 2))))
 
 (>defn test:constantly [arg]
   [int? => int?]
   ((constantly :kw) 777))
 
-#_(specification "test:constantly"
+(specification "test:constantly"
   (assertions
     (tf/capture-errors check! `test:constantly)
     =check=> (_/all*
@@ -67,7 +67,7 @@
   [int? => (s/coll-of int?)]
   (map (constantly :kw) [777]))
 
-#_(specification "test:map:constantly"
+(specification "test:map:constantly"
   (assertions
     (tf/capture-errors check! `test:map:constantly)
     =check=> (_/all*

@@ -58,20 +58,28 @@
       {::grp.sampler/sampler [:foobar 1]})
     => [:foobar 1]))
 
+(specification "flatten-samples"
+  (let [->S grp.sampler/->samples]
+    (assertions
+      (grp.sampler/flatten-samples
+        #{(->S #{:a :b}) :c (->S #{:d :e}) [:f :g]})
+      => #{:a :b :c :d :e [:f :g]})))
+
 (specification "get-args"
-  (assertions
-    (grp.sampler/get-args {})
-    =throws=> #"Failed to get samples"
-    (grp.sampler/get-args {::grp.art/samples #{}})
-    =throws=> #"Failed to get samples"
-    (grp.sampler/get-args {::grp.art/samples #{123}})
-    => #{123}
-    (grp.sampler/get-args {::grp.art/samples #{}
-                           ::grp.art/fn-ref identity})
-    => [identity]
-    (grp.sampler/get-args {::grp.art/samples #{123}
-                           ::grp.art/fn-ref identity})
-    => #{123}))
+  (let [env (grp.art/build-env)]
+    (assertions
+      (grp.sampler/get-args env {})
+      =throws=> #"Failed to get samples"
+      (grp.sampler/get-args env {::grp.art/samples #{}})
+      =throws=> #"Failed to get samples"
+      (grp.sampler/get-args env {::grp.art/samples #{123}})
+      => #{123}
+      (grp.sampler/get-args env {::grp.art/samples #{}
+                                 ::grp.art/fn-ref identity})
+      => [identity]
+      (grp.sampler/get-args env {::grp.art/samples #{123}
+                                 ::grp.art/fn-ref identity})
+      => #{123})))
 
 (specification "samples-gen"
   (let [env (grp.art/build-env)]
@@ -110,20 +118,6 @@
                       :argtypes []
                       :return-sample-fn (checker [f] ((_/is?* int?) (f)))}))))))
 
-(specification "make-generator" :WIP
-  (let [env (grp.art/build-env)]
-    (when-mocking
-      (grp.sampler/get-gspec _ _) => {::grp.art/sampler ::grp.sampler/pure
-                                      ::grp.art/return-spec int?}
-      (assertions
-        (gen/sample (grp.sampler/make-generator env {::grp.art/fn-ref (constantly :X)} []))
-        =check=> (_/every?* (_/is?* #{:X}))
-        (gen/sample (grp.sampler/make-generator env
-                      {::grp.art/fn-ref (constantly nil)} []))
-        =check=> (_/all*
-                   (_/is?* seq)
-                   (_/every?* (_/equals?* nil)))))))
-
 (specification "propagate-samples!"
   (let [env (grp.art/build-env)]
     (component "default"
@@ -145,6 +139,18 @@
         => #:person{:name "john" :full-name "john doe"}))
     (component "map-like"
       (assertions
+        (grp.sampler/map-like-args env
+          [{::grp.art/samples #{[1 2 3]}}
+           {::grp.art/samples #{[4 5 6]}}])
+        => [[1 4] [2 5] [3 6]]
+        (grp.sampler/map-like-args env
+          [{::grp.art/samples #{[1 2  ]}}
+           {::grp.art/samples #{[4 5 6]}}])
+        => [[1 4] [2 5]]
+        (grp.sampler/map-like-args env
+          [{::grp.art/samples #{1 2}}
+           {::grp.art/samples #{[3 4]}}])
+        =throws=> #"expects all sequence arguments to be sequences"
         (grp.sampler/propagate-samples! env ::grp.sampler/map-like
           {:args [+ [1 2 3] [4 5 6]]
            :argtypes [{::grp.art/fn-ref +
