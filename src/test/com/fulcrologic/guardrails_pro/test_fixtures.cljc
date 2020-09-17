@@ -61,6 +61,24 @@
 (defn with-default-test-logging-config [f]
   ((with-logging-config default-logging-config) f))
 
+(def test-logs (atom []))
+
+(def test-appender
+  {:enabled? true
+   :fn (fn [data]
+         (-> data
+           (select-keys [:level :?ns-str :?line :?err :vargs])
+           (assoc :msg (force (:msg_ data)))
+           (->> (swap! test-logs conj))))})
+
+(defmacro with-record-logs [config & body]
+  `(log/with-merged-config
+     (merge {:level :trace
+             :appenders {:test-appender test-appender}}
+       ~config)
+     (reset! test-logs [])
+     ~@body))
+
 (defn capture-errors [f & args]
   (let [errors (atom [])]
     (with-redefs

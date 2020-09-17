@@ -130,7 +130,6 @@
     ;; - transducer if no colls
     ;; - ? pure if function is pure
     ;; - if sampler: assert colls samples are `seq`
-    (prn :map-like/colls colls)
     (if-not sampler (return-sample-fn)
       (try-sampling! env
         (gen/let [params (params-gen env function colls)]
