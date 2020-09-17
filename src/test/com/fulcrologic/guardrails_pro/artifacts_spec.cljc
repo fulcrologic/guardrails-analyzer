@@ -3,7 +3,7 @@
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails.core :refer [=>]]
     [com.fulcrologic.guardrails-pro.core :refer [>defn]]
-    [fulcro-spec.core :refer [specification component assertions when-mocking! =fn=>]]
+    [fulcro-spec.core :refer [specification component assertions]]
     [clojure.spec.alpha :as s]))
 
 (defmacro >fn [& args] `(fn ~@args))

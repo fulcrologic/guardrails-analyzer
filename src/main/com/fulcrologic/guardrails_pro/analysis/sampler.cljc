@@ -5,28 +5,32 @@
     [clojure.test.check.generators :as gen]
     [com.fulcrologic.guardrails.core :refer [>defn => ?]]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
-    [taoensso.encore :as enc]
     [taoensso.timbre :as log]))
 
-;; TASK: Consider if this should be called `propagate-data`, or `data-propagation-strategy`, etc.
-(defmulti return-sample-generator
+(defmulti propagate-samples-mm!
   (fn [env x params]
     (cond
       (keyword? x) x
       (vector? x) (first x)
       :else :default)))
 
-(defmethod return-sample-generator :default
-  [env x {:keys [return-sample]}]
-  return-sample)
+(defn propagate-samples! [env strategy params]
+  (log/debug :propagate-samples!/strategy strategy)
+  (log/spy :debug :propagate-samples!/return
+    (propagate-samples-mm! env strategy params)))
 
-(defmethod return-sample-generator ::pure
+(defmethod propagate-samples-mm! :default
+  [env x {:keys [return-sample-fn]}]
+  (return-sample-fn))
+
+(defmethod propagate-samples-mm! ::pure
   [env x {:keys [fn-ref args]}]
+  ;; TODO: assert all function argtypes are also pure
   (apply fn-ref args))
 
-(defmethod return-sample-generator ::merge-arg
-  [env _ {:keys [args return-sample] N :params}]
-  (merge return-sample (nth args (or N 0) {})))
+(defmethod propagate-samples-mm! ::merge-arg
+  [env _ {:keys [args return-sample-fn] N :params}]
+  (merge (return-sample-fn) (nth args (or N 0) {})))
 
 (s/def ::generator gen/generator?)
 
@@ -45,6 +49,99 @@
          (merge {::grp.art/message (str "Failed to generate samples!")}
            extra))
        #{}))))
+
+(declare convert-shorthand-metadata derive-sampler-type)
+
+(>defn get-fn-ref [env {:as fd ::grp.art/keys [fn-ref env->fn]}]
+  [::grp.art/env (s/keys :req [(or ::grp.art/fn-ref ::grp.art/env->fn)]) => fn?]
+  (or fn-ref (env->fn env)))
+
+(>defn get-gspec [fd argtypes]
+  [(s/keys :req [::grp.art/arities]) (s/coll-of ::grp.art/type-description) => ::grp.art/gspec]
+  (when-let [gspec (some-> fd ::grp.art/arities (grp.art/get-arity argtypes) ::grp.art/gspec)]
+    (assoc gspec ::grp.art/sampler
+      (some-> gspec ::grp.art/metadata convert-shorthand-metadata derive-sampler-type))))
+
+(>defn sampler-params [sampler]
+  [(? ::sampler) => (? some?)]
+  (when (vector? sampler)
+    (second sampler)))
+
+(>defn return-sample-gen [{::grp.art/keys [generator return-spec]}]
+  [(s/keys :req [(or ::grp.art/generator ::grp.art/return-spec)]) => ::generator]
+  (or generator (s/gen return-spec)))
+
+(>defn get-args [{:as td ::grp.art/keys [samples fn-ref]}]
+  [::grp.art/type-description => (s/coll-of any? :min-count 1)]
+  (or
+    (and (seq samples) samples)
+    (and fn-ref [fn-ref])
+    (throw (ex-info "Failed to get samples or fn-ref for type description"
+             {::grp.art/type-description td}))))
+
+(>defn args-gen [argtypes]
+  [(s/coll-of ::grp.art/type-description) => ::generator]
+  (apply gen/tuple (map gen/elements (map get-args argtypes))))
+
+(>defn params-gen [env fd argtypes]
+  [::grp.art/env
+   (s/keys :req [(or ::grp.art/fn-ref ::grp.art/env->fn)])
+   (s/coll-of ::grp.art/type-description)
+   => ::generator]
+  (let [{::grp.art/keys [sampler] :as gspec} (get-gspec fd argtypes)]
+    (gen/hash-map
+      :args (args-gen argtypes)
+      :fn-ref (gen/return (get-fn-ref env fd))
+      :params (gen/return (sampler-params sampler))
+      :argtypes (gen/return argtypes)
+      :return-sample-fn (gen/return #(gen/generate (return-sample-gen gspec))))))
+
+(>defn make-generator [env fd argtypes]
+  [::grp.art/env
+   (s/keys :req [(or ::grp.art/fn-ref ::grp.art/env->fn)])
+   (s/coll-of ::grp.art/type-description)
+   => ::generator]
+  (try
+    (let [{::grp.art/keys [sampler] :as gspec} (get-gspec fd argtypes)]
+      (prn :make-gen/fd fd)
+      (prn :make-gen/sampler sampler)
+      (gen/fmap (partial propagate-samples! env sampler)
+        (params-gen env fd argtypes)))
+    (catch #?(:clj Throwable :cljs :default) e
+      (log/error e "Unable to create generator for"
+        ((some-fn ::grp.art/name ::grp.art/lambda-name) fd)
+        "from" {:fd fd :argtypes argtypes})
+      (some-> (get-gspec fd argtypes) (return-sample-gen)))))
+
+(>defn sample! [env fd argtypes]
+  [::grp.art/env
+   (s/keys :req [::grp.art/arities
+                 (or ::grp.art/fn-ref ::grp.art/env->fn)
+                 (or ::grp.art/name ::grp.art/lambda-name)])
+   (s/coll-of ::grp.art/type-description)
+   => ::grp.art/samples]
+  (let [generator (make-generator env fd argtypes)]
+    (try-sampling! env generator
+      {::grp.art/original-expression
+       ((some-fn ::grp.art/name ::grp.art/lambda-name) fd)})))
+
+(defmethod propagate-samples-mm! ::map-like
+  [env _ {:keys [return-sample-fn], [function & colls] :argtypes}]
+  (let [{::grp.art/keys [sampler]} (get-gspec function colls)]
+    ;; TODO:
+    ;; - transducer if no colls
+    ;; - ? pure if function is pure
+    ;; - if sampler: assert colls samples are `seq`
+    (prn :map-like/fn function)
+    (prn :map-like/sampler sampler)
+    (if-not sampler (return-sample-fn)
+      (try-sampling! env
+        (make-generator env function
+          (map #(update % ::grp.art/samples
+                  (comp set (partial apply concat)))
+            colls))
+        {::grp.art/original-expression
+         ((some-fn ::grp.art/name ::grp.art/lambda-name) function)}))))
 
 (s/def ::dispatch keyword?)
 (s/def ::sampler (s/or
@@ -70,7 +167,7 @@
 (>defn derive-sampler-type [m] [map? => (? ::sampler)]
   (if-let [sampler (get m ::sampler)]
     sampler
-    (let [valid-samplers (set (keys (methods return-sample-generator)))
+    (let [valid-samplers (set (keys (methods propagate-samples-mm!)))
           possible-values (keep (fn [[k v]]
                                   (when (and (valid-samplers k) (true? v)) k))
                             m)]
@@ -79,56 +176,5 @@
           (seq possible-values)))
       (first possible-values))))
 
-(defn get-samples [argtype]
-  (cond
-    (::grp.art/lambda-name argtype) [(::grp.art/env->fn {})]
-    :else (::grp.art/samples argtype)))
-
-(defn get-fn-ref [env {::grp.art/keys [fn-ref env->fn]}]
-  (or fn-ref (env->fn env)))
-
-(defn get-gspec [fd argtypes]
-  (when-let [gspec (some-> fd ::grp.art/arities (grp.art/get-arity argtypes) ::grp.art/gspec)]
-    (prn :gspec gspec)
-    (assoc gspec ::grp.art/sampler
-      (some-> gspec ::grp.art/metadata convert-shorthand-metadata derive-sampler-type))))
-
-(defn make-generator [env fd argtypes]
-  (try
-    (let [{::grp.art/keys [sampler generator return-spec] :as gspec} (get-gspec fd argtypes)]
-      (when (seq argtypes)
-        (gen/fmap (partial return-sample-generator env sampler)
-          (gen/hash-map
-            :args (apply gen/tuple (map gen/elements (mapv get-samples argtypes)))
-            :fn-ref (gen/return (get-fn-ref env fd))
-            :params (gen/return (and sampler (if (vector? sampler) (second sampler) sampler)))
-            :argtypes (gen/return argtypes)
-            :return-sample (or generator (s/gen return-spec))))))
-    (catch #?(:clj  Throwable :cljs :default) e
-      (log/error e "Unable to create generator for" ((some-fn ::grp.art/name ::grp.art/lambda-name) fd)
-        "from" {:fd fd :argtypes argtypes})
-      nil)))
-
-(>defn sample! [env fd argtypes]
-  [::grp.art/env
-   (s/keys :req [::grp.art/arities
-                 (or ::grp.art/fn-ref ::grp.art/env->fn)
-                 (or ::grp.art/name ::grp.art/lambda-name)])
-   (s/coll-of ::grp.art/type-description)
-   => ::grp.art/samples]
-  (if-let [generator (make-generator env fd argtypes)]
-    (try-sampling! env generator
-      {::grp.art/original-expression
-       ((some-fn ::grp.art/name ::grp.art/lambda-name) fd)})
-    #{}))
-
-(defmethod return-sample-generator ::map-like
-  [env _ {:keys [args return-sample], [function & colls] :argtypes}]
-  (let [{::grp.art/keys [sampler return-spec generator]} (get-gspec function colls)]
-    ;; TODO: transducer if no colls
-    ;; TASK: if sampler: assert colls samples are `seq`
-    (if-not sampler return-sample
-      (gen/generate
-        (make-generator env function
-          (map #(update % ::grp.art/samples (comp set (partial apply concat)))
-            colls))))))
+(defn random-sample-fn [{::grp.art/keys [samples]}]
+  (fn [& args] (rand-nth (vec samples))))

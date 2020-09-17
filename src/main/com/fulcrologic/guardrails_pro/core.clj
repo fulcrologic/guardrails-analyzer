@@ -109,8 +109,8 @@
   `(fn ~@args))
 
 (defn >fspec-impl [env args]
-  (let [fspec> (grp.parser/parse-fspec args)]
-    `(do nil)))
+  (let [fspec (grp.parser/parse-fspec args)]
+    `(do ~fspec)))
 
 (defmacro >fspec [& args]
   (>fspec-impl &env args))

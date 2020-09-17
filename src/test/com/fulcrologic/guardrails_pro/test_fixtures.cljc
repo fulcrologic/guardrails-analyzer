@@ -1,8 +1,11 @@
 (ns com.fulcrologic.guardrails-pro.test-fixtures
   (:require
-    #?(:cljs [goog.string :refer [format]])
+    #?@(:cljs [[goog.string :refer [format]]
+               [goog.string.format]])
     [clojure.string :as str]
     [clojure.test :as t]
+    [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
+    [fulcro-spec.check :refer [checker]]
     [io.aviso.exception :as exc]
     [taoensso.timbre :as log]))
 
@@ -30,8 +33,7 @@
    [:name #"clojure\.core.*" :omit]
    [:name #"kaocha\..*" :hide]
    [:name #"orchestra\..*" :hide]
-   [:package #"java\.util\.concurrent.*" :hide]
-   ])
+   [:package #"java\.util\.concurrent.*" :hide]])
 
 (defn test-exception-frame-filter [frame]
   [frame]
@@ -52,8 +54,23 @@
   {:level          :debug
    :timestamp-opts {:pattern "HH:mm:ss.SSS"}
    :output-fn      test-output-fn})
+
 (defn with-logging-config [config]
   (fn [f] (log/with-merged-config config (f))))
 
 (defn with-default-test-logging-config [f]
   ((with-logging-config default-logging-config) f))
+
+(defn capture-errors [f & args]
+  (let [errors (atom [])]
+    (with-redefs
+      [grp.art/record-error! (fn [_ error] (swap! errors conj error))]
+      (apply f args)
+      @errors)))
+
+(defn of-length?* [n]
+  (checker [actual]
+    (when-not (= n (count actual))
+      {:actual actual
+       :expected `(of-length?* ~n)
+       :message (str "Expected count of collection to be " n)})))

@@ -6,6 +6,7 @@
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.test-fixtures :as tf]
     [com.fulcrologic.guardrails.core :as gr :refer [=>]]
+    [fulcro-spec.check :as _]
     [fulcro-spec.core :refer [specification assertions]]))
 
 (tf/use-fixtures :once tf/with-default-test-logging-config)
@@ -24,7 +25,13 @@
     maaap))
 #_(test:map:>fn 10000)
 
-(>defn test:nested-fns [arg]
+#_(specification "test:map:>fn"
+  (assertions
+    (tf/capture-errors check! `test:map:>fn)
+    =check=> (_/all*
+               (tf/of-length?* 1))))
+
+(>defn ^:pure test:nested-fns [arg]
   [int? => (s/coll-of int?)]
   (let [const 300]
     (map (>fn ^:pure FOO [i] [int? => int?]
@@ -35,16 +42,38 @@
       (range 1000 1005 1))))
 #_(test:nested-fns 10000)
 
-(defn with-mocked-errors [sym]
-  (let [errors (atom [])]
-    (with-redefs
-      [grp.art/record-error! (fn [_ error] (swap! errors conj error))]
-      (check! sym))
-    @errors))
+#_(specification "test:nested-fns"
+  (assertions
+    (tf/capture-errors check! `test:nested-fns)
+    =check=> (_/all*
+               (tf/of-length?* 1))))
 
-;; NOTE: dont check error message, will change
-;; TODO: add & use :error/type (machine readable)
-(specification "Checking a function"
-  (let [errors (with-mocked-errors `test:nested-fns)]
-    (assertions
-      errors => [])))
+(>defn test:constantly [arg]
+  [int? => int?]
+  ((constantly :kw) 777))
+
+#_(specification "test:constantly"
+  (assertions
+    (tf/capture-errors check! `test:constantly)
+    =check=> (_/all*
+               (tf/of-length?* 1)
+               (_/seq-matches?*
+                 [(_/embeds?*
+                    {::grp.art/actual {::grp.art/failing-samples #{:kw}}
+                     ;; FIXME: add & use error type
+                     ::grp.art/message (_/re-find?* #"(?i)return value.*int\?")})]))))
+
+(>defn test:map:constantly [arg]
+  [int? => (s/coll-of int?)]
+  (map (constantly :kw) [777]))
+
+#_(specification "test:map:constantly"
+  (assertions
+    (tf/capture-errors check! `test:map:constantly)
+    =check=> (_/all*
+               (tf/of-length?* 1)
+               (_/seq-matches?*
+                 [(_/embeds?*
+                    {::grp.art/actual {::grp.art/failing-samples #{[:kw]}}
+                     ;; FIXME: add & use error type
+                     ::grp.art/message (_/re-find?* #"(?i)return value.*coll-of.*int\?")})]))))

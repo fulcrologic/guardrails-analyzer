@@ -44,4 +44,7 @@
  {:date "2020-09-11" :description "chat with tony" :timespans [[900 1000]]}
  {:date "2020-09-12" :description "test fixtures & analyze! >fn" :timespans [[930 1420]]}
  {:date "2020-09-12" :description "organizing codebase" :timespans [[1420 1500]]}
+ {:date "2020-09-14" :description "finishing nested fns" :timespans [[900 1240] [1330 1545]]}
+ {:date "2020-09-15" :description "analyze constantly" :timespans [[900 930] [1020 1220] [1335 1435]]}
+ {:date "2020-09-16" :description "sampler testing & fixing" :timespans [[800 1230] [1330 1615] [1645 1845]]}
  ]

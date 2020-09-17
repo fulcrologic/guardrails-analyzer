@@ -1,37 +1,44 @@
 (ns com.fulcrologic.guardrails-pro.analysis.analyzer-spec
   (:require
-    [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
+    [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails-pro.analysis.analyzer :as grp.ana]
-    [com.fulcrologic.guardrails.core :as gr :refer [=>]]
+    [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.core :as grp]
-    [fulcro-spec.core :refer [specification component assertions when-mocking! =fn=>]]
-    [clojure.spec.alpha :as s]))
+    [com.fulcrologic.guardrails-pro.test-fixtures :as tf]
+    [com.fulcrologic.guardrails.core :as gr :refer [=>]]
+    [fulcro-spec.core :refer [specification component assertions when-mocking]]))
+
+(defmethod grp.art/cljc-rewrite-sym-ns-mm "analyzer-spec" [sym] "cljc-analyzer-spec")
+
+(specification "analyze-dispatch"
+  (when-mocking
+    (grp.art/function-detail _ sym) => (case sym 'foo true false)
+    (grp.art/external-function-detail _ sym) => (case sym 'get true false)
+    (grp.art/symbol-detail _ sym) => (case sym 'local true false)
+    (methods _) => (zipmap '[bar c/a cljc-analyzer-spec/a] (repeat true))
+    (let [env (grp.art/build-env)]
+      (assertions
+        (grp.ana/analyze-dispatch env '(foo :a)) => :function-call
+        (grp.ana/analyze-dispatch env '(get :a)) => :external-function
+        (grp.ana/analyze-dispatch env '(local))  => :symbol
+        (grp.ana/analyze-dispatch env '(bar :a)) => 'bar
+        (grp.ana/analyze-dispatch env '(c/a :a)) => 'c/a
+        (grp.ana/analyze-dispatch env '(analyzer-spec/a :a)) => 'cljc-analyzer-spec/a
+        (grp.ana/analyze-dispatch env '((q :b) :a)) => :function-expr
+        (grp.ana/analyze-dispatch env '(a {})) => :ifn
+        (grp.ana/analyze-dispatch env '({} :a)) => :ifn
+        (grp.ana/analyze-dispatch env '(##NaN :a)) => :unknown))))
 
 (grp/>defn test_int->int [x]
   [int? => int?]
   (inc x))
 
-(defn with-mocked-errors [cb]
-  (let [errors (atom [])]
-    (when-mocking!
-      (grp.art/record-error! _ error) => (swap! errors conj error)
-      (cb errors))))
-
-(defn with-mocked-warnings [cb]
-  (let [warnings (atom [])]
-    (when-mocking!
-      (grp.art/record-warning! _ warning) => (swap! warnings conj warning)
-      (cb warnings))))
-
 (specification "analyze-let-like-form!" :integration
   (component "A simple let"
-    (with-mocked-errors
-      (fn [errors]
-        (let [env (grp.art/build-env)]
-          (grp.ana/analyze! env `(let [a# :a-kw] (test_int->int a#)))
-          (assertions
-            "It finds an error"
-            (count @errors) => 1))))))
+    (assertions
+      (tf/capture-errors grp.ana/analyze! (grp.art/build-env)
+        `(let [a# :a-kw] (test_int->int a#)))
+      =check=> (tf/of-length?* 1))))
 
 (s/def ::number number?)
 (s/def ::x ::number)

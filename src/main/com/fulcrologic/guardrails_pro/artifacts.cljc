@@ -53,8 +53,7 @@
 (s/def ::positional-types (s/map-of ::key ::type-description))
 (s/def ::recursive-description (s/keys :req [::positional-types]))
 (s/def ::type-description (s/or
-                            ;; NOTE: A gspec CAN be returned if an argument is a LAMBDA. HOF.
-                            :function ::gspec
+                            :function ::lambda
                             ;; NOTE: We can use a generated sample to in turn generate a recursive description
                             :value (s/keys :opt [::spec
                                                  ::recursive-description
@@ -202,11 +201,8 @@
 
 (>defn lookup-symbol [env sym]
   [::env symbol? => (? any?)]
-  (log/debug :lookup-symbol/sym (pr-str sym))
-  (let [{::keys [samples]} (log/spy :debug :lookup-symbol/type-desc
-                             (get-in env [::local-symbols sym]))]
-    (log/spy :debug :lookup-symbol/result
-      (and (seq samples) (rand-nth (vec samples))))))
+  (let [{::keys [samples]} (get-in env [::local-symbols sym])]
+    (and (seq samples) (rand-nth (vec samples)))))
 
 (>defn remember-local [env sym td]
   [::env symbol? ::type-description => ::env]

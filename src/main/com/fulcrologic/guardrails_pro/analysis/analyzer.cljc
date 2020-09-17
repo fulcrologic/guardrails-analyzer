@@ -15,47 +15,62 @@
   #?(:clj  (= (type x) Pattern)
      :cljs (regexp? x)))
 
-(defn list-dispatch-type [env [f :as _sexpr]]
+(declare analyze-mm)
+
+(defn list-dispatch [env [head :as _sexpr]]
+  (letfn [(symbol-dispatch [sym]
+            (cond
+              (grp.art/function-detail env sym)
+              #_=> :function-call
+              (grp.art/symbol-detail env sym)
+              #_=> :symbol
+              (and (namespace sym) (get (methods analyze-mm) (grp.art/cljc-rewrite-sym-ns sym)))
+              #_=> (grp.art/cljc-rewrite-sym-ns sym)
+              (get (methods analyze-mm) sym)
+              #_=> sym
+              (grp.art/external-function-detail env sym)
+              #_=> :external-function
+              :else :ifn))]
+    (cond
+      (seq? head) :function-expr
+      (symbol? head) (symbol-dispatch head)
+      (ifn? head) :ifn
+      :else :unknown)))
+
+(defn analyze-dispatch [env sexpr]
   (cond
-    ;; TODO: seq?
-    (grp.art/function-detail env f) :function-call
-    (grp.art/external-function-detail env f) :external-function
-    ;; TODO: local?
-    (symbol? f) (grp.art/cljc-rewrite-sym-ns f)
-    ;; TODO: ifn? eg: :kw 'sym {} ...
+    (seq? sexpr) (list-dispatch env sexpr)
+    (symbol? sexpr) :symbol
+
+    (char? sexpr) :literal
+    (number? sexpr) :literal
+    (string? sexpr) :literal
+    (keyword? sexpr) :literal
+    (regex? sexpr) :literal
+    (nil? sexpr) :literal
+
+    (vector? sexpr) :collection
+    (set? sexpr) :collection
+    (map? sexpr) :collection
+
     :else :unknown))
 
 (defmulti analyze-mm
   (fn [env sexpr]
     (log/spy :info :dispatch
-      (cond
-        (seq? sexpr) (list-dispatch-type env sexpr)
-        (symbol? sexpr) :symbol
-
-        (char? sexpr) :literal
-        (number? sexpr) :literal
-        (string? sexpr) :literal
-        (keyword? sexpr) :literal
-        (regex? sexpr) :literal
-        (nil? sexpr) :literal
-
-        (vector? sexpr) :collection
-        (set? sexpr) :collection
-        (map? sexpr) :collection
-
-        :else :unknown))))
+      (analyze-dispatch env sexpr)))
+  :default :unknown)
 
 (>defn analyze!
   [env sexpr]
-  [::grp.art/env any? => (s/or
-                           :type-desc ::grp.art/type-description
-                           :lambda ::grp.art/lambda)]
+  [::grp.art/env any? => ::grp.art/type-description]
   (log/info "analyzing:" (pr-str sexpr))
-  (-> env
-    (grp.art/update-location (meta sexpr))
-    (analyze-mm sexpr)))
+  (log/spy :debug "analyze! returned:"
+    (-> env
+      (grp.art/update-location (meta sexpr))
+      (analyze-mm sexpr))))
 
-(defmethod analyze-mm :default [_ sexpr]
+(defmethod analyze-mm :unknown [_ sexpr]
   (log/warn "Could not analyze:" (pr-str sexpr))
   {})
 
@@ -143,6 +158,14 @@
         argtypes (mapv (partial analyze! env) args)]
     {::grp.art/samples (grp.sampler/sample! env fd argtypes)}))
 
+;; FIXME: not the same as :external-function
+#_(defn analyze-map-like! [env [map-like-sym f & colls]]
+  (let [lambda (analyze! env f)
+        colls (map (partial analyze! env) colls)]
+    {::grp.art/samples (grp.sampler/sample! env
+                         (grp.art/external-function-detail env map-like-sym)
+                         (cons lambda colls))}))
+
 (defmethod analyze-mm :function-call [env [function & arguments]]
   (let [current-ns (some-> env ::grp.art/checking-sym namespace)
         fqsym      (if (simple-symbol? function) (symbol current-ns (name function)) function)]
@@ -150,13 +173,17 @@
     (grp.fnt/calculate-function-type env fqsym
       (mapv (partial analyze! env) arguments))))
 
+(defmethod analyze-mm :function-expr [env [f-expr & args]]
+  (let [function (analyze! env f-expr)
+        argtypes (mapv (partial analyze! env) args)]
+    {::grp.art/samples (grp.sampler/sample! env function argtypes)}))
+
 (defn analyze-statements! [env body]
   (doseq [expr (butlast body)]
     (analyze! env expr))
   (analyze! env (last body)))
 
-(defmethod analyze-mm 'do [env [_ & body]]
-  (analyze-statements! env body))
+(defmethod analyze-mm 'do [env [_ & body]] (analyze-statements! env body))
 
 (defn analyze-let-like-form! [env [_ bindings & body]]
   (analyze-statements!
@@ -215,6 +242,19 @@
                 (meta form)))
       subject args)))
 
+(defn analyze-lambda! [env [_ fn-name]]
+  (let [{::grp.art/keys [lambdas]} (grp.art/function-detail env (::grp.art/checking-sym env))
+        lambda (get lambdas fn-name {})]
+    (doseq [{::grp.art/keys [body] :as arity-detail} (vals (::grp.art/arities lambda))]
+      (let [env    (grp.fnt/bind-argument-types env arity-detail)
+            result (analyze-statements! env body)]
+        (log/info "Locals for " fn-name ":" (::grp.art/local-symbols env))
+        (grp.fnt/check-return-type! env arity-detail (log/spy :info result))))
+    lambda))
+
+(defmethod analyze-mm '>fn [env sexpr] (analyze-lambda! env sexpr))
+(defmethod analyze-mm `grp/>fn [env sexpr] (analyze-lambda! env sexpr))
+
 ;; TODO HOFs fn -> val
 (comment
   reduce
@@ -226,22 +266,9 @@
   split-with
   partition-by
   swap!
+  repeatedly
+  iterate
   )
-
-(defn analyze-lambda! [env [_ fn-name]]
-  (let [{::grp.art/keys [lambdas]} (grp.art/function-detail env (::grp.art/checking-sym env))
-        lambda (get lambdas fn-name {})]
-    (doseq [{::grp.art/keys [body] :as arity-detail} (vals (::grp.art/arities lambda))]
-      (let [env    (grp.fnt/bind-argument-types env arity-detail)
-            result (analyze-statements! env body)]
-        (log/info "Locals for " fn-name ":" (::grp.art/local-symbols env))
-        (grp.fnt/check-return-type! env arity-detail (log/spy :info result))))
-    ;; - should return a type description, ie: a :function ::gspec
-    ;; - maybe the return still needs samples? (the fn itself ?)
-    lambda))
-
-(defmethod analyze-mm '>fn [env sexpr] (analyze-lambda! env sexpr))
-(defmethod analyze-mm `grp/>fn [env sexpr] (analyze-lambda! env sexpr))
 
 (defn analyze-map-like! [env [map-like-sym f & colls]]
   (let [lambda (log/spy :debug :lambda (analyze! env f))
@@ -261,9 +288,28 @@
   partial
   fnil
   juxt
-  repeatedly
-  iterate
   )
+
+(defn analyze-partial! [env [_ f & args]]
+  ; (fn [f & args] (fn [more] (apply f (concat args more))))
+  (let [func (analyze! env f)
+        args (map (partial analyze! env) args)]
+    {}))
+
+(defmethod analyze-mm 'partial [env sexpr] (analyze-partial! env sexpr))
+(defmethod analyze-mm 'clojure.core/partial [env sexpr] (analyze-partial! env sexpr))
+
+;; TODO: both top level >ftag and analyze-mm
+(defn analyze-constantly! [env [_ value]]
+  (let [value-td (analyze! env value)]
+    (merge
+      ;;FIXME: should be >ftag & lookup
+      (grp/>fspec [& args] ^:pure [(s/* any?) => any?])
+      #::grp.art{:lambda-name (gensym "constantly$")
+                 :env->fn (fn [env] (grp.sampler/random-sample-fn value-td))})))
+
+(defmethod analyze-mm 'constantly [env sexpr] (analyze-constantly! env sexpr))
+(defmethod analyze-mm 'clojure.core/constantly [env sexpr] (analyze-constantly! env sexpr))
 
 ;; TODO transducers
 (comment

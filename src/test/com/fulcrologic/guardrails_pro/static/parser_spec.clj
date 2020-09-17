@@ -3,7 +3,8 @@
     [com.fulcrologic.guardrails-pro.static.parser :as grp.parser]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.static.forms :as forms]
-    [fulcro-spec.core :refer [specification behavior assertions provided when-mocking when-mocking! => =throws=>]]))
+    [fulcro-spec.check :as _]
+    [fulcro-spec.core :refer [specification behavior assertions provided when-mocking when-mocking!]]))
 
 (specification "function-name" :unit
   (assertions
@@ -66,7 +67,6 @@
                      :result #::grp.art{:return-spec 'foo?
                                         :return-type "foo?"}}))
 
-
 (specification "gspec-metadata" :unit
   (assertions
     "stores the gspec metadata under ::grp.art/metadata"
@@ -102,7 +102,7 @@
     (assertions
       ;(grp.parser/lambda:env->fn:impl '[a] '(fn [x] [int? => int?] (inc a))) => :for-debugging
       (((grp.parser/lambda:env->fn [a]
-          (fn [x] [int? => int?] (inc a)))
+          (fn [x] [int? '=> int?] (inc a)))
         {'a 42}) 0)
       => 43)))
 
@@ -152,15 +152,10 @@
     "parses nested lambdas into top level lambdas map"
     (-> '[(>fn foo [x] [int? => int?]
             ((>fn bar [y] [string? => string?] (str x y))))]
-      (grp.parser/parse-lambdas [])
-      keys)
-    => '['foo 'bar]
-    "lambdas do not have nested lambdas"
-    (-> '[(>fn foo [x] [int? => int?]
-            ((>fn bar [y] [string? => string?] (str x y))))]
-      (grp.parser/parse-lambdas [])
-      first val keys)
-    =fn=> (comp not #{::grp.art/lambdas})))
+      (grp.parser/parse-lambdas []))
+    =check=> (_/embeds?*
+               {''bar (_/is?* map?)
+                ''foo {::grp.art/lambdas (_/equals?* ::_/not-found)}})))
 
 (specification "body-arity" :unit
   (assertions

@@ -1,27 +1,14 @@
 (ns com.fulcrologic.guardrails-pro.analysis.sampler-spec
   (:require
     [clojure.spec.alpha :as s]
-    [clojure.test.check.generators :as tc.gen]
+    [clojure.test.check.generators :as gen]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.analysis.sampler :as grp.sampler]
-    [fulcro-spec.core :refer [specification component assertions when-mocking! when-mocking provided]]))
+    [com.fulcrologic.guardrails-pro.test-fixtures :as tf]
+    [fulcro-spec.check :as _ :refer [checker]]
+    [fulcro-spec.core :refer [specification component assertions when-mocking]]))
 
-(defn with-mocked-errors [cb]
-  (let [errors (atom [])]
-    (when-mocking!
-      (grp.art/record-error! _ error) => (swap! errors conj error)
-      (cb errors))))
-
-(specification "try-sampling!"
-  (let [env (grp.art/build-env)]
-    (with-mocked-errors
-      (fn [errors]
-        (grp.sampler/try-sampling! env
-          (tc.gen/fmap #(assoc % :k :v) (s/gen int?))
-          {::grp.art/original-expression :TEST})
-        (assertions
-          @errors => [#::grp.art{:message "Failed to generate samples!"
-                                 :original-expression :TEST}])))))
+(tf/use-fixtures :once tf/with-default-test-logging-config)
 
 (specification "convert-shorthand-metadata"
   (assertions
@@ -71,40 +58,114 @@
       {::grp.sampler/sampler [:foobar 1]})
     => [:foobar 1]))
 
-(specification "return-sample-generator"
+(specification "get-args"
+  (assertions
+    (grp.sampler/get-args {})
+    =throws=> #"Failed to get samples"
+    (grp.sampler/get-args {::grp.art/samples #{}})
+    =throws=> #"Failed to get samples"
+    (grp.sampler/get-args {::grp.art/samples #{123}})
+    => #{123}
+    (grp.sampler/get-args {::grp.art/samples #{}
+                           ::grp.art/fn-ref identity})
+    => [identity]
+    (grp.sampler/get-args {::grp.art/samples #{123}
+                           ::grp.art/fn-ref identity})
+    => #{123}))
+
+(specification "samples-gen"
+  (assertions
+    (gen/sample (grp.sampler/args-gen [{}]))
+    =throws=> #"Failed to get samples"
+    (gen/sample (grp.sampler/args-gen [{::grp.art/samples #{}}]))
+    =throws=> #"Failed to get samples"
+    (gen/sample (grp.sampler/args-gen [{::grp.art/samples #{:a :b :c}}]))
+    =check=> (_/every?*
+               (tf/of-length?* 1)
+               (_/seq-matches?*
+                 [(_/is?* #{:a :b :c})]))
+    (gen/sample (grp.sampler/args-gen [{::grp.art/samples #{:a :b :c}}
+                                       {::grp.art/samples #{1 2 3}}]))
+    =check=> (_/every?*
+               (tf/of-length?* 2)
+               (_/seq-matches?*
+                 [(_/is?* #{:a :b :c})
+                  (_/is?* #{1 2 3})]))
+    (gen/sample (grp.sampler/args-gen [{::grp.art/fn-ref  identity}
+                                       {::grp.art/samples #{:a :b :c}}]))
+    =check=> (_/every?*
+               (tf/of-length?* 2)
+               (_/seq-matches?*
+                 [(_/equals?* identity)
+                  (_/is?* #{:a :b :c})]))))
+
+(specification "params-gen" :WIP
+  (let [env (grp.art/build-env) ]
+    (when-mocking
+      (grp.sampler/get-gspec _ _)  =>  {::grp.art/sampler ::grp.sampler/pure
+                                        ::grp.art/return-spec int?}
+      (assertions
+        (gen/sample (grp.sampler/params-gen env {::grp.art/fn-ref +} []))
+        =check=> (_/every?*
+                   (_/embeds?*
+                     {:args []
+                      :fn-ref (_/equals?* +)
+                      :params nil
+                      :argtypes []
+                      :return-sample-fn (checker [f] ((_/is?* int?) (f)))}))))))
+
+(specification "make-generator" :WIP
   (let [env (grp.art/build-env)]
-    (assertions
-      (grp.sampler/return-sample-generator env nil
-        {:return-sample ::test-sample})
-      => ::test-sample
-      (grp.sampler/return-sample-generator env ::grp.sampler/pure
-        {:fn-ref str :args ["pure" \: "test"]})
-      => "pure:test"
-      (grp.sampler/return-sample-generator env [::grp.sampler/merge-arg 1]
-        {:args [:db {:person/name "john"}]
-         :params 1
-         :return-sample {:person/full-name "john doe"}})
-      => #:person{:name "john" :full-name "john doe"})
+    (when-mocking
+      (grp.sampler/get-gspec _ _) => {::grp.art/sampler ::grp.sampler/pure
+                                      ::grp.art/return-spec int?}
+      (assertions
+        (gen/sample (grp.sampler/make-generator env {::grp.art/fn-ref (constantly :X)} []))
+        =check=> (_/every?* (_/is?* #{:X}))
+        (gen/sample (grp.sampler/make-generator env
+                      {::grp.art/fn-ref (constantly nil)} []))
+        =check=> (_/all*
+                   (_/is?* seq)
+                   (_/every?* (_/equals?* nil)))))))
+
+(specification "propagate-samples!"
+  (let [env (grp.art/build-env)]
+    (component "default"
+      (assertions
+        (grp.sampler/propagate-samples! env nil
+          {:return-sample-fn (constantly ::test-sample)})
+        => ::test-sample))
+    (component "pure"
+      (assertions
+        (grp.sampler/propagate-samples! env ::grp.sampler/pure
+          {:fn-ref str :args ["pure" \: "test"]})
+        => "pure:test"))
+    (component "merge-arg"
+      (assertions
+        (grp.sampler/propagate-samples! env [::grp.sampler/merge-arg 1]
+          {:args [:db {:person/name "john"}]
+           :params 1
+           :return-sample-fn (constantly {:person/full-name "john doe"})})
+        => #:person{:name "john" :full-name "john doe"}))
     (component "map-like"
-      (when-mocking
-        (grp.sampler/get-gspec _ _) => nil
-        (assertions
-          "returns :return-sample if no sampler"
-          (grp.sampler/return-sample-generator env ::grp.sampler/map-like
-            {:return-sample ::STUB_RETURN_SAMPLE
-             :argtypes [{}]})
-          => ::STUB_RETURN_SAMPLE))
-      (provided "calls sample! on function if sampler metadata"
-        (grp.sampler/make-generator _env _fn argtypes)
-        => (do (assertions
-                 (map ::grp.art/samples argtypes)
-                 => [#{1 2 3} #{4 5 6 7 8 9}])
-             ::MOCK_GENERATOR)
-        (tc.gen/generate _) => ::MOCK_SAMPLES
-        (grp.sampler/get-gspec _ _) => {::grp.art/sampler ::grp.sampler/pure}
-        (assertions
-          (grp.sampler/return-sample-generator env ::grp.sampler/map-like
-            {:argtypes [{:STUB :FUNCTION}
-                        {::grp.art/samples #{[1 2 3]}}
-                        {::grp.art/samples #{[4 5 6] [7 8 9]}}]})
-          => ::MOCK_SAMPLES)))))
+      (assertions
+        (grp.sampler/propagate-samples! env ::grp.sampler/map-like
+          {:args [+ [1 2 3] [4 5 6]]
+           :argtypes [{::grp.art/fn-ref map
+                       ::grp.art/arities {:n {::grp.art/arglist '[f c & cs]
+                                              ::grp.art/gspec {::grp.art/return-spec (s/coll-of int?)
+                                                               ::grp.art/return-type "(s/coll-of int?)"
+                                                               ::grp.art/metadata {::grp.art/sampler ::grp.sampler/pure}}}}}
+                      {::grp.art/fn-ref +
+                       ::grp.art/arities {:n {::grp.art/arglist '[& nums]
+                                              ::grp.art/gspec {::grp.art/return-spec number?
+                                                               ::grp.art/return-type "number?"
+                                                               ::grp.art/metadata {::grp.art/sampler ::grp.sampler/pure}}}}}
+                      {::grp.art/samples #{[1 2 3]}}
+                      {::grp.art/samples #{[4 5 6]}}]
+           :gspec {::grp.art/sampler ::grp.sampler/pure}
+           :return-sample-fn (constantly [666])})
+        => #{[5 7 9]}))))
+
+;; TODO: ? can i disable guardrails checking in a block?
+;; TODO: capture-logging -> make appender & return logs

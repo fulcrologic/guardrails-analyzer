@@ -252,7 +252,7 @@
     (function-content)
     ::result))
 
-(defn parse-fn [args & [extern-symbols]]
+(defn parse-fn [args extern-symbols]
   (-> (init-parser-state args
         {:optional-fn-name? true
          :record-fn-name?   true

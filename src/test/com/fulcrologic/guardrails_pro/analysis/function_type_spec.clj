@@ -6,7 +6,9 @@
     [com.fulcrologic.guardrails-pro.analysis.function-type :as grp.fnt]
     [com.fulcrologic.guardrails.core :as gr :refer [=> | <-]]
     [com.fulcrologic.guardrails-pro.core :as grp]
-    [fulcro-spec.core :refer [specification behavior component assertions =fn=> when-mocking!]]))
+    [com.fulcrologic.guardrails-pro.test-fixtures :as tf]
+    [fulcro-spec.core :refer [specification behavior component assertions]]
+    [fulcro-spec.check :as _ :refer [checker]]))
 
 (grp/>defn test_int->int [x]
   [int? => int?]
@@ -24,7 +26,7 @@
   [int? string? | #(and (pos? x) (seq y)) => string?]
   (str x ":" y))
 
-(gr/>defn type-description
+(gr/>defn ->td
   "Generate a type description for a given spec"
   [name expr spec samples]
   [string? any? any? ::grp.art/samples => ::grp.art/type-description]
@@ -33,64 +35,65 @@
    ::grp.art/samples             samples
    ::grp.art/original-expression expr})
 
-(defn with-mocked-errors [cb]
-  (let [errors (atom #{})]
-    (when-mocking!
-      (grp.art/record-error! _ error) => (swap! errors conj error)
-      (cb errors))))
-
 (specification "calculate-function-type" :integration
   (behavior "Uses the function's return spec to generate the type description"
-    (let [arg-type-description (type-description "int?" 42 int? #{42})
-          env                  (grp.art/build-env)
-          {::grp.art/keys [spec type samples]} (grp.fnt/calculate-function-type env `test_int->int [arg-type-description])]
+    (let [td (grp.fnt/calculate-function-type (grp.art/build-env)
+               `test_int->int
+               [(->td "int?" 42 int? #{42})])]
       (assertions
         "Has the return type described in the function"
-        spec => int?
-        type => "int?"
+        td =check=> (_/embeds?*
+                      #::grp.art{:spec (_/equals?* int?)
+                                 :type "int?"})
         "Has samples generated from that spec"
-        (boolean (seq samples)) => true
-        samples =fn=> #(every? int? %))))
+        td =check=> (_/in* [::grp.art/samples]
+                      (_/is?* seq)
+                      (_/every?*
+                        (_/is?* int?))))))
   (behavior "If spec'ed to have a custom generator"
-    (let [arg-type-description (type-description "int?" 42 int? #{42})
-          env                  (grp.art/build-env)
-          {::grp.art/keys [samples]} (grp.fnt/calculate-function-type env `test_int->int_with-gen [arg-type-description])]
-      (assertions
-        "Has samples generated from the custom generator"
-        (boolean (seq samples)) => true
-        samples =fn=> #(every? neg-int? %))))
+    (assertions
+      "Has samples generated from the custom generator"
+      (grp.fnt/calculate-function-type (grp.art/build-env)
+        `test_int->int_with-gen
+        [(->td "int?" 42 int? #{42})])
+      =check=> (_/in* [::grp.art/samples]
+                 (_/is?* seq)
+                 (_/every?*
+                   (_/is?* neg-int?)))))
   (behavior "Verifies the argtypes based on the arglist specs"
-    (with-mocked-errors
-      (fn [errors]
-        (grp.fnt/calculate-function-type (grp.art/build-env) `test_pos-int->int
-          [(type-description "int?" 'x int? #{"3" 22})])
-        (let [error (first @errors)]
-          (assertions
-            (count @errors) => 1
-            (::grp.art/original-expression error) => 'x
-            (::grp.art/actual error) => {::grp.art/failing-samples #{"3"}}
-            (-> error ::grp.art/expected ::grp.art/arg-types) => ["int?"])))))
+    (assertions
+      (tf/capture-errors grp.fnt/calculate-function-type (grp.art/build-env)
+        `test_pos-int->int
+        [(->td "int?" 'x int? #{"3" 22})])
+      =check=> (_/all*
+                 (tf/of-length?* 1)
+                 (_/seq-matches?*
+                   [(_/embeds?*
+                      {::grp.art/original-expression 'x
+                       ::grp.art/actual {::grp.art/failing-samples #{"3"}}
+                       ::grp.art/expected {::grp.art/arg-types ["int?"]} })]))))
   (behavior "If spec'ed to have argument predicates"
     (behavior "Returns any errors"
-      (with-mocked-errors
-        (fn [errors]
-          (grp.fnt/calculate-function-type (grp.art/build-env) `test_pos-int->int
-            [(type-description "int?" 'x int? #{3 -42})])
-          (let [error (first @errors)]
-            (assertions
-              (count @errors) => 1
-              (::grp.art/original-expression error) => '(x)
-              (::grp.art/actual error) => {::grp.art/failing-samples #{-42}}))))
-      (with-mocked-errors
-        (fn [errors]
-          (grp.fnt/calculate-function-type (grp.art/build-env) `test_pos-int-string->string
-            [(type-description "int?" 'x int? #{3 -42})
-             (type-description "string?" 'y string? #{"77" "88"})])
-          (let [error (first @errors)]
-            (assertions
-              (count @errors) => 1
-              (::grp.art/original-expression error) => '(x y)
-              (::grp.art/actual error) => {::grp.art/failing-samples #{-42 "88"}})))))))
+      (assertions
+        (tf/capture-errors grp.fnt/calculate-function-type (grp.art/build-env)
+          `test_pos-int->int
+          [(->td "int?" 'x int? #{3 -42})])
+        =check=> (_/all*
+                   (tf/of-length?* 1)
+                   (_/seq-matches?*
+                     [(_/embeds?*
+                        {::grp.art/original-expression '(x)
+                         ::grp.art/actual {::grp.art/failing-samples #{-42}}})]))
+        (tf/capture-errors grp.fnt/calculate-function-type (grp.art/build-env)
+          `test_pos-int-string->string
+          [(->td "int?" 'x int? #{3 -42})
+           (->td "string?" 'y string? #{"77" "88"})])
+        =check=> (_/all*
+                   (tf/of-length?* 1)
+                   (_/seq-matches?*
+                     [(_/embeds?*
+                        {::grp.art/original-expression '(x y)
+                         ::grp.art/actual {::grp.art/failing-samples #{-42 "88"}}})]))))))
 
 (s/def :NS/foo keyword?)
 (s/def ::foo int?)
@@ -120,7 +123,7 @@
         => (s/get-spec ::foo)
         (-> (grp.fnt/destructure! test-env '{foo ::foo} test-td)
           (get-in ['foo ::grp.art/samples]))
-        =fn=> #(every? int? %)
+        =check=> (_/every?* (_/is?* int?))
         "if the keyword does not have a spec it returns no entry for it"
         (grp.fnt/destructure! test-env '{foo :ERROR} test-td)
         => {})
@@ -141,13 +144,13 @@
           => (s/get-spec :NS/foo)
           (-> (grp.fnt/destructure! test-env '{:NS/keys [foo]} test-td)
             (get-in ['foo ::grp.art/samples]))
-          =fn=> #(every? keyword? %)
+          =check=> (_/every?* (_/is?* keyword?))
           (-> (grp.fnt/destructure! test-env '{::keys [foo]} test-td)
             (get-in ['foo ::grp.art/spec]))
           => (s/get-spec ::foo)
           (-> (grp.fnt/destructure! test-env '{::keys [foo]} test-td)
             (get-in ['foo ::grp.art/samples]))
-          =fn=> #(every? int? %)
+          =check=> (_/every?* (_/is?* int?))
           (-> (grp.fnt/destructure! test-env '{::keys [foo bar]} test-td)
             (get-in ['foo ::grp.art/spec]))
           => (s/get-spec ::foo)
