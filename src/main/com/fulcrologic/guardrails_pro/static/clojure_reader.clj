@@ -23,12 +23,13 @@
 (defn read-ns-decl [file]
   (try
     (let [ns-decl (reader/read
+                    {:read-cond :allow}
                     (new PushbackReader
                       (new FileReader file)))]
       (assert (= 'ns (first ns-decl)))
       (second ns-decl))
-    (catch Throwable _
-      (log/debug "Failed to read ns decl from:" file)
+    (catch Throwable t
+      (log/debug t "Failed to read ns decl from:" file)
       nil)))
 
 (defn- file->reader [file]
