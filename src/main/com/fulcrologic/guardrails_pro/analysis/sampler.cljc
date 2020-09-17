@@ -15,8 +15,8 @@
       :else :default)))
 
 (defn propagate-samples! [env strategy params]
-  (log/debug :propagate-samples!/strategy strategy)
-  (log/spy :debug :propagate-samples!/return
+  (log/trace :propagate-samples!/strategy strategy)
+  (log/spy :trace :propagate-samples!/return
     (propagate-samples-mm! env strategy params)))
 
 (defmethod propagate-samples-mm! :default
@@ -79,9 +79,9 @@
     (throw (ex-info "Failed to get samples or fn-ref for type description"
              {::grp.art/type-description td}))))
 
-(>defn args-gen [argtypes]
-  [(s/coll-of ::grp.art/type-description) => ::generator]
-  (apply gen/tuple (map gen/elements (map get-args argtypes))))
+(>defn args-gen [env args]
+  [::grp.art/env (s/coll-of (s/coll-of any? :min-count 1)) => ::generator]
+  (apply gen/tuple (map gen/elements args)))
 
 (>defn params-gen [env fd argtypes]
   [::grp.art/env
@@ -90,7 +90,6 @@
    => ::generator]
   (let [{::grp.art/keys [sampler] :as gspec} (get-gspec fd argtypes)]
     (gen/hash-map
-      :args (args-gen argtypes)
       :fn-ref (gen/return (get-fn-ref env fd))
       :params (gen/return (sampler-params sampler))
       :argtypes (gen/return argtypes)
@@ -100,18 +99,12 @@
   [::grp.art/env
    (s/keys :req [(or ::grp.art/fn-ref ::grp.art/env->fn)])
    (s/coll-of ::grp.art/type-description)
-   => ::generator]
-  (try
-    (let [{::grp.art/keys [sampler] :as gspec} (get-gspec fd argtypes)]
-      (prn :make-gen/fd fd)
-      (prn :make-gen/sampler sampler)
-      (gen/fmap (partial propagate-samples! env sampler)
-        (params-gen env fd argtypes)))
-    (catch #?(:clj Throwable :cljs :default) e
-      (log/error e "Unable to create generator for"
-        ((some-fn ::grp.art/name ::grp.art/lambda-name) fd)
-        "from" {:fd fd :argtypes argtypes})
-      (some-> (get-gspec fd argtypes) (return-sample-gen)))))
+   => (? ::generator)]
+  (let [{::grp.art/keys [sampler] :as gspec} (get-gspec fd argtypes)]
+    (gen/let [params (params-gen env fd argtypes)
+              args (args-gen env (map get-args argtypes))]
+      (propagate-samples! env sampler
+        (assoc params :args args)))))
 
 (>defn sample! [env fd argtypes]
   [::grp.art/env
@@ -127,19 +120,19 @@
 
 (defmethod propagate-samples-mm! ::map-like
   [env _ {:keys [return-sample-fn], [function & colls] :argtypes}]
-  (let [{::grp.art/keys [sampler]} (get-gspec function colls)]
+  (let [{::grp.art/keys [sampler] :as gspec} (get-gspec function colls)]
     ;; TODO:
     ;; - transducer if no colls
     ;; - ? pure if function is pure
     ;; - if sampler: assert colls samples are `seq`
-    (prn :map-like/fn function)
-    (prn :map-like/sampler sampler)
+    (prn :map-like/colls colls)
     (if-not sampler (return-sample-fn)
       (try-sampling! env
-        (make-generator env function
-          (map #(update % ::grp.art/samples
-                  (comp set (partial apply concat)))
-            colls))
+        (gen/let [params (params-gen env function colls)]
+          (map #(propagate-samples! env sampler
+                  (assoc params :args %))
+            (apply mapcat (partial map vector)
+              (map get-args colls))))
         {::grp.art/original-expression
          ((some-fn ::grp.art/name ::grp.art/lambda-name) function)}))))
 

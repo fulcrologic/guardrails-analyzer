@@ -74,30 +74,27 @@
     => #{123}))
 
 (specification "samples-gen"
-  (assertions
-    (gen/sample (grp.sampler/args-gen [{}]))
-    =throws=> #"Failed to get samples"
-    (gen/sample (grp.sampler/args-gen [{::grp.art/samples #{}}]))
-    =throws=> #"Failed to get samples"
-    (gen/sample (grp.sampler/args-gen [{::grp.art/samples #{:a :b :c}}]))
-    =check=> (_/every?*
-               (tf/of-length?* 1)
-               (_/seq-matches?*
-                 [(_/is?* #{:a :b :c})]))
-    (gen/sample (grp.sampler/args-gen [{::grp.art/samples #{:a :b :c}}
-                                       {::grp.art/samples #{1 2 3}}]))
-    =check=> (_/every?*
-               (tf/of-length?* 2)
-               (_/seq-matches?*
-                 [(_/is?* #{:a :b :c})
-                  (_/is?* #{1 2 3})]))
-    (gen/sample (grp.sampler/args-gen [{::grp.art/fn-ref  identity}
-                                       {::grp.art/samples #{:a :b :c}}]))
-    =check=> (_/every?*
-               (tf/of-length?* 2)
-               (_/seq-matches?*
-                 [(_/equals?* identity)
-                  (_/is?* #{:a :b :c})]))))
+  (let [env (grp.art/build-env)]
+    (assertions
+      (gen/sample (grp.sampler/args-gen env [#{:a :b :c}]))
+      =check=> (_/every?*
+                 (tf/of-length?* 1)
+                 (_/seq-matches?*
+                   [(_/is?* #{:a :b :c})]))
+      (gen/sample (grp.sampler/args-gen env [#{:a :b :c}
+                                             #{1 2 3}]))
+      =check=> (_/every?*
+                 (tf/of-length?* 2)
+                 (_/seq-matches?*
+                   [(_/is?* #{:a :b :c})
+                    (_/is?* #{1 2 3})]))
+      (gen/sample (grp.sampler/args-gen env [[identity]
+                                             #{:a :b :c}]))
+      =check=> (_/every?*
+                 (tf/of-length?* 2)
+                 (_/seq-matches?*
+                   [(_/equals?* identity)
+                    (_/is?* #{:a :b :c})])))))
 
 (specification "params-gen" :WIP
   (let [env (grp.art/build-env) ]
@@ -108,8 +105,7 @@
         (gen/sample (grp.sampler/params-gen env {::grp.art/fn-ref +} []))
         =check=> (_/every?*
                    (_/embeds?*
-                     {:args []
-                      :fn-ref (_/equals?* +)
+                     {:fn-ref (_/equals?* +)
                       :params nil
                       :argtypes []
                       :return-sample-fn (checker [f] ((_/is?* int?) (f)))}))))))
@@ -151,16 +147,11 @@
       (assertions
         (grp.sampler/propagate-samples! env ::grp.sampler/map-like
           {:args [+ [1 2 3] [4 5 6]]
-           :argtypes [{::grp.art/fn-ref map
-                       ::grp.art/arities {:n {::grp.art/arglist '[f c & cs]
-                                              ::grp.art/gspec {::grp.art/return-spec (s/coll-of int?)
-                                                               ::grp.art/return-type "(s/coll-of int?)"
-                                                               ::grp.art/metadata {::grp.art/sampler ::grp.sampler/pure}}}}}
-                      {::grp.art/fn-ref +
+           :argtypes [{::grp.art/fn-ref +
                        ::grp.art/arities {:n {::grp.art/arglist '[& nums]
                                               ::grp.art/gspec {::grp.art/return-spec number?
                                                                ::grp.art/return-type "number?"
-                                                               ::grp.art/metadata {::grp.art/sampler ::grp.sampler/pure}}}}}
+                                                               ::grp.art/metadata {::grp.sampler/sampler :pure}}}}}
                       {::grp.art/samples #{[1 2 3]}}
                       {::grp.art/samples #{[4 5 6]}}]
            :gspec {::grp.art/sampler ::grp.sampler/pure}
