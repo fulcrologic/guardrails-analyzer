@@ -51,7 +51,7 @@
      (catch #?(:clj Throwable :cljs :default) e
        (log/error e "Failed to generate samples!")
        (grp.art/record-error! env
-         (merge {::grp.art/message (str "Failed to generate samples!")}
+         (merge {::grp.art/problem-type :error/sample-generator-failed}
            extra))
        #{}))))
 

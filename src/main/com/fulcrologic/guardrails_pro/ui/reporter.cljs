@@ -7,6 +7,7 @@
     [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
     [com.fulcrologic.fulcro.mutations :as f.m]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
+    [com.fulcrologic.guardrails-pro.ui.problem-formatter :refer [format-problems]]
     [taoensso.timbre :as log]
     [taoensso.encore :as enc]
     [com.fulcrologic.fulcro.dom :as dom :refer [div h3 h4 label input]]
@@ -127,11 +128,14 @@
 (def ui-reporter-root (comp/factory CheckerRoot {:keyfn :id}))
 
 (declare update-problems!)
-(defonce app (app/fulcro-app {:remotes {:remote (fws/fulcro-websocket-remote {:push-handler
-                                                                              (fn [{:keys [topic msg]}]
-                                                                                (log/spy :info [topic msg])
-                                                                                (when (= topic :new-problems)
-                                                                                  (update-problems! msg)))})}}))
+(defonce app
+  (app/fulcro-app
+    {:remotes {:remote (fws/fulcro-websocket-remote
+                         {:push-handler
+                          (fn [{:keys [topic msg]}]
+                            (log/spy :info [topic msg])
+                            (when (= topic :new-problems)
+                              (update-problems! msg)))})}}))
 
 (defn update-problems! [problems]
   (log/info "received new problem list from daemon")
@@ -160,7 +164,6 @@
                       (update ::grp.art/errors (fn [s] (mapv #(select-keys % ok-keys) s)))
                       (update ::grp.art/warnings (fn [s] (mapv #(select-keys % ok-keys) s)))))) problems))
 
-
 (defn formatted-bindings [bindings]
   (reduce-kv
     (fn [acc location {::grp.art/keys [type samples original-expression]}]
@@ -171,8 +174,7 @@
     {} bindings))
 
 (defn report-analysis! []
-  (let [problems (transit-safe-problems @grp.art/problems)
+  (let [problems (-> @grp.art/problems format-problems transit-safe-problems)
         bindings (formatted-bindings @grp.art/binding-annotations)]
     (comp/transact! app [(report-analysis {:problems problems
                                            :bindings bindings})])))
-

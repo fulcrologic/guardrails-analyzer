@@ -72,7 +72,10 @@
                    [(_/embeds?*
                       {::grp.art/original-expression 'x
                        ::grp.art/actual {::grp.art/failing-samples #{"3"}}
-                       ::grp.art/expected {::grp.art/arg-types ["int?"]} })]))))
+                       ::grp.art/expected {::grp.art/spec (_/equals?* int?)
+                                           ::grp.art/type "int?"}
+                       ::grp.art/problem-type :error/function-argument-failed-spec
+                       ::grp.art/message-params {:argument-number 1}})]))))
   (behavior "If spec'ed to have argument predicates"
     (behavior "Returns any errors"
       (assertions
@@ -84,7 +87,9 @@
                    (_/seq-matches?*
                      [(_/embeds?*
                         {::grp.art/original-expression '(x)
-                         ::grp.art/actual {::grp.art/failing-samples #{-42}}})]))
+                         ::grp.art/actual {::grp.art/failing-samples #{-42}}
+                         ::grp.art/expected {::grp.art/spec (_/is?* fn?)}
+                         ::grp.art/problem-type :error/function-arguments-failed-predicate})]))
         (tf/capture-errors grp.fnt/calculate-function-type (grp.art/build-env)
           `test_pos-int-string->string
           [(->td "int?" 'x int? #{3 -42})
@@ -94,7 +99,9 @@
                    (_/seq-matches?*
                      [(_/embeds?*
                         {::grp.art/original-expression '(x y)
-                         ::grp.art/actual {::grp.art/failing-samples #{-42 "88"}}})]))))))
+                         ::grp.art/actual {::grp.art/failing-samples #{-42 "88"}}
+                         ::grp.art/expected {::grp.art/spec (_/is?* fn?)}
+                         ::grp.art/problem-type :error/function-arguments-failed-predicate})]))))))
 
 (s/def :NS/foo keyword?)
 (s/def ::foo int?)

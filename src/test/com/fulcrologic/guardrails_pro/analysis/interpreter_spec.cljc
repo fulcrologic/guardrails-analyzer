@@ -61,8 +61,7 @@
                (_/seq-matches?*
                  [(_/embeds?*
                     {::grp.art/actual {::grp.art/failing-samples #{:kw}}
-                     ;; FIXME: add & use error type
-                     ::grp.art/message (_/re-find?* #"(?i)return value.*int\?")})]))))
+                     ::grp.art/problem-type :error/value-failed-spec})]))))
 
 (>defn test:map:constantly [arg]
   [int? => (s/coll-of int?)]
@@ -76,5 +75,4 @@
                (_/seq-matches?*
                  [(_/embeds?*
                     {::grp.art/actual {::grp.art/failing-samples #{[:kw]}}
-                     ;; FIXME: add & use error type
-                     ::grp.art/message (_/re-find?* #"(?i)return value.*coll-of.*int\?")})]))))
+                     ::grp.art/problem-type :error/value-failed-spec})]))))

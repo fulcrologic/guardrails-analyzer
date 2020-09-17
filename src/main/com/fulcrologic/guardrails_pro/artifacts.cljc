@@ -32,17 +32,19 @@
 (s/def ::failing-samples ::samples)
 (s/def ::original-expression any?)
 (s/def ::literal-value ::original-expression)
-(s/def ::message string?)
+(s/def ::problem-type keyword?)
+(s/def ::message-params (s/map-of keyword? some?))
 (s/def ::file string?)
 (s/def ::source string?)
 (s/def ::line-number posint?)
 (s/def ::column-start posint?)
 (s/def ::column-end posint?)
 (s/def ::error (s/keys
-                 :req [::original-expression ::message
+                 :req [::original-expression ::problem-type
                        ::file ::line-number]
                  :opt [::expected ::actual ::source
-                       ::column-start ::column-end]))
+                       ::column-start ::column-end
+                       ::message-params]))
 (s/def ::warning ::error)
 
 (s/def ::key (s/or
@@ -61,7 +63,7 @@
                                                  ::samples
                                                  ::literal-value
                                                  ::original-expression])))
-(s/def ::expected ::type-description)
+(s/def ::expected (s/keys :req [(or ::spec ::type)]))
 (s/def ::actual (s/keys :opt [::type-description ::failing-samples]))
 (s/def ::registry map?)
 (s/def ::external-registry map?)
@@ -264,21 +266,35 @@
 (defonce problems (atom {}))
 
 (>defn record-error!
-  [env error]
-  [::env (s/keys :req [::message ::original-expression]) => any?]
-  (log/info :record-error! (::checking-sym env) "\n" (::location env) "\n" error)
-  (swap! problems update-in
-    [(::checking-sym env) ::errors]
-    (fnil conj [])
-    (merge error
-      (::location env))))
+  ([env original-expression problem-type]
+   [::env ::original-expression ::problem-type => nil?]
+   (record-error! env original-expression problem-type {}))
+  ([env original-expression problem-type message-params]
+   [::env ::original-expression ::problem-type ::message-params => nil?]
+   (record-error! env {::problem-type problem-type
+                       ::original-expression original-expression
+                       ::message-params message-params}))
+  ([env error]
+   [::env (s/keys :req [::problem-type ::original-expression]) => nil?]
+   (log/info :record-error! (::checking-sym env) "\n" (::location env) "\n" error)
+   (swap! problems update-in
+     [(::checking-sym env) ::errors]
+     (fnil conj [])
+     (merge error
+       (::location env)))
+   nil))
 
 (>defn record-warning!
-  ([env original-expression message]
-   [::env any? string? => nil?]
-   (record-warning! env {::message message ::original-expression original-expression}))
+  ([env original-expression problem-type]
+   [::env ::original-expression ::problem-type => nil?]
+   (record-warning! env original-expression problem-type {}))
+  ([env original-expression problem-type message-params]
+   [::env ::original-expression ::problem-type ::message-params => nil?]
+   (record-warning! env {::problem-type problem-type
+                         ::original-expression original-expression
+                         ::message-params message-params}))
   ([env warning]
-   [::env (s/keys :req [::message ::original-expression]) => nil?]
+   [::env (s/keys :req [::problem-type ::original-expression]) => nil?]
    (swap! problems update-in
      [(::checking-sym env) ::warnings]
      (fnil conj [])

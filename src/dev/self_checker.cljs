@@ -4,9 +4,7 @@
     [com.fulcrologic.guardrails-pro.core :refer [>defn]]
     [com.fulcrologic.guardrails-pro.ui.reporter :as reporter]
     [com.fulcrologic.guardrails-pro.analysis.interpreter :as grp.intrp]
-    [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.ftags.clojure-core]
-    [cljs.spec.gen.alpha :as gen]
     [cljs.spec.alpha :as s]))
 
 (defn nestring [& samples]
@@ -20,7 +18,7 @@
 (s/def ::person (s/keys :req [:person/id :person/fname :person/lname]
                   :opt [:person/full-name]))
 
-#_(>defn new-person
+(>defn new-person
   [id fn ln]
   ^:pure [pos-int? ::non-empty-string ::non-empty-string => ::person]
   (let [p  {:person/id    id
@@ -28,12 +26,16 @@
         p2 (assoc p :person/fname fn)]
     p2))
 
-#_(>defn with-full-name [person]
+(>defn add-even [a b]
+  [int? int? :st #(and (even? a) (even? b)) => int?]
+  (+ a b))
+
+(>defn with-full-name [person]
   ^:pure [(s/keys :req [:person/fname :person/lname])
           => (s/keys :req [:person/full-name])]
   (assoc person :person/full-name (str (get person :person/fname) " " (get person :person/lname))))
 
-#_(>defn test-person [input-id]
+(>defn test-person [input-id]
   ^:pure [pos-int? => int?]
   (let [p (new-person input-id "Tom" "Bob")
         b (with-full-name p)

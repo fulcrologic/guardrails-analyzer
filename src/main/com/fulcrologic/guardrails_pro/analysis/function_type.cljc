@@ -31,10 +31,7 @@
                                  (grp.art/record-binding! env sym type)
                                  [sym type])
                                (grp.art/record-warning! env sym
-                                 (str "Fully-qualified destructured symbol "
-                                   sym
-                                   " has no spec. This could indicate a spelling error or"
-                                   " a missing spec.")))))
+                                 :warning/qualified-keyword-missing-spec))))
                      v)
               (qualified-keyword? v)
               #_=> (when-let [spec (s/get-spec v)]
@@ -99,8 +96,8 @@
         (grp.art/record-error! env
           {::grp.art/original-expression (last body)
            ::grp.art/actual              {::grp.art/failing-samples #{sample-failure}}
-           ::grp.art/expected            {::grp.art/type return-type ::grp.art/spec return-spec}
-           ::grp.art/message             (str "Return value (e.g. " (pr-str sample-failure) ") does not always satisfy the return spec of " return-type ".")})))))
+           ::grp.art/expected            {::grp.art/spec return-spec ::grp.art/type return-type}
+           ::grp.art/problem-type        :error/value-failed-spec})))))
 
 (>defn validate-argtypes!
   [env sym actual-argument-type-descriptors]
@@ -108,11 +105,11 @@
   (let [{::grp.art/keys [arities]} (grp.art/function-detail env sym)
         {::grp.art/keys [gspec]} (grp.art/get-arity arities actual-argument-type-descriptors)
         {::grp.art/keys [arg-specs arg-types arg-predicates]} gspec]
-    (doseq [[arg-spec human-readable-expected-type {::grp.art/keys [samples original-expression] :as descr} n]
+    (doseq [[arg-spec arg-type {::grp.art/keys [samples original-expression] :as descr} n]
             (map vector arg-specs arg-types actual-argument-type-descriptors (range))
             :let [checkable? (and arg-spec (seq samples))]]
       (when-not checkable?
-        (grp.art/record-warning! env original-expression (str "Could not check " original-expression ".")))
+        (grp.art/record-warning! env original-expression :warning/unable-to-check))
       (when-let [{:keys [failing-sample]} (and checkable?
                                             (some (fn _invalid-sample [sample]
                                                     (when-not (s/valid? arg-spec sample)
@@ -120,12 +117,10 @@
                                               samples))]
         (grp.art/record-error! env
           {::grp.art/original-expression original-expression
-           ::grp.art/expected            gspec
+           ::grp.art/expected            {::grp.art/spec arg-spec ::grp.art/type arg-type}
            ::grp.art/actual              {::grp.art/failing-samples #{failing-sample}}
-           ::grp.art/message             (str "Function argument " (inc n)
-                                           (when original-expression (str " (" (pr-str original-expression) ")"))
-                                           " failed to pass spec " human-readable-expected-type
-                                           ". Expression sample that failed: " (pr-str failing-sample) ".")})))
+           ::grp.art/problem-type        :error/function-argument-failed-spec
+           ::grp.art/message-params      {:argument-number (inc n)}})))
     (doseq [sample-arguments (apply map vector (map ::grp.art/samples actual-argument-type-descriptors))]
       (doseq [arg-pred arg-predicates
               :when (every? (partial apply s/valid?)
@@ -134,8 +129,9 @@
           (grp.art/record-error! env
             {::grp.art/original-expression (map ::grp.art/original-expression actual-argument-type-descriptors)
              ::grp.art/actual              {::grp.art/failing-samples (set sample-arguments)}
-             ::grp.art/message             (str "Function arguments " (pr-str (mapv ::grp.art/original-expression actual-argument-type-descriptors))
-                                             "failed to pass argument predicate. Failing sample arguments: " (pr-str sample-arguments) ".")})))))
+             ::grp.art/expected            {::grp.art/spec arg-pred}
+             ::grp.art/problem-type        :error/function-arguments-failed-predicate
+             ::grp.art/message-params      {:function-name sym}})))))
   :done)
 
 (defn calculate-function-type [env sym argtypes]

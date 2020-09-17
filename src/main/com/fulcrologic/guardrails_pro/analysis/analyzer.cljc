@@ -83,7 +83,7 @@
                  (keyword? sexpr) (let [s (when (qualified-keyword? sexpr) (s/get-spec sexpr))]
                                     (when (and (qualified-keyword? sexpr) (not s))
                                       (grp.art/record-warning! env sexpr
-                                        (str "Fully qualified keyword " sexpr " has no spec. Possible typo?")))
+                                        :warning/qualified-keyword-missing-spec))
                                     keyword?)
                  (regex? sexpr) regex?
                  (nil? sexpr) nil?)]
@@ -104,9 +104,9 @@
       (do
         (grp.art/record-error! env
           {::grp.art/original-expression v
-           ::grp.art/expected            {::grp.art/spec spec}
+           ::grp.art/expected            {::grp.art/spec spec ::grp.art/type (pr-str k)}
            ::grp.art/actual              {::grp.art/failing-samples #{failing-sample}}
-           ::grp.art/message             (str "Possible value in map: " failing-sample " fails to pass spec for " k ".")})
+           ::grp.art/problem-type        :error/value-failed-spec})
         samples)
       (when-let [valid-samples (and spec (seq (filter (partial s/valid? spec) samples)))]
         (set valid-samples)))))
@@ -114,13 +114,13 @@
 (defn- analyze-hashmap-entry
   [env acc k v]
   (when (and (qualified-keyword? k) (nil? (s/get-spec k)))
-    (grp.art/record-warning! env k (str k " does not have a spec. Possible typo?")))
+    (grp.art/record-warning! env k :warning/qualified-keyword-missing-spec))
   (let [sample-value (let [{::grp.art/keys [samples]} (analyze! env v)]
                        (validate-samples! env k v samples)
                        (if (seq samples)
                          (rand-nth (vec samples))
                          (do
-                           (grp.art/record-warning! env v (str "Failed to generate values for: " v))
+                           (grp.art/record-warning! env v :warning/missing-samples)
                            ::grp.art/Unknown)))]
     (assoc acc k sample-value)))
 

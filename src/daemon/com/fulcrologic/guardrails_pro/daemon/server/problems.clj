@@ -27,8 +27,7 @@
 
 (defmulti format-for-mm (fn [editor _problems] editor))
 
-(defmethod format-for-mm :default [_ problems]
-  problems)
+(defmethod format-for-mm :default [_ problems] problems)
 
 (defmethod format-for-mm "vim" [_ problems]
   (mapcat
