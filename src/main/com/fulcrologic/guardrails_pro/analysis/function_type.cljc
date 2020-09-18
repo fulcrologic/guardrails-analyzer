@@ -4,6 +4,7 @@
     [taoensso.timbre :as log]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.analysis.sampler :as grp.sampler]
+    [com.fulcrologic.guardrails-pro.analysis.spec :as grp.spec]
     [com.fulcrologic.guardrails.core :refer [>defn =>]]))
 
 (s/def ::destructurable
@@ -22,8 +23,8 @@
               (and (qualified-keyword? k) (= (name k) "keys"))
               #_=> (mapv (fn [sym]
                            (let [spec-kw (keyword (namespace k) (str sym))]
-                             (if-let [spec (s/get-spec spec-kw)]
-                               (let [samples (grp.sampler/try-sampling! env (s/gen spec) {::grp.art/original-expression entry})
+                             (if-let [spec (grp.spec/lookup env spec-kw)]
+                               (let [samples (grp.sampler/try-sampling! env (grp.spec/generator env spec) {::grp.art/original-expression entry})
                                      type    (cond-> {::grp.art/spec                spec
                                                       ::grp.art/original-expression (pr-str sym)
                                                       ::grp.art/type                (pr-str sym)}
@@ -34,8 +35,8 @@
                                  :warning/qualified-keyword-missing-spec))))
                      v)
               (qualified-keyword? v)
-              #_=> (when-let [spec (s/get-spec v)]
-                     (let [samples (grp.sampler/try-sampling! env (s/gen spec) {::grp.art/original-expression entry})
+              #_=> (when-let [spec (grp.spec/lookup env v)]
+                     (let [samples (grp.sampler/try-sampling! env (grp.spec/generator env spec) {::grp.art/original-expression entry})
                            type    (cond-> {::grp.art/spec                spec
                                             ::grp.art/original-expression (pr-str k)
                                             ::grp.art/type                (pr-str v)}
@@ -67,7 +68,7 @@
 (>defn bind-type-desc
   [env typename clojure-spec err]
   [::grp.art/env ::grp.art/type ::grp.art/spec map? => ::grp.art/type-description]
-  (let [samples (grp.sampler/try-sampling! env (s/gen clojure-spec) err)]
+  (let [samples (grp.sampler/try-sampling! env (grp.spec/generator env clojure-spec) err)]
     (cond-> {::grp.art/spec clojure-spec
              ::grp.art/type typename}
       (seq samples) (assoc ::grp.art/samples samples))))
@@ -90,7 +91,7 @@
 (>defn check-return-type! [env {::grp.art/keys [body gspec]} {::grp.art/keys [samples]}]
   [::grp.art/env ::grp.art/arity-detail ::grp.art/type-description => any?]
   (let [{::grp.art/keys [return-spec return-type]} gspec
-        sample-failure (some #(when-not (s/valid? return-spec %) {:failing-case %}) samples)]
+        sample-failure (some #(when-not (grp.spec/valid? env return-spec %) {:failing-case %}) samples)]
     (when (contains? sample-failure :failing-case)
       (let [sample-failure (:failing-case sample-failure)]
         (grp.art/record-error! env
@@ -112,7 +113,7 @@
         (grp.art/record-warning! env original-expression :warning/unable-to-check))
       (when-let [{:keys [failing-sample]} (and checkable?
                                             (some (fn _invalid-sample [sample]
-                                                    (when-not (s/valid? arg-spec sample)
+                                                    (when-not (grp.spec/valid? env arg-spec sample)
                                                       {:failing-sample sample}))
                                               samples))]
         (grp.art/record-error! env
@@ -123,7 +124,7 @@
            ::grp.art/message-params      {:argument-number (inc n)}})))
     (doseq [sample-arguments (apply map vector (map ::grp.art/samples actual-argument-type-descriptors))]
       (doseq [arg-pred arg-predicates
-              :when (every? (partial apply s/valid?)
+              :when (every? (partial apply (partial grp.spec/valid? env))
                       (map vector arg-specs sample-arguments))]
         (when-not (apply arg-pred sample-arguments)
           (grp.art/record-error! env

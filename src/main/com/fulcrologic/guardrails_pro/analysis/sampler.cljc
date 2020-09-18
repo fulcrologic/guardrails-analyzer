@@ -5,6 +5,7 @@
     [clojure.test.check.generators :as gen]
     [com.fulcrologic.guardrails.core :refer [>defn => ?]]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
+    [com.fulcrologic.guardrails-pro.analysis.spec :as grp.spec]
     [taoensso.timbre :as log]))
 
 (defmulti propagate-samples-mm!
@@ -45,7 +46,7 @@
   ([env gen extra]
    [::grp.art/env ::generator map? => ::grp.art/samples]
    (try
-     (if-let [samples (seq (gen/sample gen))]
+     (if-let [samples (seq (grp.spec/sample env gen))]
        (->samples (flatten-samples samples))
        (throw (ex-info "No samples!?" {})))
      (catch #?(:clj Throwable :cljs :default) e
@@ -72,9 +73,9 @@
   (when (vector? sampler)
     (second sampler)))
 
-(>defn return-sample-gen [{::grp.art/keys [generator return-spec]}]
-  [(s/keys :req [(or ::grp.art/generator ::grp.art/return-spec)]) => ::generator]
-  (or generator (s/gen return-spec)))
+(>defn return-sample-gen [env {::grp.art/keys [generator return-spec]}]
+  [::grp.art/env (s/keys :req [(or ::grp.art/generator ::grp.art/return-spec)]) => ::generator]
+  (or generator (grp.spec/generator env return-spec)))
 
 (>defn get-args [env {:as td ::grp.art/keys [samples fn-ref env->fn]}]
   [::grp.art/env ::grp.art/type-description => (s/coll-of any? :min-count 1)]
@@ -99,7 +100,7 @@
       :fn-ref (gen/return (get-fn-ref env fd))
       :params (gen/return (sampler-params sampler))
       :argtypes (gen/return argtypes)
-      :return-sample-fn (gen/return #(gen/generate (return-sample-gen gspec))))))
+      :return-sample-fn (gen/return #(grp.spec/generate env (return-sample-gen env gspec))))))
 
 (>defn sample! [env fd argtypes]
   [::grp.art/env

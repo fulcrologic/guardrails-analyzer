@@ -6,6 +6,7 @@
     [clojure.set :as set]
     [clojure.spec.alpha :as s]
     [clojure.spec.gen.alpha :as gen]
+    [com.fulcrologic.guardrails-pro.analysis.spec :as grp.spec]
     [com.fulcrologic.guardrails.core :refer [>defn => ?]]
     [taoensso.timbre :as log])
   #?(:clj (:import (java.util Date))))
@@ -220,8 +221,9 @@
   ([] (build-env @registry))
   ([registry] (build-env registry @external-registry))
   ([registry external-registry]
-   {::registry          registry
-    ::external-registry external-registry}))
+   (-> {::registry          registry
+        ::external-registry external-registry}
+     (grp.spec/with-spec-impl :clojure.spec.alpha))))
 
 (>defn new-location
   [location]

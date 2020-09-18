@@ -50,4 +50,5 @@
  {:date "2020-09-17" :description "sampler testing & fixing" :timespans [[945 1100] [1130 1245]]}
  {:date "2020-09-17" :description "problem recording refactoring" :timespans [[1320 1610]]}
  {:date "2020-09-17" :description "research into malli / spec2 protocol" :timespans [[1610 1710]]}
+ {:date "2020-09-18" :description "initial spec protocol implementation" :timespans [[900 1055]]}
  ]

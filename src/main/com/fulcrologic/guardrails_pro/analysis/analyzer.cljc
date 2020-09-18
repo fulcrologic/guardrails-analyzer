@@ -6,6 +6,7 @@
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.analysis.function-type :as grp.fnt]
     [com.fulcrologic.guardrails-pro.analysis.sampler :as grp.sampler]
+    [com.fulcrologic.guardrails-pro.analysis.spec :as grp.spec]
     [taoensso.timbre :as log]
     [taoensso.encore :as enc])
   (:import
@@ -80,7 +81,7 @@
                  (char? sexpr) char?
                  (number? sexpr) number?
                  (string? sexpr) string?
-                 (keyword? sexpr) (let [s (when (qualified-keyword? sexpr) (s/get-spec sexpr))]
+                 (keyword? sexpr) (let [s (when (qualified-keyword? sexpr) (grp.spec/lookup env sexpr))]
                                     (when (and (qualified-keyword? sexpr) (not s))
                                       (grp.art/record-warning! env sexpr
                                         :warning/qualified-keyword-missing-spec))
@@ -96,10 +97,10 @@
 
 (>defn validate-samples! [env k v samples]
   [::grp.art/env any? any? ::grp.art/samples => (? ::grp.art/samples)]
-  (let [spec (s/get-spec k)]
+  (let [spec (grp.spec/lookup env k)]
     (enc/if-let [spec           spec
                  failing-sample (some (fn _invalid-sample [sample]
-                                        (when-not (s/valid? spec sample) sample))
+                                        (when-not (grp.spec/valid? env spec sample) sample))
                                   samples)]
       (do
         (grp.art/record-error! env
@@ -108,12 +109,12 @@
            ::grp.art/actual              {::grp.art/failing-samples #{failing-sample}}
            ::grp.art/problem-type        :error/value-failed-spec})
         samples)
-      (when-let [valid-samples (and spec (seq (filter (partial s/valid? spec) samples)))]
+      (when-let [valid-samples (and spec (seq (filter (partial grp.spec/valid? env spec) samples)))]
         (set valid-samples)))))
 
 (defn- analyze-hashmap-entry
   [env acc k v]
-  (when (and (qualified-keyword? k) (nil? (s/get-spec k)))
+  (when (and (qualified-keyword? k) (nil? (grp.spec/lookup env k)))
     (grp.art/record-warning! env k :warning/qualified-keyword-missing-spec))
   (let [sample-value (let [{::grp.art/keys [samples]} (analyze! env v)]
                        (validate-samples! env k v samples)

@@ -5,6 +5,7 @@
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.analysis.analyzer :as grp.ana]
     [com.fulcrologic.guardrails-pro.analysis.function-type :as grp.fnt]
+    [com.fulcrologic.guardrails-pro.analysis.spec :as grp.spec]
     [com.fulcrologic.guardrails.core :refer [>defn =>]]
     [taoensso.timbre :as log]))
 

@@ -3,34 +3,48 @@
     [clojure.spec.alpha :as s]
     [clojure.spec.gen.alpha :as gen]))
 
+;; NOTE: what about custom generator options? (eg: size & seed)
+(defprotocol ISpec
+  (-lookup [this value])
+  (-valid? [this spec value])
+  (-explain [this spec value])
+  (-generator [this spec])
+  (-generate [this spec])
+  (-sample [this spec]))
+
+(defrecord ClojureSpecAlpha [] ISpec
+  (-lookup [this value] (s/get-spec value))
+  (-valid? [this spec value] (s/valid? spec value))
+  (-explain [this spec value] (s/explain-str spec value))
+  (-generator [this spec] (s/gen spec))
+  (-generate [this spec] (gen/generate spec))
+  (-sample [this spec] (gen/sample spec)))
+
+(comment
+  (defrecord Malli ISpec
+    (-lookup [this value] (malli/schema value))
+    (-valid? [this spec value] (boolean (malli/validate spec value)))
+    (-explain [this spec value] (malli/explain spec value))
+    (-generator [this spec] (malli/generator spec))
+    (-generate [this spec] (malli/generate spec))
+    (-sample [this spec] (malli/sample spec)))
+  )
+
 ;; TODO: look in guardrails config for
 ;; - a dispatch keyword or ns sym
 ;; - use it to pick implementation
-;; ? should it be dynamically loaded ?
-;; ? should the impls be cached ? (at compile time ?)
+;; TODO: overriden by namespace metadata
+;; ? controlled by a dynamic binding ?
 
-(defn lookup [k]
-  ;; malli: `schema`
-  (s/get-spec k))
+(defn with-spec-impl [env impl-type]
+  (assoc env ::impl
+    (case impl-type
+      :clojure.spec.alpha (->ClojureSpecAlpha)
+      (->ClojureSpecAlpha))))
 
-(defn valid? [spec value]
-  ;; malli: `validate`
-  (s/valid? spec value))
-
-(defn explain-str [spec value]
-  ;; malli: `explain` & `humanize`
-  (s/explain-str spec value))
-
-(defn generator [spec]
-  ;; malli: `generator`
-  (s/gen spec))
-
-;; NOTE: what about custom generator options? (eg: size & seed)
-(defn generate [spec]
-  ;; malli: `generate`
-  (gen/generate spec))
-
-;; NOTE: what about custom generator options? (eg: size & seed)
-(defn sample [spec]
-  ;; malli: `sample`
-  (gen/sample spec))
+(defn lookup [env value] (-lookup (::impl env) value))
+(defn valid? [env spec value] (-valid? (::impl env) spec value))
+(defn explain [env spec value] (-explain (::impl env) spec value))
+(defn generator [env spec] (-generator (::impl env) spec))
+(defn generate [env spec] (-generate (::impl env) spec))
+(defn sample [env spec] (-sample (::impl env) spec))
