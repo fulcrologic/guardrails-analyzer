@@ -1,7 +1,7 @@
 (ns development
   (:require
     [clojure.tools.namespace.repl :as tools-ns]
-    [com.fulcrologic.guardrails-pro.daemon.server.http-server]
+    [com.fulcrologic.guardrails-pro.daemon.core]
     [mount.core :as mount]))
 
 (defn start [] (mount/start))
