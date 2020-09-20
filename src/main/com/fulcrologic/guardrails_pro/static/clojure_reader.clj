@@ -15,6 +15,7 @@
     [clojure.tools.reader :as reader]
     [clojure.tools.reader.impl.utils :as reader.utils]
     [clojure.java.io :as io]
+    [com.rpl.specter :as sp]
     [taoensso.timbre :as log])
   (:import
     (java.io FileReader BufferedReader PushbackReader)
@@ -38,25 +39,28 @@
       (new FileReader file)
       (-> file io/resource io/reader))))
 
-;; NOTE: ? - with-redefs on symbol resolution?
-;; NOTE: ? - missing a require?
+(defn parse-ns-aliases [ns-form]
+  (->> ns-form
+    (sp/select [(sp/walker #(and (vector? %) (some #{:as} %)))])
+    (map (fn [[ns-sym & args]]
+           {(:as (apply hash-map args)) ns-sym}))
+    (reduce merge)))
 
 (defn read-form
   "Read and return the form specified by the passed in var.
    The returned form will be augmented so that *everything* that
    *can* have metadata will include file/line/start column/ending column information."
   [file line]
-  (let [r (file->reader file)]
-    (doseq [_ (range (dec line))]
-      (.readLine r))
-    (reader/read
-      (new SourceLoggingPushbackReader
-        (new PushbackReader r)
-        line 1 true nil 0 file
-        (doto (reader.utils/make-var)
-          (alter-var-root (constantly {:buffer (StringBuilder.) :offset 0})))
-        false))))
-
-(comment
-  ((requiring-resolve 'com.fulcrologic.guardrails-pro.static.forms/form-expression)
-   (read-form (meta #'read-form))))
+  (let [ns-form (read-form file 0)]
+    (binding [reader/*alias-map* (parse-ns-aliases ns-form)
+              *ns* (second ns-form)]
+      (let [r (file->reader file)]
+        (doseq [_ (range (dec line))]
+          (.readLine r))
+        (reader/read {:read-cond :allow}
+          (new SourceLoggingPushbackReader
+            (new PushbackReader r)
+            line 1 true nil 0 file
+            (doto (reader.utils/make-var)
+              (alter-var-root (constantly {:buffer (StringBuilder.) :offset 0})))
+            false))))))
