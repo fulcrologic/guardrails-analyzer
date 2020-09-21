@@ -46,7 +46,19 @@
            {(:as (apply hash-map args)) ns-sym}))
     (reduce merge)))
 
-(defn read-form
+(defn read-form [file line]
+  (let [r (file->reader file)]
+    (doseq [_ (range (dec line))]
+      (.readLine r))
+    (reader/read {:read-cond :allow}
+      (new SourceLoggingPushbackReader
+        (new PushbackReader r)
+        line 1 true nil 0 file
+        (doto (reader.utils/make-var)
+          (alter-var-root (constantly {:buffer (StringBuilder.) :offset 0})))
+        false))))
+
+(defn read-form-at
   "Read and return the form specified by the passed in var.
    The returned form will be augmented so that *everything* that
    *can* have metadata will include file/line/start column/ending column information."
@@ -54,13 +66,4 @@
   (let [ns-form (read-form file 0)]
     (binding [reader/*alias-map* (parse-ns-aliases ns-form)
               *ns* (second ns-form)]
-      (let [r (file->reader file)]
-        (doseq [_ (range (dec line))]
-          (.readLine r))
-        (reader/read {:read-cond :allow}
-          (new SourceLoggingPushbackReader
-            (new PushbackReader r)
-            line 1 true nil 0 file
-            (doto (reader.utils/make-var)
-              (alter-var-root (constantly {:buffer (StringBuilder.) :offset 0})))
-            false))))))
+      (read-form file line))))

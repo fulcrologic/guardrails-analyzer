@@ -47,7 +47,7 @@
     (rest
       (if (enc/compiling-cljs?)
         form
-        (clj-reader/read-form
+        (clj-reader/read-form-at
           ;; FIXME: might be broken (not tested yet)
           file (:line (meta form)))))
     extern-symbols))
@@ -78,7 +78,7 @@
                (log/error e# "Cannot record function info for GRP:" ~fqsym)))
            (var ~fn-ref))))
     (catch Throwable t
-      (log/error "Failed to do analysis on" (first args) ":" (ex-message t))
+      (log/error "Failed to do analysis on" (first args) ":" (type t) ":" (ex-message t))
       `(defn ~@args))))
 
 (defmacro >defn
