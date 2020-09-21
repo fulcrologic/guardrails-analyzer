@@ -56,11 +56,13 @@
       DiagnosticSeverity/Error)
     "guardrails-pro"))
 
-(defn publish-diagnostics [uri problems]
+(defn publish-problems-for [uri problems]
   (doseq [[_ client] @clients]
     (.publishDiagnostics client
       (new PublishDiagnosticsParams uri
         (mapv problem->diagnostic problems)))))
+
+(def currently-open-uri (atom nil))
 
 (deftype LSPTextDocumentService []
   TextDocumentService
@@ -68,36 +70,23 @@
     (let [document (.getTextDocument params)
           uri (.getUri document)]
       (log/info "didOpen:" uri)
-      (publish-diagnostics uri
-        [#::grp.art{:problem-type :error/foobar
-                    :message "AN ERROR mSG"
-                    :line-start 1 :line-end 1
-                    :column-start 0 :column-end 10}]))
+      (reset! currently-open-uri uri))
     nil)
   (^void didChange [_ ^DidChangeTextDocumentParams params]
     (let [document (.getTextDocument params)
           uri (.getUri document)]
-      (log/info "didChange:" uri)
-      (publish-diagnostics uri
-        [#::grp.art{:problem-type :error/foobar
-                    :message "AN ERROR mSG"
-                    :line-start 1 :line-end 1
-                    :column-start 0 :column-end 10}]) )
+      (log/info "didChange:" uri))
     nil)
   (^void didSave [_ ^DidSaveTextDocumentParams params]
     (let [document (.getTextDocument params)
           uri (.getUri document)]
-      (log/info "didSave:" uri)
-      (publish-diagnostics uri
-        [#::grp.art{:problem-type :error/foobar
-                    :message "AN ERROR mSG"
-                    :line-start 1 :line-end 1
-                    :column-start 0 :column-end 10}]))
+      (log/info "didSave:" uri))
     nil)
   (^void didClose [_ ^DidCloseTextDocumentParams params]
     (let [document (.getTextDocument params)
           uri (.getUri document)]
-      (log/info "didClose:" uri))
+      (log/info "didClose:" uri)
+      (reset! currently-open-uri nil))
     nil))
 
 (defn new-server [launcher]

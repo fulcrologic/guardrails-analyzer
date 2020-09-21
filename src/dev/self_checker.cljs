@@ -28,7 +28,7 @@
 
 (>defn add-even [a b]
   [int? int? :st #(and (even? a) (even? b)) => int?]
-  (+ a b))
+  (str a b "c"))
 
 (>defn with-full-name [person]
   ^:pure [(s/keys :req [:person/fname :person/lname])

@@ -56,4 +56,6 @@
  {:date "2020-09-21" :description "publish diagnostics" :timespans [[830 1030]]}
  {:date "2020-09-21" :description "daemon port file" :timespans [[1030 1130]]}
  {:date "2020-09-21" :description "lsp connections" :timespans [[1130 1400]]}
+ {:date "2020-09-21" :description "problem indexing" :timespans [[1400 1530]]}
+ {:date "2020-09-21" :description "problem reporting" :timespans [[1530 1620]]}
  ]

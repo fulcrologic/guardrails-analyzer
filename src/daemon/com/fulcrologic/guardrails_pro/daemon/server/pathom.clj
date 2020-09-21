@@ -1,6 +1,6 @@
 (ns com.fulcrologic.guardrails-pro.daemon.server.pathom
   (:require
-    [clojure.core.async :as async]
+    [com.fulcrologic.guardrails-pro.daemon.lsp.core :as lsp]
     [com.fulcrologic.guardrails-pro.daemon.server.config :refer [config]]
     [com.fulcrologic.guardrails-pro.daemon.server.problems :as problems]
     [com.fulcrologic.guardrails-pro.daemon.server.bindings :as bindings]
@@ -8,9 +8,7 @@
     [com.wsscode.pathom.connect :as pc]
     [com.wsscode.pathom.core :as p]
     [mount.core :refer [defstate]]
-    [taoensso.timbre :as log]
-    [clojure.set :as set]
-    [com.fulcrologic.fulcro.networking.websocket-protocols :as wsp]))
+    [taoensso.timbre :as log]))
 
 (pc/defresolver all-problems [_env _params]
   {::pc/output [:all-problems]}
@@ -22,6 +20,7 @@
   (problems/set! problems)
   (bindings/set! bindings)
   (cmgmt/update-viewers! websockets)
+  (lsp/update-problems! problems)
   {})
 
 (pc/defmutation subscribe [{:keys [websockets cid]} _params]

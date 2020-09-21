@@ -8,7 +8,8 @@
     [clojure.spec.gen.alpha :as gen]
     [com.fulcrologic.guardrails-pro.analysis.spec :as grp.spec]
     [com.fulcrologic.guardrails.core :refer [>defn => ?]]
-    [taoensso.timbre :as log])
+    [taoensso.timbre :as log]
+    [taoensso.encore :as enc])
   #?(:clj (:import (java.util Date))))
 
 (defn now-ms []
@@ -270,6 +271,21 @@
 
 (defonce problems (atom {}))
 
+(defn insert-into-indexes [problems problem-list-type problem]
+  (-> problems
+    (update-in
+      [problem-list-type ::indexed (::file problem) (::line-start problem) (::column-start problem)]
+      (fnil conj [])
+      problem)
+    (update-in ;; index from sym to all indexed paths
+      [problem-list-type ::sym->index-paths (::checking-sym problem)]
+      (fnil conj [])
+      [(::file problem) (::line-start problem) (::column-start problem)])
+    (update-in
+      [problem-list-type ::by-sym (::checking-sym problem)]
+      (fnil conj [])
+      problem)))
+
 (>defn record-error!
   ([env original-expression problem-type]
    [::env ::original-expression ::problem-type => nil?]
@@ -282,11 +298,11 @@
   ([env error]
    [::env (s/keys :req [::problem-type ::original-expression]) => nil?]
    (log/info :record-error! (::checking-sym env) "\n" (::location env) "\n" error)
-   (swap! problems update-in
-     [(::checking-sym env) ::errors]
-     (fnil conj [])
-     (merge error
-       (::location env)))
+   (swap! problems
+     #(insert-into-indexes % ::errors
+        (merge error
+          (::location env)
+          {::checking-sym (::checking-sym env)})))
    nil))
 
 (>defn record-warning!
@@ -300,18 +316,29 @@
                          ::message-params message-params}))
   ([env warning]
    [::env (s/keys :req [::problem-type ::original-expression]) => nil?]
-   (swap! problems update-in
-     [(::checking-sym env) ::warnings]
-     (fnil conj [])
-     (merge warning
-       (::location env)))
+   (swap! problems
+     #(insert-into-indexes % ::warnings
+        (merge warning
+          (::location env)
+          {::checking-sym (::checking-sym env)})))
    nil))
 
+(defn clear-problems [P sym]
+  (let [index-paths (concat
+                      (get-in P [::warnings ::sym->index-paths sym])
+                      (get-in P [::errors   ::sym->index-paths sym]))]
+    (-> (reduce (fn [m path]
+                  (-> m
+                    (update-in (concat [::errors ::indexed] path)
+                      (partial remove (comp #{sym} ::checking-sym)))
+                    (update-in (concat [::warnings ::indexed] path)
+                      (partial remove (comp #{sym} ::checking-sym)))))
+          P index-paths)
+      (enc/dissoc-in [::warnings ::sym->index-paths] sym)
+      (enc/dissoc-in [::errors   ::sym->index-paths] sym)
+      (assoc-in [::warnings ::by-sym sym] [])
+      (assoc-in [::errors   ::by-sym sym] []))))
+
 (defn clear-problems!
-  ([sym]
-   (swap! problems update sym assoc ::errors [] ::warnings []))
-  ([]
-   (swap! problems
-     (partial reduce-kv
-       (fn [m k v] (assoc m k (dissoc v ::errors ::warnings)))
-       {}))))
+  ([] (swap! problems dissoc ::warnings ::errors))
+  ([sym] (swap! problems clear-problems sym)))

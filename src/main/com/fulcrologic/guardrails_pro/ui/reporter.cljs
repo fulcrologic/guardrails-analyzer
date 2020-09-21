@@ -1,19 +1,16 @@
 (ns com.fulcrologic.guardrails-pro.ui.reporter
   (:require
     [clojure.pprint :refer [pprint]]
-    [com.fulcrologic.guardrails.core :refer [=> | ?]]
-    [com.fulcrologic.guardrails-pro.core :as grp]
     [com.fulcrologic.fulcro.application :as app]
     [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
     [com.fulcrologic.fulcro.mutations :as f.m]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.ui.problem-formatter :refer [format-problems]]
-    [taoensso.timbre :as log]
-    [taoensso.encore :as enc]
     [com.fulcrologic.fulcro.dom :as dom :refer [div h3 h4 label input]]
     [com.fulcrologic.fulcro.routing.dynamic-routing :as dr :refer [defrouter]]
     [com.fulcrologic.fulcro.networking.websockets :as fws]
-    [com.fulcrologic.fulcro.mutations :as m]))
+    [com.rpl.specter :as sp]
+    [taoensso.timbre :as log]))
 
 (f.m/defmutation focus-ns [{:keys [ns]}]
   (action [{:keys [app state]}]
@@ -33,17 +30,18 @@
     (f.m/with-server-side-mutation env 'daemon/subscribe)))
 
 (defn set-problems* [state-map problems]
-  (let [ks (keys problems)]
-    (reduce
-      (fn [sm k]
-        (assoc-in sm [:problems/by-namespace (or (namespace k) "") (name k)] (get problems k)))
+  (let [by-sym (merge
+                 (get-in problems [::grp.art/warnings ::grp.art/by-sym])
+                 (get-in problems [::grp.art/errors ::grp.art/by-sym]))]
+    (reduce-kv (fn [sm k v]
+              (assoc-in sm [:problems/by-namespace (or (namespace k) "") (name k)] v))
       (dissoc state-map :problems/by-namespace)
-      ks)))
+      by-sym)))
 
 (f.m/defmutation report-analysis [{:keys [bindings problems]}]
   (action [{:keys [state]}] (swap! state set-problems* problems))
   (remote [{:keys [state] :as env}]
-    (if (get @state :self-checker?)
+    (when (get @state :self-checker?)
       (f.m/with-server-side-mutation env 'daemon/report-analysis))))
 
 (defsc Settings [this {:settings/keys [daemon-port]}]
@@ -58,36 +56,29 @@
         (label "Daemon Port")
         (input {:type     "number"
                 :value    daemon-port
-                :onChange (fn [evt] (m/set-integer!! this :settings/daemon-port :event evt))})))))
+                :onChange (fn [evt] (f.m/set-integer!! this :settings/daemon-port :event evt))})))))
+
+(defn ui-problem [{::grp.art/keys [problem-type message line-start]}]
+  (div :.item {:key message}
+    (dom/i :.exclamation.icon
+      {:classes [(case (namespace problem-type)
+                   "error"   "red"
+                   "warning" "yellow"
+                   nil)]})
+    (str line-start ": " message)))
 
 (defn namespace-problem-list [this ns ns-problems]
   (div :.ui.segment {:key ns}
     (h4 (dom/a {:href "#" :onClick (fn [] (comp/transact! this [(focus-ns {:ns ns})]))} ns))
     (div :.ui.list
       (mapv
-        (fn [[fname {::grp.art/keys [errors warnings] :as problems}]]
-          (let [errors   (sort-by ::grp.art/line-start errors)
-                warnings (sort-by ::grp.art/line-start warnings)]
-            (comp/fragment
-              (div :.item (dom/h4 fname))
-              (when (seq errors)
-                (comp/fragment
-                  (div :.list
-                    (mapv
-                      (fn [{::grp.art/keys [line-start message]}]
-                        (div :.item {:key message}
-                          (dom/i :.red.exclamation.icon)
-                          (str line-start ": " message)))
-                      errors))))
-              (when (seq warnings)
-                (comp/fragment
-                  (div :.list
-                    (mapv
-                      (fn [{::grp.art/keys [line-start message]}]
-                        (div :.item {:key message}
-                          (dom/i :.yellow.exclamation.icon)
-                          (str line-start ": " message)))
-                      warnings)))))))
+        (fn [[fname problems]]
+          (comp/fragment
+            (div :.item (dom/h4 fname))
+            (when (seq problems)
+              (div :.list
+                (mapv ui-problem
+                  (sort-by ::grp.art/line-start problems))))))
         ns-problems))))
 
 (defsc NamespaceProblems [this {:keys [problems/by-namespace current-namespace]}]
@@ -154,16 +145,17 @@
      (comp/transact! app [(subscribe)]))))
 
 (defn transit-safe-problems [problems]
-  (enc/map-vals (fn [problem]
-                  (let [ok-keys [::grp.art/message
-                                 ::grp.art/line-start
-                                 ::grp.art/line-end
-                                 ::grp.art/column-end
-                                 ::grp.art/column-start
-                                 ::grp.art/file]]
-                    (-> problem
-                      (update ::grp.art/errors (fn [s] (mapv #(select-keys % ok-keys) s)))
-                      (update ::grp.art/warnings (fn [s] (mapv #(select-keys % ok-keys) s)))))) problems))
+  (sp/transform (sp/walker ::grp.art/problem-type)
+    (fn [problem]
+      (let [ok-keys [::grp.art/problem-type
+                     ::grp.art/message
+                     ::grp.art/file
+                     ::grp.art/line-start
+                     ::grp.art/line-end
+                     ::grp.art/column-end
+                     ::grp.art/column-start]]
+        (select-keys problem ok-keys)))
+    problems))
 
 (defn formatted-bindings [bindings]
   (reduce-kv
