@@ -1,5 +1,6 @@
 (ns com.fulcrologic.guardrails-pro.daemon.lsp.server
   (:require
+    [clojure.java.io :as io]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [taoensso.timbre :as log])
   (:import
@@ -109,22 +110,43 @@
     (getWorkspaceService []
       (new LSPWorkspaceService))))
 
-(defn start-lsp [port]
-  (log/info "Starting guardrails LSP server!")
-  (let [server-socket (new ServerSocket port)
-        socket (.accept server-socket)
-        launcher (LSPLauncher/createServerLauncher server
-                   (.getInputStream socket)
-                   (.getOutputStream socket))]
-    (reset! client (.getRemoteProxy launcher))
-    (.startListening launcher)
-    {::client client
-     ::server server
-     ::server-socket server-socket
-     ::socket socket}))
+(defn find-port-file
+  [^java.io.File start-dir]
+  (loop [dir start-dir]
+    (let [config-file (io/file dir "guardrails.edn")]
+      (if (.exists config-file)
+        (io/file dir ".guardrails-pro" "daemon.port")
+        (if-let [parent (.getParentFile dir)]
+          (recur parent)
+          (throw (ex-info "Failed to find project configuration!"
+                   {:start-dir start-dir})))))))
 
-(defn stop-lsp [{::keys [server socket server-socket]} ]
+(defn write-port-to-file! [file port]
+  (io/make-parents file)
+  (spit file port))
+
+(defn start-lsp []
+  (log/info "Starting guardrails LSP server!")
+  (let [server-socket (new ServerSocket 0)
+        port-file (find-port-file ".")]
+    (.deleteOnExit port-file)
+    (write-port-to-file! port-file
+      (.getLocalPort server-socket))
+    (let [socket (.accept server-socket)
+          launcher (LSPLauncher/createServerLauncher server
+                     (.getInputStream socket)
+                     (.getOutputStream socket))]
+      (reset! client (.getRemoteProxy launcher))
+      (.startListening launcher)
+      {::client client
+       ::port-file port-file
+       ::server server
+       ::server-socket server-socket
+       ::socket socket})))
+
+(defn stop-lsp [{::keys [port-file server socket server-socket]} ]
   (log/info "Stopping guardrails LSP server!")
+  (.delete port-file)
   (.shutdownInput socket)
   (.shutdownOutput socket)
   @(.shutdown server)

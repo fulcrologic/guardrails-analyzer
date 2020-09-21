@@ -1,12 +1,15 @@
 function! s:FindProjectRoot(b)
-  " TASK: look up directory for guardrails.edn
-  " TODO: return an empty string to not check
-  return '/Users/pancia/projects/work/guardrails-pro'
+  let cfg = findfile("guardrails.edn", bufname("#".a:b.":p").';')
+  return l:cfg == '' ? l:cfg : fnamemodify(l:cfg, ":h")
 endfunction
 
 function! s:FindProjectAddress(b)
-  " TASK: look up directory for .guardrails-pro-port
-  return 'localhost:9999'
+  let root = s:FindProjectRoot(a:b)
+  let port_file = l:root . '/.guardrails-pro/daemon.port'
+  if filereadable(l:port_file)
+    let l:port = readfile(l:port_file)[0]
+    return 'localhost:'.l:port
+  endif
 endfunction
 
 call ale#linter#Define('clojure', {

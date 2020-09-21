@@ -3,8 +3,6 @@
     [com.fulcrologic.guardrails-pro.daemon.lsp.server :as lsp.server]
     [mount.core :refer [defstate]]))
 
-;; TASK: pick an open port, write to .guardrails-pro-port
-
 (defstate lsp-server
-  :start (lsp.server/start-lsp 9999)
+  :start (lsp.server/start-lsp)
   :stop (lsp.server/stop-lsp lsp-server))
