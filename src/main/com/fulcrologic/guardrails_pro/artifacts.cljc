@@ -33,19 +33,21 @@
 (s/def ::failing-samples ::samples)
 (s/def ::original-expression any?)
 (s/def ::literal-value ::original-expression)
-(s/def ::problem-type keyword?)
+(s/def ::problem-type (s/and qualified-keyword?
+                        (comp #{"error" "warning" "info" "hint"} namespace)))
 (s/def ::message-params (s/map-of keyword? some?))
 (s/def ::file string?)
 (s/def ::source string?)
-(s/def ::line-number posint?)
+(s/def ::line-start posint?)
+(s/def ::line-end posint?)
 (s/def ::column-start posint?)
 (s/def ::column-end posint?)
 (s/def ::error (s/keys
                  :req [::original-expression ::problem-type
-                       ::file ::line-number]
+                       ::file ::line-start]
                  :opt [::expected ::actual ::source
                        ::column-start ::column-end
-                       ::message-params]))
+                       ::line-end ::message-params]))
 (s/def ::warning ::error)
 
 (s/def ::key (s/or
@@ -71,7 +73,7 @@
 (s/def ::checking-sym qualified-symbol?)
 (s/def ::current-form any?)
 (s/def ::location (s/keys
-                    :req [::line-number ::column-start ::column-end]
+                    :req [::line-start ::line-end ::column-start ::column-end]
                     :opt [::source ::file]))
 (s/def ::env (s/keys
                :req [::registry]
@@ -230,7 +232,8 @@
   [map? => ::location]
   (let [location-remap {:source     ::source
                         :file       ::file
-                        :line       ::line-number
+                        :line       ::line-start
+                        :end-line   ::line-end
                         :column     ::column-start
                         :end-column ::column-end}]
     (-> location
@@ -258,11 +261,11 @@
   [::env simple-symbol? ::type-description => any?]
   (let [env (update-location env (meta sym))
         {::keys [checking-sym location]} env
-        {::keys [line-number column-start file]} location]
-    (if (and line-number column-start file)
+        {::keys [line-start column-start file]} location]
+    (if (and line-start column-start file)
       (swap! binding-annotations assoc location (assoc type-description
                                                   ::original-expression sym))
-      (log/warn "Cannot record binding because we don't know enough location info" file line-number column-start))
+      (log/warn "Cannot record binding because we don't know enough location info" file line-start column-start))
     nil))
 
 (defonce problems (atom {}))

@@ -1,5 +1,6 @@
 (ns com.fulcrologic.guardrails-pro.daemon.lsp.server
   (:require
+    [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [taoensso.timbre :as log])
   (:import
     (org.eclipse.lsp4j
@@ -35,22 +36,40 @@
     (log/info "didChangeWatchedFiles:" params)
     nil))
 
+(defn problem->diagnostic
+  [{::grp.art/keys [problem-type message
+                    line-start line-end
+                    column-start column-end]}]
+  (new Diagnostic
+    (new Range
+      (new Position line-start column-start)
+      (new Position line-end   column-end))
+    message
+    (case (namespace problem-type)
+      "error"   DiagnosticSeverity/Error
+      "warning" DiagnosticSeverity/Warning
+      "info"    DiagnosticSeverity/Information
+      "hint"    DiagnosticSeverity/Hint
+      DiagnosticSeverity/Error)
+    "guardrails-pro"))
+
+(defn publish-diagnostics [client uri problems]
+  (.publishDiagnostics client
+    (new PublishDiagnosticsParams uri
+      (mapv problem->diagnostic problems))))
+
 (deftype LSPTextDocumentService []
   TextDocumentService
   (^void didOpen [_ ^DidOpenTextDocumentParams params]
     (let [document (.getTextDocument params)
           uri (.getUri document)]
       (log/info "didOpen:" uri)
-      (when false
-        (.publishDiagnostics @client
-          (new PublishDiagnosticsParams uri
-            [(new Diagnostic
-               (new Range
-                 (new Position 1 1)
-                 (new Position 1 2))
-               "Work in Progress"
-               DiagnosticSeverity/Information
-               "guardrails")]))))
+      (when true
+        (publish-diagnostics @client uri
+          [#::grp.art{:problem-type :error/foobar
+                      :message "AN ERROR mSG"
+                      :line-start 1 :line-end 1
+                      :column-start 0 :column-end 10}])))
     nil)
   (^void didChange [_ ^DidChangeTextDocumentParams params]
     (let [document (.getTextDocument params)

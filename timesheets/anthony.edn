@@ -53,4 +53,5 @@
  {:date "2020-09-18" :description "initial spec protocol implementation" :timespans [[900 1055]]}
  {:date "2020-09-18" :description "lsp server" :timespans [[1055 1225] [1335 1705] [2000 2245]]}
  {:date "2020-09-19" :description "clojure reader" :timespans [[1115 1245]]}
+ {:date "2020-09-21" :description "publish diagnostics" :timespans [[830 1030]]}
  ]

@@ -66,27 +66,27 @@
     (div :.ui.list
       (mapv
         (fn [[fname {::grp.art/keys [errors warnings] :as problems}]]
-          (let [errors   (sort-by ::grp.art/line-number errors)
-                warnings (sort-by ::grp.art/line-number warnings)]
+          (let [errors   (sort-by ::grp.art/line-start errors)
+                warnings (sort-by ::grp.art/line-start warnings)]
             (comp/fragment
               (div :.item (dom/h4 fname))
               (when (seq errors)
                 (comp/fragment
                   (div :.list
                     (mapv
-                      (fn [{::grp.art/keys [line-number message]}]
+                      (fn [{::grp.art/keys [line-start message]}]
                         (div :.item {:key message}
                           (dom/i :.red.exclamation.icon)
-                          (str line-number ": " message)))
+                          (str line-start ": " message)))
                       errors))))
               (when (seq warnings)
                 (comp/fragment
                   (div :.list
                     (mapv
-                      (fn [{::grp.art/keys [line-number message]}]
+                      (fn [{::grp.art/keys [line-start message]}]
                         (div :.item {:key message}
                           (dom/i :.yellow.exclamation.icon)
-                          (str line-number ": " message)))
+                          (str line-start ": " message)))
                       warnings)))))))
         ns-problems))))
 
@@ -156,7 +156,8 @@
 (defn transit-safe-problems [problems]
   (enc/map-vals (fn [problem]
                   (let [ok-keys [::grp.art/message
-                                 ::grp.art/line-number
+                                 ::grp.art/line-start
+                                 ::grp.art/line-end
                                  ::grp.art/column-end
                                  ::grp.art/column-start
                                  ::grp.art/file]]
