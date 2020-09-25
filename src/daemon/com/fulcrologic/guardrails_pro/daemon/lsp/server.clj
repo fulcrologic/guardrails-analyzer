@@ -2,24 +2,22 @@
   (:require
     [clojure.core.async :as async]
     [clojure.java.io :as io]
-    [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
+    [com.fulcrologic.guardrails-pro.daemon.lsp.commands :as lsp.cmds]
+    [com.fulcrologic.guardrails-pro.daemon.lsp.diagnostics :as lsp.diag]
     [taoensso.timbre :as log])
   (:import
     (org.eclipse.lsp4j
-      Diagnostic
-      DiagnosticSeverity
       DidChangeConfigurationParams
       DidChangeTextDocumentParams
       DidChangeWatchedFilesParams
       DidCloseTextDocumentParams
       DidOpenTextDocumentParams
       DidSaveTextDocumentParams
+      ExecuteCommandOptions
+      ExecuteCommandParams
       InitializeParams
       InitializeResult
       InitializedParams
-      Position
-      PublishDiagnosticsParams
-      Range
       ServerCapabilities
       TextDocumentSyncOptions)
     (org.eclipse.lsp4j.launch LSPLauncher)
@@ -28,10 +26,16 @@
     (java.util UUID)
     (java.util.concurrent CompletableFuture)))
 
-(defonce clients (atom {}))
-
 (deftype LSPWorkspaceService []
   WorkspaceService
+  (^CompletableFuture executeCommand [_ ^ExecuteCommandParams params]
+    (let [cmd (.getCommand params)
+          args (.getArguments params)]
+      (log/info "executeCommand" cmd "&" args)
+      (if-let [f (get lsp.cmds/commands cmd)]
+        (f args)
+        (log/warn "Unrecognized command:" cmd)))
+    (CompletableFuture/completedFuture 0))
   (^void didChangeConfiguration [_ ^DidChangeConfigurationParams params]
     (log/info "didChangeConfiguration:" params)
     nil)
@@ -39,38 +43,13 @@
     (log/info "didChangeWatchedFiles:" params)
     nil))
 
-(defn problem->diagnostic
-  [{::grp.art/keys [problem-type message
-                    line-start line-end
-                    column-start column-end]}]
-  (new Diagnostic
-    (new Range
-      (new Position line-start column-start)
-      (new Position line-end   column-end))
-    message
-    (case (namespace problem-type)
-      "error"   DiagnosticSeverity/Error
-      "warning" DiagnosticSeverity/Warning
-      "info"    DiagnosticSeverity/Information
-      "hint"    DiagnosticSeverity/Hint
-      DiagnosticSeverity/Error)
-    "guardrails-pro"))
-
-(defn publish-problems-for [uri problems]
-  (doseq [[_ client] @clients]
-    (.publishDiagnostics client
-      (new PublishDiagnosticsParams uri
-        (mapv problem->diagnostic problems)))))
-
-(def currently-open-uri (atom nil))
-
 (deftype LSPTextDocumentService []
   TextDocumentService
   (^void didOpen [_ ^DidOpenTextDocumentParams params]
     (let [document (.getTextDocument params)
           uri (.getUri document)]
       (log/info "didOpen:" uri)
-      (reset! currently-open-uri uri))
+      (reset! lsp.diag/currently-open-uri uri))
     nil)
   (^void didChange [_ ^DidChangeTextDocumentParams params]
     (let [document (.getTextDocument params)
@@ -86,7 +65,7 @@
     (let [document (.getTextDocument params)
           uri (.getUri document)]
       (log/info "didClose:" uri)
-      (reset! currently-open-uri nil))
+      (reset! lsp.diag/currently-open-uri nil))
     nil))
 
 (defn new-server [launcher]
@@ -95,19 +74,22 @@
       (^CompletableFuture initialize [^InitializeParams params]
         (let [id (UUID/randomUUID)]
           (log/info "initialize server!" {:id id})
-          (swap! clients assoc id (.getRemoteProxy @launcher))
+          (swap! lsp.diag/clients assoc id (.getRemoteProxy @launcher))
           (reset! client-id id))
         (CompletableFuture/completedFuture
           (new InitializeResult
             (doto (new ServerCapabilities)
               (.setTextDocumentSync
                 (doto (new TextDocumentSyncOptions)
-                  (.setOpenClose true)))))))
+                  (.setOpenClose true)))
+              (.setExecuteCommandProvider
+                (doto (new ExecuteCommandOptions)
+                  (.setCommands (keys lsp.cmds/commands))))))))
       (^void initialized [^InitializedParams params]
         (log/info "client initialized!"))
       (^CompletableFuture shutdown []
         (log/info "shutdown!" @client-id)
-        (swap! clients dissoc @client-id)
+        (swap! lsp.diag/clients dissoc @client-id)
         (reset! client-id nil)
         (CompletableFuture/completedFuture 0))
       (^void exit []
@@ -154,7 +136,7 @@
                         (async/timeout 1000) nil))
           (do (log/info "Received stop signal, shutting down guardrails LSP server!")
             (.close server-socket)
-            (reset! clients {})
+            (reset! lsp.diag/clients {})
             (doseq [s @sockets]
               (shutdown-socket s))
             (reset! sockets []))

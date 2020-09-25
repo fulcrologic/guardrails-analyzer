@@ -1,9 +1,8 @@
 (ns self-checker
   (:require
-    [com.fulcrologic.guardrails.core :refer [=>]]
-    [com.fulcrologic.guardrails-pro.core :refer [>defn]]
+    [com.fulcrologic.guardrails.core :refer [>defn =>]]
     [com.fulcrologic.guardrails-pro.ui.reporter :as reporter]
-    [com.fulcrologic.guardrails-pro.analysis.interpreter :as grp.intrp]
+    [com.fulcrologic.guardrails-pro.checker :as grp.checker]
     [com.fulcrologic.guardrails-pro.ftags.clojure-core]
     [cljs.spec.alpha :as s]))
 
@@ -44,11 +43,11 @@
 
 (defn init []
   (reporter/start! true)
-  (grp.intrp/check-all!))
+  (grp.checker/check-all!))
 
 (defn refresh []
   (reporter/hot-reload!)
-  (grp.intrp/check-all!)
+  (grp.checker/check-all!)
   (reporter/report-analysis!))
 
 ;; TASK: Version 1: Do this relatively soon...but not until HOF working. Might be hard enough to need to be v2

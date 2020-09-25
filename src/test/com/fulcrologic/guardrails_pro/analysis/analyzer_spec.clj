@@ -3,10 +3,6 @@
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails-pro.analysis.analyzer :as grp.ana]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
-    [com.fulcrologic.guardrails-pro.core :as grp]
-    [com.fulcrologic.guardrails-pro.test-fixtures :as tf]
-    [com.fulcrologic.guardrails-pro.test-checkers :as tc]
-    [com.fulcrologic.guardrails.core :as gr :refer [=>]]
     [fulcro-spec.core :refer [specification component assertions when-mocking]]))
 
 (defmethod grp.art/cljc-rewrite-sym-ns-mm "analyzer-spec" [sym] "cljc-analyzer-spec")
@@ -29,17 +25,6 @@
         (grp.ana/analyze-dispatch env '(a {})) => :ifn
         (grp.ana/analyze-dispatch env '({} :a)) => :ifn
         (grp.ana/analyze-dispatch env '(##NaN :a)) => :unknown))))
-
-(grp/>defn test_int->int [x]
-  [int? => int?]
-  (inc x))
-
-(specification "analyze-let-like-form!" :integration
-  (component "A simple let"
-    (assertions
-      (tf/capture-errors grp.ana/analyze! (grp.art/build-env)
-        `(let [a# :a-kw] (test_int->int a#)))
-      =check=> (tc/of-length?* 1))))
 
 (s/def ::number number?)
 (s/def ::x ::number)

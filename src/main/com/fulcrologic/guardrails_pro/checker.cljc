@@ -1,11 +1,10 @@
-(ns com.fulcrologic.guardrails-pro.analysis.interpreter
+(ns com.fulcrologic.guardrails-pro.checker
   (:require
     [clojure.test.check.generators]
     [com.fulcrologic.guardrails-pro.ftags.clojure-core]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.analysis.analyzer :as grp.ana]
     [com.fulcrologic.guardrails-pro.analysis.function-type :as grp.fnt]
-    [com.fulcrologic.guardrails-pro.analysis.spec :as grp.spec]
     [com.fulcrologic.guardrails.core :refer [>defn =>]]
     [taoensso.timbre :as log]))
 
@@ -21,7 +20,7 @@
        (log/spy :info [sym last-changed last-checked])
        (when true ; (> last-changed (or last-checked 0))
          (grp.art/set-last-checked! env sym (grp.art/now-ms))
-         (grp.art/clear-problems! sym)                        ;; TODO: needs to control proper env b/c clj vs cljs and target
+         (grp.art/clear-problems! sym) ;; TODO: needs to control proper env b/c clj vs cljs and target
          (let [{::grp.art/keys [arities extern-symbols location]} fd
                env (assoc env
                      ::grp.art/location location

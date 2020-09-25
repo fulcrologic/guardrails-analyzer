@@ -1,6 +1,6 @@
 (ns com.fulcrologic.guardrails-pro.daemon.server.pathom
   (:require
-    [com.fulcrologic.guardrails-pro.daemon.lsp.core :as lsp]
+    [com.fulcrologic.guardrails-pro.daemon.lsp.diagnostics :as lsp.diag]
     [com.fulcrologic.guardrails-pro.daemon.server.config :refer [config]]
     [com.fulcrologic.guardrails-pro.daemon.server.problems :as problems]
     [com.fulcrologic.guardrails-pro.daemon.server.bindings :as bindings]
@@ -20,7 +20,7 @@
   (problems/set! problems)
   (bindings/set! bindings)
   (cmgmt/update-viewers! websockets)
-  (lsp/update-problems! problems)
+  (lsp.diag/update-problems! problems)
   {})
 
 (pc/defmutation subscribe [{:keys [websockets cid]} _params]

@@ -1,0 +1,46 @@
+(ns com.fulcrologic.guardrails-pro.daemon.lsp.diagnostics
+  (:require
+    [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
+    [com.rpl.specter :as sp]
+    [taoensso.timbre :as log])
+  (:import
+    (org.eclipse.lsp4j Diagnostic DiagnosticSeverity Position PublishDiagnosticsParams Range)
+    (java.io File)
+    (java.net URI)))
+
+(defonce clients (atom {}))
+
+(defonce currently-open-uri (atom nil))
+
+(defn problem->diagnostic
+  [{::grp.art/keys [problem-type message
+                    line-start line-end
+                    column-start column-end]}]
+  (new Diagnostic
+    (new Range
+      (new Position line-start column-start)
+      (new Position line-end   column-end))
+    message
+    (case (namespace problem-type)
+      "error"   DiagnosticSeverity/Error
+      "warning" DiagnosticSeverity/Warning
+      "info"    DiagnosticSeverity/Information
+      "hint"    DiagnosticSeverity/Hint
+      DiagnosticSeverity/Error)
+    "guardrails-pro"))
+
+(defn publish-problems-for [uri problems]
+  (doseq [[_ client] @clients]
+    (.publishDiagnostics client
+      (new PublishDiagnosticsParams uri
+        (mapv problem->diagnostic problems)))))
+
+(defn update-problems! [{:as problems ::grp.art/keys [errors warnings]}]
+  (let [uri @currently-open-uri
+        file (-> uri (URI.) (.getPath) (File.) (.getName))]
+    (publish-problems-for uri
+      (log/spy :debug :update-problems!
+        (sp/select (sp/walker ::grp.art/problem-type)
+          (concat
+            (get-in errors [::grp.art/indexed file])
+            (get-in warnings [::grp.art/indexed file])))))))

@@ -13,8 +13,7 @@
   #?(:clj (:import (java.util Date))))
 
 (defn now-ms []
-  (inst-ms #?(:clj  (Date.)
-              :cljs (js/Date.))))
+  (inst-ms (new #?(:clj Date :cljs js/Date))))
 
 (def posint?
   (s/with-gen pos-int?
@@ -50,7 +49,6 @@
                        ::column-start ::column-end
                        ::line-end ::message-params]))
 (s/def ::warning ::error)
-
 (s/def ::key (s/or
                :offset int?
                :typed-key qualified-keyword?
@@ -58,9 +56,9 @@
                :arbitrary any?))
 (s/def ::positional-types (s/map-of ::key ::type-description))
 (s/def ::recursive-description (s/keys :req [::positional-types]))
+;; NOTE: We can use a generated sample to in turn generate a recursive description
 (s/def ::type-description (s/or
                             :function ::lambda
-                            ;; NOTE: We can use a generated sample to in turn generate a recursive description
                             :value (s/keys :opt [::spec
                                                  ::recursive-description
                                                  ::type
@@ -75,7 +73,7 @@
 (s/def ::current-form any?)
 (s/def ::location (s/keys
                     :req [::line-start ::column-start]
-                    :opt [::source ::file ::line-end ::column-end]))
+                    :opt [::line-end ::column-end]))
 (s/def ::env (s/keys
                :req [::registry]
                :opt [::local-symbols ::extern-symbols
@@ -132,36 +130,6 @@
 (defonce external-registry (atom {}))
 
 (defonce registry (atom {}))
-
-(defn- arities-match? [{old ::arities} {new ::arities}]
-  (let [ks (keys new)]
-    (not
-      (or
-        (not= (keys old) ks)
-        (some
-          (fn [k]
-            (or
-              (not= (get-in old [k ::body]) (get-in new [k ::body]))
-              (not= (get-in old [k ::arglist]) (get-in new [k ::arglist]))
-              (not= (get-in old [k ::gspec ::return-types]) (get-in new [k ::gspec ::return-types]))
-              (not= (get-in old [k ::gspec ::arg-types]) (get-in new [k ::gspec ::arg-types]))))
-          ks)))))
-
-(>defn register-function!
-  [fn-sym fn-desc]
-  [qualified-symbol?
-   (s/keys :req [::name ::fn-ref
-                 ::arities ::location
-                 ::last-changed ::extern-symbols])
-   => any?]
-  (swap! registry update fn-sym
-    (fn [old-desc]
-      (assoc
-        ;FIXME: does not handle metadata changes
-        ;(if (arities-match? old-desc fn-desc) old-desc fn-desc)
-        fn-desc
-        ::last-seen (now-ms))))
-  nil)
 
 (defmulti cljc-rewrite-sym-ns-mm identity)
 (defmethod cljc-rewrite-sym-ns-mm "clojure.core" [ns] #?(:cljs "cljs.core" :clj ns))
@@ -231,9 +199,7 @@
 (>defn new-location
   [location]
   [map? => ::location]
-  (let [location-remap {:source     ::source
-                        :file       ::file
-                        :line       ::line-start
+  (let [location-remap {:line       ::line-start
                         :end-line   ::line-end
                         :column     ::column-start
                         :end-column ::column-end}]
@@ -247,7 +213,7 @@
   (log/trace :update-location (::checking-sym env) location)
   (cond-> env location
     (assoc ::location
-           (new-location location))))
+      (new-location location))))
 
 (defonce binding-annotations (atom {}))
 
@@ -329,7 +295,7 @@
                       (get-in P [::errors   ::sym->index-paths sym]))]
     (-> (reduce (fn [m path]
                   (-> m
-                    (update-in (concat [::errors ::indexed] path)
+                    (update-in (concat [::errors   ::indexed] path)
                       (partial remove (comp #{sym} ::checking-sym)))
                     (update-in (concat [::warnings ::indexed] path)
                       (partial remove (comp #{sym} ::checking-sym)))))

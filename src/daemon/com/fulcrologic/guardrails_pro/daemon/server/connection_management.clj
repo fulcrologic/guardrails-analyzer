@@ -1,10 +1,9 @@
 (ns com.fulcrologic.guardrails-pro.daemon.server.connection-management
   (:require
-    [com.wsscode.pathom.connect :as pc]
-    [com.wsscode.pathom.core :as p]
+    com.wsscode.pathom.connect
+    com.wsscode.pathom.core
     [mount.core :refer [defstate]]
     [taoensso.timbre :as log]
-    [clojure.set :as set]
     [com.fulcrologic.fulcro.networking.websocket-protocols :as wsp]
     [com.fulcrologic.guardrails-pro.daemon.server.problems :as problems]
     [com.fulcrologic.guardrails-pro.daemon.server.bindings :as bindings]))
@@ -12,8 +11,6 @@
 (defstate connected-clients :start (atom #{}))
 (defstate registered-checkers :start (atom #{}))
 (defstate subscribed-viewers :start (atom #{}))
-
-(def checker-cids (atom #{}))
 
 (def listener (reify wsp/WSListener
                 (client-added [_ _ cid]

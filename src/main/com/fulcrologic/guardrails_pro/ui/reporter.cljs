@@ -125,8 +125,10 @@
                          {:push-handler
                           (fn [{:keys [topic msg]}]
                             (log/spy :info [topic msg])
-                            (when (= topic :new-problems)
-                              (update-problems! msg)))})}}))
+                            (case topic
+                              :new-problems
+                              #_=> (update-problems! msg)
+                              nil))})}}))
 
 (defn update-problems! [problems]
   (log/info "received new problem list from daemon")
