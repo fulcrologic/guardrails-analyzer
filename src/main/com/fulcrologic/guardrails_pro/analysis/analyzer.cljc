@@ -1,6 +1,5 @@
 (ns com.fulcrologic.guardrails-pro.analysis.analyzer
   (:require
-    [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [>defn => ?]]
     [com.fulcrologic.guardrails-pro.core :as grp]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
@@ -159,14 +158,6 @@
         argtypes (mapv (partial analyze! env) args)]
     {::grp.art/samples (grp.sampler/sample! env fd argtypes)}))
 
-;; FIXME: not the same as :external-function
-#_(defn analyze-map-like! [env [map-like-sym f & colls]]
-  (let [lambda (analyze! env f)
-        colls (map (partial analyze! env) colls)]
-    {::grp.art/samples (grp.sampler/sample! env
-                         (grp.art/external-function-detail env map-like-sym)
-                         (cons lambda colls))}))
-
 (defmethod analyze-mm :function-call [env [function & arguments]]
   (let [current-ns (some-> env ::grp.art/checking-sym namespace)
         fqsym      (if (simple-symbol? function) (symbol current-ns (name function)) function)]
@@ -301,11 +292,11 @@
 (defmethod analyze-mm 'clojure.core/partial [env sexpr] (analyze-partial! env sexpr))
 
 ;; TODO: both top level >ftag and analyze-mm
-(defn analyze-constantly! [env [_ value]]
+(defn analyze-constantly! [env [const value]]
   (let [value-td (analyze! env value)]
     (merge
-      ;;FIXME: should be >ftag & lookup
-      (grp/>fspec [& args] ^:pure [(s/* any?) => any?])
+      (get-in (grp.art/external-function-detail env const)
+        [::grp.art/arities 1 ::grp.art/gspec ::grp.art/return-spec])
       #::grp.art{:lambda-name (gensym "constantly$")
                  :env->fn (fn [env] (grp.sampler/random-sample-fn value-td))})))
 

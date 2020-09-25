@@ -2,7 +2,7 @@
   (:require
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [=> | ?]]
-    [com.fulcrologic.guardrails-pro.core :refer [>ftag]]))
+    [com.fulcrologic.guardrails-pro.core :refer [>ftag >fspec]]))
 
 (>ftag ^:map-like clojure.core/map
   ([f coll & colls] [fn? sequential? (s/+ sequential?) => (s/coll-of any?)]))
@@ -11,7 +11,7 @@
   [f & args] [fn? (s/+ any?) => fn?])
 
 (>ftag ^:pure clojure.core/constantly
-  [value] [any? => fn?])
+  [value] [any? => (>fspec [& args] ^:pure [(s/* any?) => any?])])
 
 ;; CONTEXT: future design work
 

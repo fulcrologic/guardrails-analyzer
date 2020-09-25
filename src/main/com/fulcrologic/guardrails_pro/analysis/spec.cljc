@@ -2,7 +2,8 @@
   (:refer-clojure :exclude [-lookup])
   (:require
     [clojure.spec.alpha :as s]
-    [clojure.spec.gen.alpha :as gen]))
+    [clojure.spec.gen.alpha :as gen]
+    [taoensso.timbre :as log]))
 
 ;; NOTE: what about custom generator options? (eg: size & seed)
 (defprotocol ISpec
@@ -46,6 +47,10 @@
 (defn lookup [env value] (-lookup (::impl env) value))
 (defn valid? [env spec value] (-valid? (::impl env) spec value))
 (defn explain [env spec value] (-explain (::impl env) spec value))
-(defn generator [env spec] (-generator (::impl env) spec))
+(defn generator [env spec]
+  (try (-generator (::impl env) spec)
+    (catch #? (:clj Exception :cljs :default) e
+      (log/error e "spec/generator failed to gen for" spec)
+      nil)))
 (defn generate [env spec] (-generate (::impl env) spec))
 (defn sample [env spec] (-sample (::impl env) spec))

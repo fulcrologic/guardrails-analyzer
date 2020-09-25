@@ -58,4 +58,7 @@
  {:date "2020-09-21" :description "lsp connections" :timespans [[1130 1400]]}
  {:date "2020-09-21" :description "problem indexing" :timespans [[1400 1530]]}
  {:date "2020-09-21" :description "problem reporting" :timespans [[1530 1620]]}
+ {:date "2020-09-22" :description "self checker" :timespans [[830 1130]]}
+ {:date "2020-09-23" :description "self checker" :timespans [[1015 1300] [1400 1920]]}
+ {:date "2020-09-24" :description "re-architect guardrails" :timespans [[1000 1300] [1500 1720]]}
  ]

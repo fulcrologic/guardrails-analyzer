@@ -74,8 +74,8 @@
 (s/def ::checking-sym qualified-symbol?)
 (s/def ::current-form any?)
 (s/def ::location (s/keys
-                    :req [::line-start ::line-end ::column-start ::column-end]
-                    :opt [::source ::file]))
+                    :req [::line-start ::column-start]
+                    :opt [::source ::file ::line-end ::column-end]))
 (s/def ::env (s/keys
                :req [::registry]
                :opt [::local-symbols ::extern-symbols

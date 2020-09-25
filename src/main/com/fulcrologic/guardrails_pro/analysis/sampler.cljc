@@ -41,14 +41,15 @@
     (set (mapcat #(if (samples? %) % [%]) x))))
 
 (>defn try-sampling!
-  ([env gen] [::grp.art/env ::generator => ::grp.art/samples]
+  ([env gen] [::grp.art/env (? ::generator) => ::grp.art/samples]
    (try-sampling! env gen {}))
   ([env gen extra]
-   [::grp.art/env ::generator map? => ::grp.art/samples]
+   [::grp.art/env (? ::generator) map? => ::grp.art/samples]
    (try
-     (if-let [samples (seq (grp.spec/sample env gen))]
-       (->samples (flatten-samples samples))
-       (throw (ex-info "No samples!?" {})))
+     (if-not gen (throw (ex-info "derp" {}))
+       (if-let [samples (seq (grp.spec/sample env gen))]
+         (->samples (flatten-samples samples))
+         (throw (ex-info "No samples!?" {}))))
      (catch #?(:clj Throwable :cljs :default) e
        (log/error e "Failed to generate samples!")
        (grp.art/record-error! env
@@ -75,7 +76,10 @@
 
 (>defn return-sample-gen [env {::grp.art/keys [generator return-spec]}]
   [::grp.art/env (s/keys :req [(or ::grp.art/generator ::grp.art/return-spec)]) => ::generator]
-  (or generator (grp.spec/generator env return-spec)))
+  (try (or generator (grp.spec/generator env return-spec))
+    (catch #? (:clj Exception :cljs :default) e
+      (log/error e "Could not create generator for" return-spec)
+      nil)))
 
 (>defn get-args [env {:as td ::grp.art/keys [samples fn-ref env->fn]}]
   [::grp.art/env ::grp.art/type-description => (s/coll-of any? :min-count 1)]
@@ -100,7 +104,9 @@
       :fn-ref (gen/return (get-fn-ref env fd))
       :params (gen/return (sampler-params sampler))
       :argtypes (gen/return argtypes)
-      :return-sample-fn (gen/return #(grp.spec/generate env (return-sample-gen env gspec))))))
+      :return-sample-fn (gen/return #(try (grp.spec/generate env (return-sample-gen env gspec))
+                                       (catch #? (:clj Exception :cljs :default) e
+                                         (log/error e "Failed to generate value from " gspec)))))))
 
 (>defn sample! [env fd argtypes]
   [::grp.art/env
