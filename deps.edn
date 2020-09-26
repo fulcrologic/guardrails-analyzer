@@ -26,6 +26,7 @@
                        :jvm-opts    ["-Ddaemon"]}
 
            :hours     {:extra-paths   ["src/timesheets"]
+                       :extra-deps    {org.clojure/tools.cli      {:mvn/version "1.0.194"}}
                        :override-deps {com.fulcrologic/guardrails {:mvn/version "0.0.12"}}
                        :main-opts     ["-m" "timesheets"]}
 

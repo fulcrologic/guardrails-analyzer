@@ -1,7 +1,9 @@
 (ns timesheets
   (:require
+    [clojure.string :as str]
     [clojure.java.io :as io]
-    [clojure.test :refer :all]
+    [clojure.test :refer [deftest are is]]
+    [clojure.tools.cli :refer [parse-opts]]
     [clojure.edn :as edn])
   (:gen-class)
   (:import
@@ -58,30 +60,47 @@
                       date invalid-timespans)
              {}))))
 
+(defn group-by-day [entries]
+  (mapv (fn [[date values]]
+          {:date date
+           :description (str/join " + " (map :description values))
+           :timespans (vec (mapcat :timespans values))})
+    (sort-by (comp #(str/split % #"\-") first)
+      (group-by :date entries))))
+
+(defn hours-for-files [files {:keys [by-day]}]
+  (doseq [^String f files]
+    (let [file (File. f)]
+      (if-not (.exists file)
+        (throw (ex-info (str "Cannot read " f) {}))
+        (let [file-content (-> file io/reader slurp)
+              entries      (edn/read-string file-content)
+              entries      (cond-> entries by-day (group-by-day))
+              octal-values (seq (re-seq #"\D0\d\d\d\D" file-content))]
+          (when octal-values
+            (throw (ex-info (str "Octal value in time spans: " octal-values) {})))
+          (let [output (atom [])
+                total  (reduce
+                         (fn [total {:as entry :keys [date description timespans]}]
+                           (validate-timespans! entry)
+                           (let [sum (sum-timespans timespans)]
+                             (swap! output conj
+                               (format "%-11.11s %-30.30s %6.2f  %s"
+                                 date description sum timespans))
+                             (+ total sum)))
+                         0
+                         entries)]
+            (doseq [out @output] (println out))
+            (println (format "\nTotal: %42.2f" total))))))))
+
+(def cli-options
+  [[nil "--by-day" "Group By Day"
+    :default false]])
+
 (defn -main [& args]
   (try
-    (doseq [^String f args]
-      (let [file (File. f)]
-        (if-not (.exists file)
-          (throw (ex-info (str "Cannot read " f) {}))
-          (let [file-content (-> file io/reader slurp)
-                entries      (edn/read-string file-content)
-                octal-values (seq (re-seq #"\D0\d\d\d\D" file-content))]
-            (when octal-values
-              (throw (ex-info (str "Octal value in time spans: " octal-values) {})))
-            (let [output (atom [])
-                  total  (reduce
-                           (fn [total {:as entry :keys [date description timespans]}]
-                             (validate-timespans! entry)
-                             (let [sum (sum-timespans timespans)]
-                               (swap! output conj
-                                 (format "%-11.11s %-30.30s %6.2f  %s"
-                                   date description sum timespans))
-                               (+ total sum)))
-                           0
-                           entries)]
-              (doseq [out @output] (println out))
-              (println (format "\nTotal: %42.2f" total)))))))
+    (let [{:keys [arguments options]} (parse-opts args cli-options)]
+      (hours-for-files arguments options))
     (catch Throwable t
       (.println System/err
         (if (= (type t) clojure.lang.ExceptionInfo)
