@@ -4,6 +4,7 @@
     [clojure.java.io :as io]
     [com.fulcrologic.guardrails-pro.daemon.lsp.commands :as lsp.cmds]
     [com.fulcrologic.guardrails-pro.daemon.lsp.diagnostics :as lsp.diag]
+    [com.fulcrologic.guardrails-pro.daemon.lsp.interop :as lsp.interop]
     [taoensso.timbre :as log])
   (:import
     (org.eclipse.lsp4j
@@ -33,7 +34,7 @@
           args (.getArguments params)]
       (log/info "executeCommand" cmd "&" args)
       (if-let [f (get lsp.cmds/commands cmd)]
-        (f args)
+        (apply f (map lsp.interop/json->clj args))
         (log/warn "Unrecognized command:" cmd)))
     (CompletableFuture/completedFuture 0))
   (^void didChangeConfiguration [_ ^DidChangeConfigurationParams params]
@@ -48,23 +49,23 @@
   (^void didOpen [_ ^DidOpenTextDocumentParams params]
     (let [document (.getTextDocument params)
           uri (.getUri document)]
-      (log/info "didOpen:" uri)
+      #_(log/info "didOpen:" uri)
       (reset! lsp.diag/currently-open-uri uri))
     nil)
   (^void didChange [_ ^DidChangeTextDocumentParams params]
     (let [document (.getTextDocument params)
           uri (.getUri document)]
-      (log/info "didChange:" uri))
+      #_(log/info "didChange:" uri))
     nil)
   (^void didSave [_ ^DidSaveTextDocumentParams params]
     (let [document (.getTextDocument params)
           uri (.getUri document)]
-      (log/info "didSave:" uri))
+      #_(log/info "didSave:" uri))
     nil)
   (^void didClose [_ ^DidCloseTextDocumentParams params]
     (let [document (.getTextDocument params)
           uri (.getUri document)]
-      (log/info "didClose:" uri)
+      #_(log/info "didClose:" uri)
       (reset! lsp.diag/currently-open-uri nil))
     nil))
 

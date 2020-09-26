@@ -5,8 +5,8 @@
     [com.fulcrologic.guardrails-pro.daemon.server.websockets :refer [websockets]]
     [taoensso.timbre :as log]))
 
-(defn notify-checkers! [event]
+(defn notify-checkers! [event data]
   (log/info "notifiying checkers of event:" event)
   (doseq [cid @registered-checkers]
-    (log/info "Notifying checker with id:" cid)
-    (wsp/push websockets cid event {})))
+    (log/info "notifying checker with id:" cid)
+    (wsp/push websockets cid event data)))

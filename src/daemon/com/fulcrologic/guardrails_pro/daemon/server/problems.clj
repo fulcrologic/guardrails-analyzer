@@ -2,7 +2,7 @@
   (:require
     [clojure.set :as set]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
-    [com.fulcrologic.guardrails-pro.static.clojure-reader :as clj-reader]
+    [com.fulcrologic.guardrails-pro.daemon.reader :as reader]
     [taoensso.timbre :as log]))
 
 (defonce problems (atom {}))
@@ -10,7 +10,7 @@
 (defn get!
   ([] @problems)
   ([file]
-   (or (when-let [file-ns (clj-reader/read-ns-decl file)]
+   (or (when-let [file-ns (reader/read-ns-decl file)]
          (log/debug "get! problems for:" file-ns)
          (into {}
            (filter (fn [[fn-sym _]]

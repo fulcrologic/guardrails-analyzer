@@ -1,6 +1,5 @@
 (ns com.fulcrologic.guardrails-pro.daemon.server.bindings
   (:require
-    [com.fulcrologic.guardrails-pro.static.clojure-reader :as clj-reader]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [taoensso.timbre :as log]))
 
@@ -20,4 +19,3 @@
 
 (defn clear! []
   (reset! bindings {}))
-

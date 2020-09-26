@@ -1,0 +1,48 @@
+(ns com.fulcrologic.guardrails-pro.daemon.reader
+  (:require
+    [clojure.tools.reader :as reader]
+    [clojure.tools.reader.reader-types :as readers]
+    [com.rpl.specter :as sp]
+    [taoensso.timbre :as log])
+  (:import
+    (java.io BufferedReader FileReader PushbackReader)))
+
+(defn read-ns-decl [file]
+  (try
+    (let [ns-decl (reader/read
+                    {:read-cond :allow}
+                    (new PushbackReader
+                      (new FileReader file)))]
+      (assert (= 'ns (first ns-decl)))
+      (second ns-decl))
+    (catch Throwable t
+      (log/debug t "Failed to read ns decl from:" file)
+      nil)))
+
+(defn parse-ns-aliases [ns-form]
+  (->> ns-form
+    (sp/select [(sp/walker #(and (vector? %) (some #{:as} %)))])
+    (map (fn [[ns-sym & args]]
+           {(:as (apply hash-map args)) ns-sym}))
+    (reduce merge)))
+
+(defn read-file [file]
+  (let [eof (new Object)
+        reader (readers/indexing-push-back-reader
+                 (new PushbackReader
+                   (new FileReader file)))
+        opts {:eof eof
+              :read-cond :allow
+              :features #{:cljs}}
+        ns-decl (reader/read opts reader)
+        _ (assert (= 'ns (first ns-decl))
+            (format "First form in file <%s> was not a ns declaration!"
+              file))
+        aliases (parse-ns-aliases ns-decl)]
+    (loop [forms []]
+      (let [form (binding [reader/*alias-map* aliases
+                           *ns* (second ns-decl)]
+                   (reader/read opts reader))]
+        (if (identical? form eof)
+          (do (.close reader) forms)
+          (recur (conj forms form)))))))
