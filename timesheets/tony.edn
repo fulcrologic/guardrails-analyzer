@@ -38,6 +38,14 @@
  {:date "2020-09-11" :description "check-in" :timespans [[921 950]]}
  {:date "2020-09-13" :description "GR free's bloat problems" :timespans [[1611 1730]]}
  {:date "2020-09-14" :description "check-in" :timespans [[900 920]]}
- {:date "2020-09-16" :description "check-in" :timespans [[1730 1820]]}
+ {:date "2020-09-15" :description "check-in" :timespans [[900 930]]}
+ {:date "2020-09-16" :description "check-in" :timespans [[900 920]]}
+ {:date "2020-09-17" :description "check-in" :timespans [[945 1100]]}
+ {:date "2020-09-18" :description "check-in" :timespans [[900 1055]]}
+ {:date "2020-09-21" :description "check-in" :timespans [[900 920]]}
+ {:date "2020-09-22" :description "check-in" :timespans [[900 930]]}
+ {:date "2020-09-23" :description "check-in" :timespans [[1015 1045]]}
+ {:date "2020-09-24" :description "check-in" :timespans [[1000 1020]]}
+ {:date "2020-09-25" :description "check-in" :timespans [[930 1100]]}
  ]
 
