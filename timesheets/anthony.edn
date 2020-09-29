@@ -62,5 +62,7 @@
  {:date "2020-09-23" :description "self checker" :timespans [[1015 1300] [1400 1920]]}
  {:date "2020-09-24" :description "re-architect guardrails" :timespans [[1000 1300] [1500 1720]]}
  {:date "2020-09-24" :description "rewrite" :timespans [[1720 1930] [2130 2240]]}
- {:date "2020-09-25" :description "rewrite" :timespans [[930 1100] [1400 1510] [1620 1750]]}
+ {:date "2020-09-25" :description "rewrite" :timespans [[930 1100] [1400 1510] [1620 1750] [1945 2130]]}
+ {:date "2020-09-27" :description "rewrite" :timespans [[820 1200] [1700 1815]]}
+ {:date "2020-09-28" :description "rewrite" :timespans [[900 1200] [1300 1910]]}
  ]
