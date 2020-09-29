@@ -15,5 +15,4 @@
      (doseq [form (grp.forms/interpret forms)]
        (grp.ana/analyze! env form)))))
 
-;; TASK: missing metadata
-(>defn example [x] [int? => int?] (str "x = " x))
+(>defn ^:pure example [x] [int? => int?] (str "x = " x))
