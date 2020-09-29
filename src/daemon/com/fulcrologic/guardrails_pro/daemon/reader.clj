@@ -5,7 +5,7 @@
     [com.rpl.specter :as sp]
     [taoensso.timbre :as log])
   (:import
-    (java.io BufferedReader FileReader PushbackReader)))
+    (java.io FileReader PushbackReader)))
 
 (defn read-ns-decl [file]
   (try

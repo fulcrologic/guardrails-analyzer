@@ -2,6 +2,7 @@
   (:require
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails-pro.analysis.analyzer :as grp.ana]
+    [com.fulcrologic.guardrails-pro.analysis.analyzer.dispatch :as grp.ana.disp]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [fulcro-spec.core :refer [specification component assertions when-mocking]]))
 
@@ -15,47 +16,13 @@
     (methods _) => (zipmap '[bar c/a cljc-analyzer-spec/a] (repeat true))
     (let [env (grp.art/build-env)]
       (assertions
-        (grp.ana/analyze-dispatch env '(foo :a)) => :function-call
-        (grp.ana/analyze-dispatch env '(get :a)) => :external-function
-        (grp.ana/analyze-dispatch env '(local))  => :symbol
-        (grp.ana/analyze-dispatch env '(bar :a)) => 'bar
-        (grp.ana/analyze-dispatch env '(c/a :a)) => 'c/a
-        (grp.ana/analyze-dispatch env '(analyzer-spec/a :a)) => 'cljc-analyzer-spec/a
-        (grp.ana/analyze-dispatch env '((q :b) :a)) => :function-expr
-        (grp.ana/analyze-dispatch env '(a {})) => :ifn
-        (grp.ana/analyze-dispatch env '({} :a)) => :ifn
-        (grp.ana/analyze-dispatch env '(##NaN :a)) => :unknown))))
-
-(s/def ::number number?)
-(s/def ::x ::number)
-(s/def ::y ::number)
-(s/def ::point (s/keys :req [::x ::y]))
-(s/def ::color #{"red" "green" "blue"})
-(s/def ::points (s/coll-of ::point :kind vector?))
-(s/def ::polygon (s/keys :req [::points]
-                   :opt [::color]))
-
-(specification "Analyzing literal data structures" :integration
-  (component "A non-nested literal map"
-    (let [data   {:x 1
-                  :y "hello"}
-          actual (grp.ana/analyze-hashmap! (grp.art/build-env) data)]
-      (assertions
-        "Returns the exact literal nested hash map as the only single sample"
-        (= (::grp.art/samples actual) #{data}) => true)))
-  (component "A non-nested literal map with spec'd keys"
-    (let [data   {::x 1
-                  ::y "hello"}
-          actual (grp.ana/analyze-hashmap! (grp.art/build-env) data)]
-      (assertions
-        "Returns the exact literal map as the only single sample"
-        (= (::grp.art/samples actual) #{data}) => true)))
-  (component "When given a nested hash map with all literal entries"
-    (let [nested-data {::polygon {::color  "red"
-                                  ::points [{::x 0 ::y 0}
-                                            {::x 32.0 ::y 44}
-                                            {::x 12.0 ::y 4}]}}
-          actual      (grp.ana/analyze-hashmap! (grp.art/build-env) nested-data)]
-      (assertions
-        "Returns the exact literal nested hash map as the only single sample"
-        (= (::grp.art/samples actual) #{nested-data}) => true))))
+        (grp.ana.disp/analyze-dispatch env '(foo :a)) => :function/call
+        (grp.ana.disp/analyze-dispatch env '(get :a)) => :function.external/call
+        (grp.ana.disp/analyze-dispatch env '(local))  => :symbol.local/lookup
+        (grp.ana.disp/analyze-dispatch env '(bar :a)) => 'bar
+        (grp.ana.disp/analyze-dispatch env '(c/a :a)) => 'c/a
+        (grp.ana.disp/analyze-dispatch env '(analyzer-spec/a :a)) => 'cljc-analyzer-spec/a
+        (grp.ana.disp/analyze-dispatch env '((q :b) :a)) => :function.expression/call
+        (grp.ana.disp/analyze-dispatch env '(a {})) => :ifn/call
+        (grp.ana.disp/analyze-dispatch env '({} :a)) => :ifn/call
+        (grp.ana.disp/analyze-dispatch env '(##NaN :a)) => :unknown))))

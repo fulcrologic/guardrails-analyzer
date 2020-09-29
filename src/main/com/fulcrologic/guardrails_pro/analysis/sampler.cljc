@@ -74,11 +74,11 @@
   (when (vector? sampler)
     (second sampler)))
 
-(>defn return-sample-gen [env {::grp.art/keys [generator return-spec]}]
+(>defn return-sample-gen [env {::grp.art/keys [generator return-spec return-type]}]
   [::grp.art/env (s/keys :req [(or ::grp.art/generator ::grp.art/return-spec)]) => ::generator]
   (try (or generator (grp.spec/generator env return-spec))
     (catch #? (:clj Exception :cljs :default) e
-      (log/error e "Could not create generator for" return-spec)
+      (log/error e "Could not create generator for" return-type)
       nil)))
 
 (>defn get-args [env {:as td ::grp.art/keys [samples fn-ref env->fn]}]

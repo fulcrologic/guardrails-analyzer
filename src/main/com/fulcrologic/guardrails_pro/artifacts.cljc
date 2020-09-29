@@ -1,138 +1,19 @@
 (ns com.fulcrologic.guardrails-pro.artifacts
-  "The runtime storage of artifacts to analyze. This namespace is what caches the forms in the runtime environment
-  and acts as the central control for finding, caching, renewing and expiring things from the runtime. These routines
-  must work in CLJ and CLJS, and should typically not be hot reloaded during updates."
   (:require
     [clojure.set :as set]
     [clojure.spec.alpha :as s]
     [clojure.spec.gen.alpha :as gen]
     [com.fulcrologic.guardrails-pro.analysis.spec :as grp.spec]
-    [com.fulcrologic.guardrails.core :refer [>defn => ?]]
-    [taoensso.timbre :as log]
-    [taoensso.encore :as enc])
-  #?(:clj (:import (java.util Date))))
+    [com.fulcrologic.guardrails.core :refer [>def >defn >defn- => | ?]]
+    [com.fulcrologic.guardrails.registry :as gr.reg]
+    [com.fulcrologic.guardrails.impl.externs :as gr.externs]
+    [com.rpl.specter :as $]
+    [taoensso.timbre :as log]))
 
-(defn now-ms []
-  (inst-ms (new #?(:clj Date :cljs js/Date))))
-
-(def posint?
-  (s/with-gen pos-int?
-    #(gen/such-that pos? (gen/int))))
-
-(def fn-gen #(gen/elements [string? int? keyword? symbol?]))
-
-(s/def ::spec (s/with-gen
-                (s/or
-                  :spec-name qualified-keyword?
-                  :spec-object #(s/spec? %)
-                  :predicate ifn?)
-                fn-gen))
-(s/def ::type string?)
-;; samples is for generated data only
-(s/def ::samples (s/coll-of any? :min-count 0 :kind set?))
-(s/def ::failing-samples ::samples)
-(s/def ::original-expression any?)
-(s/def ::literal-value ::original-expression)
-(s/def ::problem-type (s/and qualified-keyword?
-                        (comp #{"error" "warning" "info" "hint"} namespace)))
-(s/def ::message-params (s/map-of keyword? some?))
-(s/def ::file string?)
-(s/def ::source string?)
-(s/def ::line-start posint?)
-(s/def ::line-end posint?)
-(s/def ::column-start posint?)
-(s/def ::column-end posint?)
-(s/def ::error (s/keys
-                 :req [::original-expression ::problem-type
-                       ::file ::line-start]
-                 :opt [::expected ::actual ::source
-                       ::column-start ::column-end
-                       ::line-end ::message-params]))
-(s/def ::warning ::error)
-(s/def ::key (s/or
-               :offset int?
-               :typed-key qualified-keyword?
-               :homogenous ::homogenous
-               :arbitrary any?))
-(s/def ::positional-types (s/map-of ::key ::type-description))
-(s/def ::recursive-description (s/keys :req [::positional-types]))
-;; NOTE: We can use a generated sample to in turn generate a recursive description
-(s/def ::type-description (s/or
-                            :function ::lambda
-                            :value (s/keys :opt [::spec
-                                                 ::recursive-description
-                                                 ::type
-                                                 ::samples
-                                                 ::literal-value
-                                                 ::original-expression])))
-(s/def ::expected (s/keys :req [(or ::spec ::type)]))
-(s/def ::actual (s/keys :opt [::type-description ::failing-samples]))
-(s/def ::registry map?)
-(s/def ::external-registry map?)
-(s/def ::checking-sym qualified-symbol?)
-(s/def ::current-form any?)
-(s/def ::location (s/keys
-                    :req [::line-start ::column-start]
-                    :opt [::line-end ::column-end]))
-(s/def ::env (s/keys
-               :req [::registry]
-               :opt [::local-symbols ::extern-symbols
-                     ::current-form ::checking-sym ::location]))
-(s/def ::Unknown (s/and ::type-description empty?))
-(s/def ::local-symbols (s/map-of symbol? ::type-description))
-(s/def ::extern-symbols (s/map-of symbol? ::extern))
-(s/def ::class? boolean?)
-(s/def ::macro? boolean?)
-(s/def ::extern (s/keys :req [::extern-name]
-                  :opt [::class? ::macro? ::type-description ::value]))
-(s/def ::name qualified-symbol?)
-(s/def ::extern-name symbol?)
-(s/def ::fn-ref (s/with-gen fn? fn-gen))
-(s/def ::value any?)
-(s/def ::arglist (s/or :vector vector? :quoted-vector (s/and seq? #(vector? (second %)))))
-(s/def ::arg-types (s/coll-of ::type :kind vector?))
-(s/def ::arg-predicates vector?)
-(s/def ::arg-specs (s/coll-of ::spec :kind vector?))
-(s/def ::return-type string?)
-(s/def ::return-spec ::spec)
-(s/def ::return-predicates (s/with-gen (s/coll-of fn? :kind vector?) fn-gen))
-(s/def ::generator any?)
-(s/def ::metadata map?)
-(s/def ::gspec (s/keys :req [::return-type ::return-spec]
-                 :opt [::arg-types ::arg-specs
-                       ::metadata ::generator
-                       ::arg-predicates ::return-predicates]))
-(s/def ::body any?)
-(s/def ::raw-body vector?)
-(s/def ::arity-detail (s/keys :req [::arglist ::gspec] :opt [::body]))
-(s/def ::arity #{0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 :n})
-(s/def ::arities (s/map-of ::arity ::arity-detail))
-(s/def ::last-changed posint?)
-(s/def ::last-checked posint?)
-(s/def ::last-seen posint?)
-(s/def ::env->fn fn?)
-(s/def ::lambda-name simple-symbol?)
-(s/def ::lambda (s/keys :req [::lambda-name ::env->fn ::arities]))
-(s/def ::lambdas (s/map-of symbol? ::lambda))
-(s/def ::function (s/keys
-                    :req [::name ::fn-ref ::lambdas
-                          ::arities ::extern-symbols
-                          ::last-changed ::last-seen ::location]
-                    :opt [::last-checked]))
-(s/def ::errors (s/coll-of ::error))
-(s/def ::warnings (s/coll-of ::warning))
-
-(>defn get-arity
-  [arities argtypes]
-  [::arities (s/coll-of ::type-description) => ::arity-detail]
-  (get arities (count argtypes) (get arities :n)))
-
-(defonce external-registry (atom {}))
-
-(defonce registry (atom {}))
+;; ========== CLJC SYM REWRITE ==========
 
 (defmulti cljc-rewrite-sym-ns-mm identity)
-(defmethod cljc-rewrite-sym-ns-mm "clojure.core" [ns] #?(:cljs "cljs.core" :clj ns))
+(defmethod cljc-rewrite-sym-ns-mm "cljs.core" [ns] "clojure.core")
 (defmethod cljc-rewrite-sym-ns-mm :default [ns] ns)
 
 (>defn cljc-rewrite-sym-ns [sym]
@@ -140,61 +21,207 @@
   (symbol (cljc-rewrite-sym-ns-mm (namespace sym))
     (name sym)))
 
-(>defn register-external-function!
-  [fn-sym fn-desc]
-  [qualified-symbol? (s/keys :req [::name ::fn-ref ::arities ::last-changed]) => any?]
-  (swap! external-registry assoc (cljc-rewrite-sym-ns fn-sym) fn-desc)
-  nil)
+;; ========== ARTIFACTS ==========
+
+(def posint?
+  (s/with-gen pos-int?
+    #(gen/such-that pos? (gen/int))))
+
+(def fn-gen #(gen/elements [string? int? keyword? symbol?]))
+
+(>def ::spec (s/with-gen
+                (s/or
+                  :spec-name qualified-keyword?
+                  :spec-object #(s/spec? %)
+                  :predicate ifn?)
+                fn-gen))
+(>def ::type string?)
+(>def ::form any?) ;; TASK
+(>def ::samples
+  "samples is for generated data only"
+  (s/coll-of any? :min-count 0 :kind set?))
+(>def ::failing-samples ::samples)
+(>def ::original-expression ::form)
+(>def ::literal-value ::original-expression)
+(>def ::problem-type (s/and qualified-keyword?
+                        (comp #{"error" "warning" "info" "hint"} namespace)))
+(>def ::message-params (s/map-of keyword? some?))
+(>def ::file string?)
+(>def ::source string?)
+(>def ::line-start posint?)
+(>def ::line-end posint?)
+(>def ::column-start posint?)
+(>def ::column-end posint?)
+(>def ::key (s/or
+               :offset int?
+               :typed-key qualified-keyword?
+               :homogenous ::homogenous
+               :arbitrary any?))
+(>def ::positional-types (s/map-of ::key ::type-description))
+(>def ::recursive-description (s/keys :req [::positional-types]))
+;; NOTE: We can use a generated sample to in turn generate a recursive description
+(>def ::type-description (s/or
+                            :function ::lambda
+                            :value (s/keys :opt [::spec
+                                                 ::recursive-description
+                                                 ::type
+                                                 ::samples
+                                                 ::literal-value
+                                                 ::original-expression])))
+(>def ::expected (s/keys :req [(or ::spec ::type)]))
+(>def ::actual (s/keys :opt [::type-description ::failing-samples]))
+(>def ::Unknown (s/and ::type-description empty?))
+(>def ::name qualified-symbol?)
+(>def ::fn-ref (s/with-gen fn? fn-gen))
+(>def ::arglist (s/or :vector vector? :quoted-vector (s/and seq? #(vector? (second %)))))
+(>def ::argument-predicates vector?)
+(>def ::argument-types (s/coll-of ::type :kind vector?))
+(>def ::return-type ::type)
+(>def ::argument-specs (s/coll-of ::spec :kind vector?))
+(>def ::return-spec ::spec)
+(>def ::quoted.argument-specs (s/coll-of ::form :kind vector?))
+(>def ::quoted.return-spec ::form)
+(>def ::return-predicates (s/with-gen (s/coll-of fn? :kind vector?) fn-gen))
+(>def ::generator any?)
+(>def ::metadata map?)
+(>def ::gspec (s/keys :req [::return-spec ::return-type]
+                 :opt [::argument-specs ::metadata ::generator
+                       ::argument-predicates ::return-predicates]))
+(>def ::arity-detail (s/keys :req [::arglist ::gspec]))
+(>def ::arity #{0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 :n})
+(>def ::arities (s/map-of ::arity ::arity-detail))
+(>def ::last-changed posint?)
+(>def ::last-checked posint?)
+(>def ::last-seen posint?)
+(>def ::env->fn fn?)
+(>def ::lambda-name simple-symbol?)
+(>def ::lambda (s/keys :req [::lambda-name ::env->fn ::arities]))
+(>def ::lambdas (s/map-of symbol? ::lambda))
+(>def ::fn-name symbol?)
+(>def ::var-name qualified-symbol?)
+(>def ::function (s/keys :req [(or ::fn-name ::var-name) ::fn-ref ::arities]))
+(>def ::value any?)
+(>def ::class? boolean?)
+(>def ::extern-name symbol?)
+(>def ::extern (s/keys :req [::extern-name] :opt [::class? ::value]))
+(>def ::location (s/keys
+                    :req [::line-start ::column-start]
+                    :opt [::line-end ::column-end]))
+(>def ::checking-file string?)
+(>def ::checking-sym qualified-symbol?)
+(>def ::current-form ::form)
+(>def ::local-symbols (s/map-of symbol? ::type-description))
+(>def ::externs-registry (s/map-of symbol? (s/map-of symbol? ::extern)))
+(>def ::spec-registry (s/map-of ::form ::spec))
+(>def ::external-function-registry (s/map-of qualified-symbol? ::function))
+(>def ::function-registry (s/map-of symbol? ::function))
+(>def ::env (s/keys
+               :req [::function-registry]
+               :opt [::external-function-registry
+                     ::externs-registry
+                     ::spec-registry
+                     ::local-symbols
+                     ::current-form
+                     ::checking-sym
+                     ::location]))
+
+(>defn get-arity
+  [arities argtypes]
+  [::arities (s/coll-of ::type-description) => ::arity-detail]
+  (get arities (count argtypes) (get arities :n)))
+
+(defn- fix-kw-nss [x]
+  ($/transform [($/walker qualified-keyword?)
+                $/NAMESPACE ($/pred= (namespace ::gr.reg/_))]
+    (constantly (namespace ::this))
+    x))
+
+(>defn lookup-spec [env quoted-spec]
+  [(s/keys :req [::spec-registry]) ::form => ::spec]
+  (or (get-in env [::spec-registry quoted-spec])
+    (throw (ex-info "WIP: lookup-spec failed to lookup"
+             {:spec quoted-spec}))))
+
+(defn resolve-quoted-specs [spec-registry registry]
+  (let [env {::spec-registry spec-registry}
+        RESOLVE (fn [m]
+                  (cond-> m
+                    (::quoted.argument-specs m)
+                    #_=> (assoc ::argument-specs
+                           (mapv (partial lookup-spec env)
+                             (::quoted.argument-specs m)))
+                    (::quoted.return-spec m)
+                    #_=> (assoc ::return-spec
+                           (lookup-spec env
+                             (::quoted.return-spec m)))))]
+    ($/transform ($/walker (some-fn ::quoted.argument-specs ::quoted.return-spec))
+      RESOLVE registry)))
+
+(>defn build-env
+  ([] [=> ::env] (build-env @gr.externs/function-registry))
+  ([function-registry] [map? => ::env]
+   (build-env function-registry @gr.externs/external-function-registry))
+  ([function-registry external-function-registry]
+   [map? map? => ::env]
+   (let [spec-registry @gr.externs/spec-registry]
+     (-> {::external-function-registry (->> external-function-registry
+                                         (fix-kw-nss)
+                                         (resolve-quoted-specs spec-registry))
+          ::externs-registry           (fix-kw-nss @gr.externs/externs-registry)
+          ::function-registry          (->> function-registry
+                                         (fix-kw-nss)
+                                         (resolve-quoted-specs spec-registry))
+          ::spec-registry              spec-registry}
+       (grp.spec/with-spec-impl :clojure.spec.alpha)))))
 
 (>defn qualify-extern
-  "Attempt to find a qualified symbol that goes with the given simple symbol.
-   Returns unaltered sym if it isn't an extern."
   [env sym]
-  [::env symbol? => symbol?]
-  (get-in env [::extern-symbols sym ::extern-name] sym))
+  [::env symbol? | #(not (namespace sym)) => symbol?]
+  (log/debug "qualify-extern" sym
+    "in" (::checking-sym env)
+    (get-in env [::externs-registry (::checking-sym env)]))
+  (log/spy :debug "qualify-extern/return"
+    (cljc-rewrite-sym-ns
+      (get-in env [::externs-registry (::checking-sym env) sym ::extern-name]
+        #_:or sym))))
 
 (>defn function-detail [env sym]
   [::env symbol? => (? ::function)]
-  (let [sym (if (qualified-symbol? sym)
-              sym (qualify-extern env sym))]
-    (get-in env [::registry sym])))
+  (log/spy :debug "function-detail/return"
+    (let [sym (cond->> sym (not (qualified-symbol? sym))
+                (qualify-extern env))]
+      (log/debug "function-detail" sym)
+      (get-in env [::gspec-registry sym]))))
 
 (>defn external-function-detail [env sym]
-  [::env symbol? => (? (s/keys :req [::name ::fn-ref ::arities ::last-changed]))]
-  (let [sym (if (qualified-symbol? sym)
-              sym (qualify-extern env sym))]
-    (get-in env [::external-registry sym])))
+  [::env symbol? => (? (s/keys :req [::name ::fn-ref ::arities]))]
+  (log/spy :debug "external-function-detail/return"
+    (let [sym (cond->> sym (not (qualified-symbol? sym))
+                (qualify-extern env))]
+      (log/debug "external-function-detail" sym
+        "in" (::checking-sym env))
+      (get-in env [::external-function-registry sym]))))
 
 (>defn symbol-detail [env sym]
   [::env symbol? => (? ::type-description)]
-  (or
-    (log/spy :info (str "symbol-detail for local: " sym)
-      (get-in env [::local-symbols sym]))
-    (log/spy :info (str "symbol-detail for extern: " sym)
-      (get-in env [::extern-symbols sym ::type-description]))))
-
-(>defn lookup-symbol [env sym]
-  [::env symbol? => (? any?)]
-  (let [{::keys [samples]} (get-in env [::local-symbols sym])]
-    (and (seq samples) (rand-nth (vec samples)))))
+  (log/debug "symbol-detail" sym)
+  (log/spy :debug "symbol-detail/return"
+    (or
+      (get-in env [::local-symbols sym])
+      (get-in env [::externs-registry sym ::type-description]))))
 
 (>defn remember-local [env sym td]
   [::env symbol? ::type-description => ::env]
-  (log/info "Remembering samples for " sym " as " (::samples td))
   (assoc-in env [::local-symbols sym] td))
 
-(defn clear-registry! [] (reset! registry {}))
+(>defn lookup-symbol
+  "Used in env->fn to lookup symbols"
+  [env sym]
+  [::env symbol? => (? some?)]
+  (let [{::keys [samples]} (get-in env [::local-symbols sym])]
+    (and (seq samples) (rand-nth (vec samples)))))
 
-(defn set-last-checked! [env sym ts]
-  (swap! registry assoc-in [sym ::last-checked] ts))
-
-(defn build-env
-  ([] (build-env @registry))
-  ([registry] (build-env registry @external-registry))
-  ([registry external-registry]
-   (-> {::registry          registry
-        ::external-registry external-registry}
-     (grp.spec/with-spec-impl :clojure.spec.alpha))))
+;; ========== LOCATION ==========
 
 (>defn new-location
   [location]
@@ -215,42 +242,54 @@
     (assoc ::location
       (new-location location))))
 
+;; ========== BINDINGS ==========
+
 (defonce binding-annotations (atom {}))
 
 (defn clear-bindings!
   "Clear all of the binding information for symbols in the given the symbolic name of a fully-qualified function."
-  []
-  (reset! binding-annotations {}))
+  [] (reset! binding-annotations {}))
 
 (>defn record-binding!
   "Report a type description for the given symbol, which must have file/line/column metadata in order to be recorded."
   [env sym type-description]
   [::env simple-symbol? ::type-description => any?]
   (let [env (update-location env (meta sym))
-        {::keys [checking-sym location]} env
-        {::keys [line-start column-start file]} location]
-    (if (and line-start column-start file)
-      (swap! binding-annotations assoc location (assoc type-description
-                                                  ::original-expression sym))
-      (log/warn "Cannot record binding because we don't know enough location info" file line-start column-start))
+        {::keys [checking-file location]} env
+        {::keys [line-start column-start]} location]
+    (let [location-info (-> location
+                         (select-keys [::line-start ::column-start])
+                         (assoc ::file checking-file))]
+      (if (and checking-file line-start column-start)
+        (swap! binding-annotations assoc location-info
+          (assoc type-description ::original-expression sym))
+        (log/warn "Cannot record binding because we don't know enough location info"
+          location-info)))
     nil))
 
-(defonce problems (atom {}))
+;; ========== PROBLEMS ==========
 
-(defn insert-into-indexes [problems problem-list-type problem]
-  (-> problems
-    (update-in
-      [problem-list-type ::indexed (::file problem) (::line-start problem) (::column-start problem)]
-      (fnil conj [])
-      problem)
-    (update-in ;; index from sym to all indexed paths
-      [problem-list-type ::sym->index-paths (::checking-sym problem)]
-      (fnil conj [])
-      [(::file problem) (::line-start problem) (::column-start problem)])
-    (update-in
-      [problem-list-type ::by-sym (::checking-sym problem)]
-      (fnil conj [])
-      problem)))
+(>def ::problem (s/keys
+                  :req [::original-expression ::problem-type
+                        ::file ::line-start]
+                  :opt [::expected ::actual
+                        ::column-start ::column-end
+                        ::line-end ::message-params]))
+(>def ::error (s/and ::problem (comp #{"error"} namespace ::problem-type)))
+(>def ::warning (s/and ::problem (comp #{"warning"} namespace ::problem-type)))
+(>def ::errors (s/coll-of ::error))
+(>def ::warnings (s/coll-of ::warning))
+(>def ::by-sym (s/map-of qualified-keyword? ::problem))
+(>def ::problems (s/keys :req [::by-sym]))
+
+(defonce problems (atom {::by-sym {}}))
+
+(>defn- insert-problem [problems problem-list-type sym problem]
+  [::problems #{::errors ::warnings} qualified-symbol? ::problem => ::problems]
+  (update-in problems
+    [problem-list-type ::by-sym sym]
+    (fnil conj [])
+    problem))
 
 (>defn record-error!
   ([env original-expression problem-type]
@@ -264,11 +303,8 @@
   ([env error]
    [::env (s/keys :req [::problem-type ::original-expression]) => nil?]
    (log/info :record-error! (::checking-sym env) "\n" (::location env) "\n" error)
-   (swap! problems
-     #(insert-into-indexes % ::errors
-        (merge error
-          (::location env)
-          {::checking-sym (::checking-sym env)})))
+   (swap! problems insert-problem ::errors (::checking-sym env)
+     (merge error (::location env) {::file (::checking-file env)}))
    nil))
 
 (>defn record-warning!
@@ -282,29 +318,14 @@
                          ::message-params message-params}))
   ([env warning]
    [::env (s/keys :req [::problem-type ::original-expression]) => nil?]
-   (swap! problems
-     #(insert-into-indexes % ::warnings
-        (merge warning
-          (::location env)
-          {::checking-sym (::checking-sym env)})))
+   (swap! problems insert-problem ::warnings (::checking-sym env)
+     (merge warning (::location env) {::file (::checking-file env)}))
    nil))
 
-(defn clear-problems [P sym]
-  (let [index-paths (concat
-                      (get-in P [::warnings ::sym->index-paths sym])
-                      (get-in P [::errors   ::sym->index-paths sym]))]
-    (-> (reduce (fn [m path]
-                  (-> m
-                    (update-in (concat [::errors   ::indexed] path)
-                      (partial remove (comp #{sym} ::checking-sym)))
-                    (update-in (concat [::warnings ::indexed] path)
-                      (partial remove (comp #{sym} ::checking-sym)))))
-          P index-paths)
-      (enc/dissoc-in [::warnings ::sym->index-paths] sym)
-      (enc/dissoc-in [::errors   ::sym->index-paths] sym)
-      (assoc-in [::warnings ::by-sym sym] [])
-      (assoc-in [::errors   ::by-sym sym] []))))
+(defn- clear-problems-by-file [problems file]
+  ($/setval [($/walker ::file) ($/pred (comp (partial = file) ::file))]
+    $/NONE problems))
 
 (defn clear-problems!
   ([] (swap! problems dissoc ::warnings ::errors))
-  ([sym] (swap! problems clear-problems sym)))
+  ([file] (swap! problems clear-problems-by-file file)))

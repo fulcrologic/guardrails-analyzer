@@ -34,3 +34,15 @@
       [grp.art/record-error! (fn [_ error] (swap! errors conj error))]
       (apply f args)
       @errors)))
+
+(defn capture-warnings [f & args]
+  (let [warnings (atom [])
+        record! grp.art/record-warning!]
+    (with-redefs
+      [grp.art/record-warning! (fn [& args]
+                                 (if (= 2 (count args))
+                                   (swap! warnings conj (second args))
+                                   (apply record! args))
+                                 nil)]
+      (apply f args)
+      @warnings)))

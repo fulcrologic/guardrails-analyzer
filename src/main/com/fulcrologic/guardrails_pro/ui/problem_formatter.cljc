@@ -26,10 +26,12 @@
   (str (::grp.art/problem-type problem)))
 
 (defn format-actual [{{::grp.art/keys [failing-samples]} ::grp.art/actual}]
+  ;; TODO: test nil "" ...
   (case (count failing-samples)
     0 "???"
-    1 (first failing-samples)
-    (str/join ", " failing-samples)))
+    1 (pr-str (first failing-samples))
+    (str/join ", "
+      (map pr-str failing-samples))))
 
 (defn format-expected [{{::grp.art/keys [spec type]} ::grp.art/expected}]
   (or type spec))

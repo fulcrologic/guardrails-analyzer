@@ -32,7 +32,8 @@
 (>defn with-full-name [person]
   ^:pure [(s/keys :req [:person/fname :person/lname])
           => (s/keys :req [:person/full-name])]
-  (assoc person :person/full-name (str (get person :person/fname) " " (get person :person/lname))))
+  (assoc person :person/full-name
+    (str (get person :person/fname) " " (get person :person/lname))))
 
 (>defn test-person [input-id]
   ^:pure [pos-int? => int?]
@@ -42,13 +43,10 @@
     d))
 
 (defn init []
-  (reporter/start! true)
-  (grp.checker/check-all!))
+  (reporter/start! true))
 
 (defn refresh []
-  (reporter/hot-reload!)
-  (grp.checker/check-all!)
-  (reporter/report-analysis!))
+  (reporter/hot-reload!))
 
 ;; TASK: Version 1: Do this relatively soon...but not until HOF working. Might be hard enough to need to be v2
 ;; 1. We do what we're doing for capture, but no longer bother with body.

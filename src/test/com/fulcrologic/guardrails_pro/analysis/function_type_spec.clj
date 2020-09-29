@@ -14,8 +14,9 @@
 (s/def ::foo int?)
 (s/def ::bar string?)
 
-(specification "destructure*"
-  (let [test-env (grp.art/build-env)
+(specification "destructure!"
+  (let [test-env (assoc (grp.art/build-env)
+                   ::grp.art/checking-sym `grp.fnt/destructure!)
         test-td {::grp.art/type "test type desc"}]
     (assertions
       "simple symbol"
@@ -72,6 +73,25 @@
           (-> (grp.fnt/destructure! test-env '{::keys [foo bar]} test-td)
             (get-in ['bar ::grp.art/spec]))
           => (s/get-spec ::bar)
-          "ignores symbol if it has no spec"
-          (grp.fnt/destructure! test-env '{:FAKE/keys [foo]} test-td)
-          => {})))))
+          "warns if qualified symbol has no spec"
+          (tf/capture-warnings grp.fnt/destructure! test-env '{:FAKE/keys [foo]} test-td)
+          =check=> (_/seq-matches?*
+                     [(_/embeds?*
+                        #::grp.art{:problem-type :warning/qualified-keyword-missing-spec
+                                   :original-expression 'foo})]))))))
+
+(specification "interpret-gspec"
+  (let [env (update (grp.art/build-env)
+              ::grp.art/spec-registry merge
+              `{int? :INT
+                string? :STRING})]
+    (assertions
+      (grp.fnt/interpret-gspec env '[x y]
+        `[int? int? :st ~even? :ret string? :st ~odd? :gen uuid])
+      =check=> (_/embeds?*
+                 #::grp.art{:argument-specs      [:INT :INT]
+                            :argument-types      ["clojure.core/int?" "clojure.core/int?"]
+                            :argument-predicates [even?]
+                            :return-spec         :STRING
+                            :return-type         "clojure.core/string?"
+                            :return-predicates   [odd?]}))))

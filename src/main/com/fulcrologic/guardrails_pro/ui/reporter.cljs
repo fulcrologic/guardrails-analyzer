@@ -3,12 +3,13 @@
     [clojure.pprint :refer [pprint]]
     [com.fulcrologic.fulcro.application :as app]
     [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
-    [com.fulcrologic.fulcro.mutations :as f.m]
-    [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
-    [com.fulcrologic.guardrails-pro.ui.problem-formatter :refer [format-problems]]
     [com.fulcrologic.fulcro.dom :as dom :refer [div h3 h4 label input]]
-    [com.fulcrologic.fulcro.routing.dynamic-routing :as dr :refer [defrouter]]
+    [com.fulcrologic.fulcro.mutations :as f.m]
     [com.fulcrologic.fulcro.networking.websockets :as fws]
+    [com.fulcrologic.fulcro.routing.dynamic-routing :as dr :refer [defrouter]]
+    [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
+    [com.fulcrologic.guardrails-pro.checker :as grp.checker]
+    [com.fulcrologic.guardrails-pro.ui.problem-formatter :refer [format-problems]]
     [com.rpl.specter :as sp]
     [taoensso.timbre :as log]))
 
@@ -34,7 +35,7 @@
                  (get-in problems [::grp.art/warnings ::grp.art/by-sym])
                  (get-in problems [::grp.art/errors ::grp.art/by-sym]))]
     (reduce-kv (fn [sm k v]
-              (assoc-in sm [:problems/by-namespace (or (namespace k) "") (name k)] v))
+                 (assoc-in sm [:problems/by-namespace (or (namespace k) "") (name k)] v))
       (dissoc state-map :problems/by-namespace)
       by-sym)))
 
@@ -118,17 +119,27 @@
 
 (def ui-reporter-root (comp/factory CheckerRoot {:keyfn :id}))
 
-(declare update-problems!)
+(declare update-problems! report-analysis!)
+
+(defn check! [msg]
+  (try
+    (grp.checker/check! msg)
+    (report-analysis!)
+    (catch :default e
+      (log/error e "Failed to check!"))))
+
 (defonce app
   (app/fulcro-app
-    {:remotes {:remote (fws/fulcro-websocket-remote
-                         {:push-handler
-                          (fn [{:keys [topic msg]}]
-                            (log/spy :info [topic msg])
-                            (case topic
-                              :new-problems
-                              #_=> (update-problems! msg)
-                              nil))})}}))
+    {:remotes
+     {:remote
+      (fws/fulcro-websocket-remote
+        {:push-handler
+         (fn [{:keys [topic msg]}]
+           (log/spy :info topic)
+           (case topic
+             :new-problems (update-problems! msg)
+             :check!       (check! msg)
+             nil))})}}))
 
 (defn update-problems! [problems]
   (log/info "received new problem list from daemon")
