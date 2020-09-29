@@ -1,11 +1,10 @@
 (ns com.fulcrologic.guardrails-pro.daemon.lsp.diagnostics
   (:require
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
-    [com.rpl.specter :as sp]
+    [com.rpl.specter :as $]
     [taoensso.timbre :as log])
   (:import
     (org.eclipse.lsp4j Diagnostic DiagnosticSeverity Position PublishDiagnosticsParams Range)
-    (java.io File)
     (java.net URI)))
 
 (defonce clients (atom {}))
@@ -37,10 +36,10 @@
 
 (defn update-problems! [{:as problems ::grp.art/keys [errors warnings]}]
   (let [uri @currently-open-uri
-        file (-> uri (URI.) (.getPath) (File.) (.getName))]
+        file (.getPath (new URI uri))]
     (publish-problems-for uri
       (log/spy :debug :update-problems!
-        (sp/select (sp/walker ::grp.art/problem-type)
-          (concat
-            (get-in errors [::grp.art/indexed file])
-            (get-in warnings [::grp.art/indexed file])))))))
+        ($/select
+          [($/walker ::grp.art/problem-type)
+           ($/pred (comp (partial = file) ::grp.art/file))]
+          (concat errors warnings))))))

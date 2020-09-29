@@ -2,6 +2,7 @@
   (:require
     [com.fulcrologic.guardrails-pro.daemon.server.checkers :refer [notify-checkers!]]
     [com.fulcrologic.guardrails-pro.daemon.reader :as reader]
+    [com.fulcrologic.guardrails-pro.forms :as grp.forms]
     [taoensso.timbre :as log]))
 
 (defn check! [path]
@@ -9,7 +10,7 @@
   ;; NOTE: path currently always cljs
   (let [forms (reader/read-file path)]
     (notify-checkers! :check!
-      {:forms forms
+      {:forms (grp.forms/form-expression forms)
        :file  path})))
 
 (def commands
