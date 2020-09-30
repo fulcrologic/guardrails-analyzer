@@ -15,10 +15,10 @@
      (doseq [form (grp.forms/interpret forms)]
        (grp.ana/analyze! env form)))))
 
-;(>defn ^:pure -example [x] [int? => int?] (str "x = " x))
+(>defn -threading [x] [int? => int?]
+  (cond-> x (even? x) (str "=x")))
 
-;(>defn -artifacts-test [x] [any? => string?] (pr-str x))
-
-(>defn -hof [] [=> int?]
-  (let [y :SUCCESS]
-    ((>fn [x] ^:pure [int? => string?] (str y "=" x)) 32)))
+(>defn -if [x] [int? => int?]
+  (if (even? x)
+    (str "EVEN:" x)
+    (str "ODD:" x)))

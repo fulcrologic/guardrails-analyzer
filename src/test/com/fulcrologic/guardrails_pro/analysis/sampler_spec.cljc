@@ -164,5 +164,10 @@
            :return-sample-fn (constantly [666])})
         => #{[5 7 9]}))))
 
-;; TODO: ? can i disable guardrails checking in a block?
-;; TODO: capture-logging -> make appender & return logs
+(specification "random-samples-from"
+  (let [env (grp.art/build-env)]
+    (assertions
+      (grp.sampler/random-samples-from env
+        {::grp.art/samples [1 2 3]}
+        {::grp.art/samples [:a :b :c]})
+      =check=> (_/every?* (_/is?* #{1 2 3 :a :b :c})))))

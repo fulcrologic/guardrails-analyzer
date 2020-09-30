@@ -138,6 +138,7 @@
     ;; - transducer if no colls
     ;; - ? pure if function is pure
     ;; - if sampler: assert colls samples are `seq`
+    ;; - if NOT sampler: should return seq of function return-spec / samples
     (if-not sampler (return-sample-fn)
       (try-sampling! env
         (gen/let [params (params-gen env function colls)]
@@ -182,3 +183,9 @@
 
 (defn random-sample-fn [{::grp.art/keys [samples]}]
   (fn [& args] (rand-nth (vec samples))))
+
+(defn random-samples-from [env & tds]
+  (->> tds
+    (map (comp gen/elements ::grp.art/samples))
+    (gen/one-of)
+    (grp.spec/sample env)))

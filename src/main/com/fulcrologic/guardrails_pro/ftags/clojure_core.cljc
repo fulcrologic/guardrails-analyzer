@@ -205,6 +205,9 @@
 (>fdef ^:pure clojure.core/next
   [coll] [coll? => (? coll?)])
 
+(>fdef ^:pure clojure.core/nil?
+  [x] [any? => boolean?])
+
 (>fdef ^:pure clojure.core/not
   [x] [any? => boolean?])
 
@@ -280,6 +283,9 @@
   ([] [=> string?])
   ([x] [any? => string?])
   ([x & ys] [any? (s/* any?) => string?]))
+
+(>fdef ^:pure clojure.core/string?
+  [x] [any? => boolean?])
 
 (>fdef ^:pure clojure.core/symbol
   ([name] [::named => symbol?])

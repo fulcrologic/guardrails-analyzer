@@ -164,8 +164,6 @@
   ([function-registry external-function-registry]
    [map? map? => ::env]
    (let [spec-registry @gr.externs/spec-registry]
-     (when-not (seq external-function-registry)
-       (log/error "NO EXT FN REG"))
      (-> {::external-function-registry (->> external-function-registry
                                          (fix-kw-nss)
                                          (resolve-quoted-specs spec-registry))
@@ -198,8 +196,11 @@
 (>defn external-function-detail [env sym]
   [::env symbol? => (? (s/keys :req [::name ::fn-ref ::arities]))]
   (log/spy :debug "external-function-detail/return"
-    (let [sym (cond->> sym (not (qualified-symbol? sym))
-                (qualify-extern env))]
+    (let [sym (cond->> sym
+                (not (qualified-symbol? sym))
+                (qualify-extern env)
+                (qualified-symbol? sym)
+                (cljc-rewrite-sym-ns))]
       (log/debug "external-function-detail" sym
         "in" (::checking-sym env))
       (get-in env [::external-function-registry sym]))))

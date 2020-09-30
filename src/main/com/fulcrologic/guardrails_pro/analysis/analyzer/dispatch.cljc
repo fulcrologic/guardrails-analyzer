@@ -59,7 +59,7 @@
   [env sexpr]
   [::grp.art/env any? => ::grp.art/type-description]
   (log/info "analyzing:" (pr-str sexpr) ", meta:" (meta sexpr))
-  (log/spy :debug "analyze! returned:"
+  (log/spy :debug (str "analyze! " (pr-str sexpr) " returned:")
     (-> env
       (grp.art/update-location (meta sexpr))
       (analyze-mm sexpr))))
