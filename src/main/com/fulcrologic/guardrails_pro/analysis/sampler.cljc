@@ -1,4 +1,5 @@
 (ns com.fulcrologic.guardrails-pro.analysis.sampler
+  #?(:cljs (:require-macros [com.fulcrologic.guardrails-pro.analysis.sampler]))
   (:require
     [clojure.set :as set]
     [clojure.spec.alpha :as s]

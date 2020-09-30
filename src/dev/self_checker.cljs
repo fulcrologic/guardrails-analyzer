@@ -2,8 +2,6 @@
   (:require
     [com.fulcrologic.guardrails.core :refer [>defn =>]]
     [com.fulcrologic.guardrails-pro.ui.reporter :as reporter]
-    [com.fulcrologic.guardrails-pro.checker :as grp.checker]
-    [com.fulcrologic.guardrails-pro.ftags.clojure-core]
     [cljs.spec.alpha :as s]))
 
 (defn nestring [& samples]
@@ -47,9 +45,3 @@
 
 (defn refresh []
   (reporter/hot-reload!))
-
-;; TASK: Version 1: Do this relatively soon...but not until HOF working. Might be hard enough to need to be v2
-;; 1. We do what we're doing for capture, but no longer bother with body.
-;; 2. Analyze runs against real source, but "interprets it" via the checker runtime which has all of the real compiled functions in it, and
-;; the spec registry.
-;; 3. This also helps the out-of-sync issues with editors like IntelliJ

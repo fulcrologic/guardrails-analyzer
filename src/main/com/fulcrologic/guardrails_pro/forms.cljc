@@ -1,5 +1,6 @@
 (ns com.fulcrologic.guardrails-pro.forms)
 
+;; TODO: would this be faster with spectre ?
 (defn form-expression
   "Converts the given form into a runtime expression that will re-create the form (including metadata)."
   [form]

@@ -63,3 +63,8 @@
     (-> env
       (grp.art/update-location (meta sexpr))
       (analyze-mm sexpr))))
+
+(defn analyze-statements! [env body]
+  (doseq [expr (butlast body)]
+    (-analyze! env expr))
+  (-analyze! env (last body)))

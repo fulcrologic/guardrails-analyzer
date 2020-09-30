@@ -95,7 +95,7 @@
 (>def ::last-seen posint?)
 (>def ::env->fn fn?)
 (>def ::lambda-name simple-symbol?)
-(>def ::lambda (s/keys :req [::lambda-name ::env->fn ::arities]))
+(>def ::lambda (s/keys :req [::env->fn ::arities] :opt [::lambda-name]))
 (>def ::lambdas (s/map-of symbol? ::lambda))
 (>def ::fn-name symbol?)
 (>def ::var-name qualified-symbol?)
@@ -164,6 +164,8 @@
   ([function-registry external-function-registry]
    [map? map? => ::env]
    (let [spec-registry @gr.externs/spec-registry]
+     (when-not (seq external-function-registry)
+       (log/error "NO EXT FN REG"))
      (-> {::external-function-registry (->> external-function-registry
                                          (fix-kw-nss)
                                          (resolve-quoted-specs spec-registry))
@@ -191,7 +193,7 @@
     (let [sym (cond->> sym (not (qualified-symbol? sym))
                 (qualify-extern env))]
       (log/debug "function-detail" sym)
-      (get-in env [::gspec-registry sym]))))
+      (get-in env [::function-registry sym]))))
 
 (>defn external-function-detail [env sym]
   [::env symbol? => (? (s/keys :req [::name ::fn-ref ::arities]))]
@@ -215,7 +217,7 @@
   (assoc-in env [::local-symbols sym] td))
 
 (>defn lookup-symbol
-  "Used in env->fn to lookup symbols"
+  "Used by >fn to lookup sample values for symbols"
   [env sym]
   [::env symbol? => (? some?)]
   (let [{::keys [samples]} (get-in env [::local-symbols sym])]

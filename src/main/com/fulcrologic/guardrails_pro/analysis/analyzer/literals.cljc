@@ -2,7 +2,7 @@
   (:require
     [com.fulcrologic.guardrails.core :as gr :refer [>defn => ?]]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
-    [com.fulcrologic.guardrails-pro.analysis.analyzer.dispatch :refer [regex? analyze-mm -analyze!]]
+    [com.fulcrologic.guardrails-pro.analysis.analyzer.dispatch :as grp.ana.disp]
     [com.fulcrologic.guardrails-pro.analysis.spec :as grp.spec]
     [taoensso.timbre :as log]
     [taoensso.encore :as enc]))
@@ -19,17 +19,17 @@
                                     keyword?)
                  (nil? sexpr) nil?
                  (char? sexpr) char?
-                 (regex? sexpr) regex?)]
+                 (grp.ana.disp/regex? sexpr) grp.ana.disp/regex?)]
       {::grp.art/spec                spec
        ::grp.art/samples             #{sexpr}
        ::grp.art/original-expression sexpr})))
 
-(defmethod analyze-mm :literal/char [env sexpr] (analyze-literal! env sexpr))
-(defmethod analyze-mm :literal/number [env sexpr] (analyze-literal! env sexpr))
-(defmethod analyze-mm :literal/string [env sexpr] (analyze-literal! env sexpr))
-(defmethod analyze-mm :literal/keyword [env sexpr] (analyze-literal! env sexpr))
-(defmethod analyze-mm :literal/regex [env sexpr] (analyze-literal! env sexpr))
-(defmethod analyze-mm :literal/nil [env sexpr] (analyze-literal! env sexpr))
+(defmethod grp.ana.disp/analyze-mm :literal/char [env sexpr] (analyze-literal! env sexpr))
+(defmethod grp.ana.disp/analyze-mm :literal/number [env sexpr] (analyze-literal! env sexpr))
+(defmethod grp.ana.disp/analyze-mm :literal/string [env sexpr] (analyze-literal! env sexpr))
+(defmethod grp.ana.disp/analyze-mm :literal/keyword [env sexpr] (analyze-literal! env sexpr))
+(defmethod grp.ana.disp/analyze-mm :literal/regex [env sexpr] (analyze-literal! env sexpr))
+(defmethod grp.ana.disp/analyze-mm :literal/nil [env sexpr] (analyze-literal! env sexpr))
 
 (>defn validate-samples! [env k v samples]
   [::grp.art/env any? any? ::grp.art/samples => (? ::grp.art/samples)]
@@ -52,7 +52,7 @@
   [env acc k v]
   (when (and (qualified-keyword? k) (nil? (grp.spec/lookup env k)))
     (grp.art/record-warning! env k :warning/qualified-keyword-missing-spec))
-  (let [sample-value (let [{::grp.art/keys [samples]} (-analyze! env v)]
+  (let [sample-value (let [{::grp.art/keys [samples]} (grp.ana.disp/-analyze! env v)]
                        (validate-samples! env k v samples)
                        (if (seq samples)
                          (rand-nth (vec samples))
@@ -68,11 +68,11 @@
      ::grp.art/original-expression hashmap
      ::grp.art/type                "literal-hashmap"}))
 
-(defmethod analyze-mm :collection/map [env coll] (analyze-hashmap! env coll))
+(defmethod grp.ana.disp/analyze-mm :collection/map [env coll] (analyze-hashmap! env coll))
 
 (defn analyze-vector-entry
   [env acc v]
-  (let [sample (let [{::grp.art/keys [samples]} (-analyze! env v)]
+  (let [sample (let [{::grp.art/keys [samples]} (grp.ana.disp/-analyze! env v)]
                  (when (seq samples) {:sample-value (rand-nth (vec samples))}))]
     (if (contains? sample :sample-value)
       (conj acc (:sample-value sample))
@@ -85,4 +85,4 @@
      ::grp.art/original-expression v
      ::grp.art/type                "literal-vector"}))
 
-(defmethod analyze-mm :collection/vector [env coll] (analyze-vector! env coll))
+(defmethod grp.ana.disp/analyze-mm :collection/vector [env coll] (analyze-vector! env coll))

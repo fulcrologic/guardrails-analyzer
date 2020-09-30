@@ -119,14 +119,7 @@
 
 (def ui-reporter-root (comp/factory CheckerRoot {:keyfn :id}))
 
-(declare update-problems! report-analysis!)
-
-(defn check! [msg]
-  (try
-    (grp.checker/check! msg)
-    (report-analysis!)
-    (catch :default e
-      (log/error e "Failed to check!"))))
+(declare check! update-problems! report-analysis!)
 
 (defonce app
   (app/fulcro-app
@@ -141,12 +134,26 @@
              :check!       (check! msg)
              nil))})}}))
 
+(defn DBG_ENV! []
+  (let [env (grp.art/build-env)]
+    (js/setTimeout #(tap> env) 2000)))
+
+(defn check! [msg]
+  (try
+    (grp.checker/check! msg)
+    (report-analysis!)
+    (DBG_ENV!)
+    (catch :default e
+      (log/error e "Failed to check!"))))
+
 (defn update-problems! [problems]
   (log/info "received new problem list from daemon")
   (swap! (::app/state-atom app) set-problems* problems)
   (app/schedule-render! app))
 
-(defn hot-reload! [] (app/mount! app CheckerRoot "checker"))
+(defn hot-reload! []
+  (DBG_ENV!)
+  (app/mount! app CheckerRoot "checker"))
 
 (defn start!
   ([] (start! false))

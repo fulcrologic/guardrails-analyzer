@@ -132,6 +132,9 @@
   ([coll] [coll? => coll?])
   ([n coll] [number? coll? => coll?]))
 
+(>fdef ^:pure clojure.core/even?
+  [n] [int? => boolean?])
+
 (>fdef ^:pure clojure.core/first
   [coll] [coll? => any?])
 
@@ -167,6 +170,9 @@
 
 (>fdef ^:pure clojure.core/list
   [& items] [(s/* any?) => list?])
+
+(>fdef ^:pure clojure.core/map?
+  [x] [any? => boolean?])
 
 (>fdef ^:pure clojure.core/max
   ([x] [number? => number?])
@@ -210,6 +216,12 @@
 (>fdef ^:pure clojure.core/nth
   ([coll index] [coll? number? => any?])
   ([coll index not-found] [coll? number? any? => any?]))
+
+(>fdef ^:pure clojure.core/odd?
+  [n] [int? => boolean?])
+
+(>fdef ^:pure clojure.core/pr-str
+  [& xs] [(s/* any?) => string?])
 
 (>fdef ^:pure clojure.core/qualified-ident?
   [x] [any? => boolean?])
