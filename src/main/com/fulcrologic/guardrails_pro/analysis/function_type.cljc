@@ -60,9 +60,7 @@
                                    {as-sym typ})
                                  {}))
         ;; TODO: might need to return for :keys [x ...] an empty type desc
-        (map? bind-sexpr) (into {}
-                            (mapcat MAP*)
-                            bind-sexpr)))))
+        (map? bind-sexpr) (into {} (mapcat MAP*) bind-sexpr)))))
 
 (>defn interpret-gspec [env arglist gspec]
   [::grp.art/env ::grp.art/arglist (s/coll-of ::grp.art/form :kind vector?) => ::grp.art/gspec]

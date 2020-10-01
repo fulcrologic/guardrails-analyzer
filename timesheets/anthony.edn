@@ -66,5 +66,7 @@
  {:date "2020-09-27" :description "rewrite" :timespans [[820 1200] [1700 1815]]}
  {:date "2020-09-28" :description "rewrite" :timespans [[900 1200] [1300 1910] [2220 2300]]}
  {:date "2020-09-29" :description "planning, debugging, refactoring" :timespans [[1010 1200] [1445 1930]]}
- {:date "2020-09-30" :description ">fn & analyze-lambda!" :timespans [[900 1130] [1130 1230] [1300 1430]]}
+ {:date "2020-09-30" :description ">fn & analyze-lambda!" :timespans [[900 1130] [1130 1230]]}
+ {:date "2020-09-30" :description "if & threading macros" :timespans [[1300 1430]]}
+ {:date "2020-09-30" :description "more macro analyzing" :timespans [[1510 1730]]}
  ]

@@ -223,7 +223,29 @@
 (>fdef ^:pure clojure.core/odd?
   [n] [int? => boolean?])
 
+(>fdef clojure.core/pr
+  [& xs] [(s/* any?) => nil?])
+
+(>fdef clojure.core/prn
+  [& xs] [(s/* any?) => nil?])
+
 (>fdef ^:pure clojure.core/pr-str
+  [& xs] [(s/* any?) => string?])
+
+(>fdef clojure.core/print
+  [& xs] [(s/* any?) => nil?])
+
+#?(:clj
+   (>fdef clojure.core/printf
+     [fmt & xs] [string? (s/* any?) => nil?]))
+
+(>fdef clojure.core/println
+  [& xs] [(s/* any?) => nil?])
+
+(>fdef ^:pure clojure.core/print-str
+  [& xs] [(s/* any?) => string?])
+
+(>fdef ^:pure clojure.core/println-str
   [& xs] [(s/* any?) => string?])
 
 (>fdef ^:pure clojure.core/qualified-ident?

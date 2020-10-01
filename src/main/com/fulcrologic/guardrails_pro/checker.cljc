@@ -15,10 +15,11 @@
      (doseq [form (grp.forms/interpret forms)]
        (grp.ana/analyze! env form)))))
 
-(>defn -threading [x] [int? => int?]
-  (cond-> x (even? x) (str "=x")))
-
-(>defn -if [x] [int? => int?]
+#_(>defn -if [x] [int? => int?]
   (if (even? x)
     (str "EVEN:" x)
     (str "ODD:" x)))
+
+#_(>defn -doseq [x] [int? => int?]
+  (doseq [i (range 10) :let [X 666]]
+    (prn (+ i x))))
