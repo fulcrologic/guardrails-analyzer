@@ -58,20 +58,46 @@
 ;; TODO HOFs * -> fn
 (comment
   comp
-  complement
-  constantly
   partial
   fnil
-  juxt
   )
 
-(defn analyze-constantly! [env [const value]]
+;; TODO: WIP: FIXME
+(defn analyze-complement! [env [THIS f]]
+  (let [fn-td (grp.ana.disp/-analyze! env f)]
+    (merge
+      (get-in (grp.art/external-function-detail env THIS)
+        [::grp.art/arities 1 ::grp.art/gspec])
+      #::grp.art{:lambda-name (gensym "complement$")
+                 :env->fn (fn [env]
+                            (fn [& args]
+                              ;; TODO validate args (count & spec) w/ fn-td
+                              (not (apply (grp.sampler/get-fn-ref env fn-td) args))))})))
+
+;; TODO: WIP: FIXME
+(defn analyze-juxt! [env [THIS & fns]]
+  (let [fns-td (map (partial grp.ana.disp/-analyze! env) fns)]
+    (merge
+      (get-in (grp.art/external-function-detail env THIS)
+        [::grp.art/arities 1 ::grp.art/gspec])
+      #::grp.art{:lambda-name (gensym "juxt$")
+                 :env->fn (fn [env]
+                            (fn [& args]
+                              ;; TODO validate args (count & spec) w/ fns-td
+                              ;; is here the right spot?
+                              ;; what if not pure?
+                              ;; should the caller of functions do checks?
+                              ;; can a lambda td include a way to specify those checks?
+                              (reduce #(conj %1 (apply %2 args))
+                                [] (map (partial grp.sampler/get-fn-ref env) fns-td))))})))
+
+(defn analyze-constantly! [env [THIS value]]
   (let [value-td (grp.ana.disp/-analyze! env value)]
     (merge
-      (get-in (grp.art/external-function-detail env const)
-        [::grp.art/arities 1 ::grp.art/gspec ::grp.art/return-spec])
+      (get-in (grp.art/external-function-detail env THIS)
+        [::grp.art/arities 1 ::grp.art/gspec])
       #::grp.art{:lambda-name (gensym "constantly$")
-                 :env->fn (fn [env] (grp.sampler/random-sample-fn value-td))})))
+                 :env->fn (fn [env] (fn [& _] (rand-nth (vec (::grp.art/samples value-td)))))})))
 
 (defmethod grp.ana.disp/analyze-mm 'constantly [env sexpr] (analyze-constantly! env sexpr))
 (defmethod grp.ana.disp/analyze-mm 'clojure.core/constantly [env sexpr] (analyze-constantly! env sexpr))

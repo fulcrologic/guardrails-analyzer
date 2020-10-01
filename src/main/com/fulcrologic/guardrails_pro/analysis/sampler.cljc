@@ -181,9 +181,6 @@
           (seq possible-values)))
       (first possible-values))))
 
-(defn random-sample-fn [{::grp.art/keys [samples]}]
-  (fn [& args] (rand-nth (vec samples))))
-
 (defn random-samples-from [env & tds]
   (->> tds
     (map (comp gen/elements ::grp.art/samples))

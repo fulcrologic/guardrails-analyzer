@@ -69,4 +69,5 @@
  {:date "2020-09-30" :description ">fn & analyze-lambda!" :timespans [[900 1130] [1130 1230]]}
  {:date "2020-09-30" :description "if & threading macros" :timespans [[1300 1430]]}
  {:date "2020-09-30" :description "more macro analyzing" :timespans [[1510 1730]]}
+ {:date "2020-09-30" :description "exploration / research" :timespans [[1730 1810]]}
  ]
