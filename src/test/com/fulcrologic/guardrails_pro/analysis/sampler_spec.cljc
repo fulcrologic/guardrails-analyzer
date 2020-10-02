@@ -138,31 +138,44 @@
            :return-sample-fn (constantly {:person/full-name "john doe"})})
         => #:person{:name "john" :full-name "john doe"}))
     (component "map-like"
-      (assertions
-        (grp.sampler/map-like-args env
-          [{::grp.art/samples #{[1 2 3]}}
-           {::grp.art/samples #{[4 5 6]}}])
-        => [[1 4] [2 5] [3 6]]
-        (grp.sampler/map-like-args env
-          [{::grp.art/samples #{[1 2  ]}}
-           {::grp.art/samples #{[4 5 6]}}])
-        => [[1 4] [2 5]]
-        (grp.sampler/map-like-args env
-          [{::grp.art/samples #{1 2}}
-           {::grp.art/samples #{[3 4]}}])
-        =throws=> #"expects all sequence arguments to be sequences"
-        (grp.sampler/propagate-samples! env ::grp.sampler/map-like
-          {:args [+ [1 2 3] [4 5 6]]
-           :argtypes [{::grp.art/fn-ref +
-                       ::grp.art/arities {:n {::grp.art/arglist '[& nums]
-                                              ::grp.art/gspec {::grp.art/return-spec number?
-                                                               ::grp.art/return-type "number?"
-                                                               ::grp.art/metadata {::grp.sampler/sampler :pure}}}}}
-                      {::grp.art/samples #{[1 2 3]}}
-                      {::grp.art/samples #{[4 5 6]}}]
-           :gspec {::grp.art/sampler ::grp.sampler/pure}
-           :return-sample-fn (constantly [666])})
-        => #{[5 7 9]}))))
+      (let [test-fn-type {::grp.art/fn-ref +
+                          ::grp.art/arities
+                          {:n {::grp.art/arglist '[& nums]
+                               ::grp.art/gspec
+                               {::grp.art/return-spec number?
+                                ::grp.art/return-type "number?"}}}}]
+        (assertions
+          (grp.sampler/map-like-args env
+            [{::grp.art/samples #{[1 2 3]}}
+             {::grp.art/samples #{[4 5 6]}}])
+          => [[1 4] [2 5] [3 6]]
+          (grp.sampler/map-like-args env
+            [{::grp.art/samples #{[1 2  ]}}
+             {::grp.art/samples #{[4 5 6]}}])
+          => [[1 4] [2 5]]
+          (grp.sampler/map-like-args env
+            [{::grp.art/samples #{1 2}}
+             {::grp.art/samples #{[3 4]}}])
+          =throws=> #"expects all sequence arguments to be sequences"
+          (grp.sampler/propagate-samples! env ::grp.sampler/map-like
+            {:args [+ [1 2 3] [4 5 6]]
+             :argtypes [(assoc-in test-fn-type
+                          [::grp.art/arities :n ::grp.art/gspec ::grp.art/metadata]
+                          {::grp.sampler/sampler :pure})
+                        {::grp.art/samples #{[1 2 3]}}
+                        {::grp.art/samples #{[4 5 6]}}]
+             :gspec {::grp.art/sampler ::grp.sampler/pure}
+             :return-sample-fn (constantly [666])})
+          => #{[5 7 9]}
+          "if there is no sampler, returns WIP"
+         (grp.sampler/propagate-samples! env ::grp.sampler/map-like
+            {:args [+ [1 2 3] [4 5 6]]
+             :argtypes [test-fn-type
+                        {::grp.art/samples #{[1 2 3]}}
+                        {::grp.art/samples #{[4 5 6]}}]
+             :gspec {::grp.art/sampler ::grp.sampler/pure}
+             :return-sample-fn (constantly [666])})
+          => #{[5 7 9]} )))))
 
 (specification "random-samples-from"
   (let [env (grp.art/build-env)]

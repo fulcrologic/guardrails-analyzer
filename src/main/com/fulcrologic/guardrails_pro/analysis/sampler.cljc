@@ -134,19 +134,15 @@
 (defmethod propagate-samples-mm! ::map-like
   [env _ {:keys [return-sample-fn], [function & colls] :argtypes}]
   (let [{::grp.art/keys [sampler] :as gspec} (get-gspec function colls)]
-    ;; TODO:
-    ;; - transducer if no colls
-    ;; - ? pure if function is pure
-    ;; - if sampler: assert colls samples are `seq`
-    ;; - if NOT sampler: should return seq of function return-spec / samples
-    (if-not sampler (return-sample-fn)
-      (try-sampling! env
+    (try-sampling! env
+      (if-not sampler
+        (return-sample-gen env gspec)
         (gen/let [params (params-gen env function colls)]
           (map #(propagate-samples! env sampler
                   (assoc params :args %))
-            (map-like-args env colls)))
-        {::grp.art/original-expression
-         ((some-fn ::grp.art/name ::grp.art/lambda-name) function)}))))
+            (map-like-args env colls))))
+      {::grp.art/original-expression
+       ((some-fn ::grp.art/name ::grp.art/lambda-name) function)} )))
 
 (s/def ::dispatch keyword?)
 (s/def ::sampler (s/or

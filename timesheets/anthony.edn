@@ -71,4 +71,5 @@
  {:date "2020-09-30" :description "more macro analyzing" :timespans [[1510 1730]]}
  {:date "2020-09-30" :description "exploration / research" :timespans [[1730 1810]]}
  {:date "2020-10-01" :description "destructuring" :timespans [[1800 1900] [1945 2100]]}
+ {:date "2020-10-02" :description "map-like sampler" :timespans [[1240 1320]]}
  ]

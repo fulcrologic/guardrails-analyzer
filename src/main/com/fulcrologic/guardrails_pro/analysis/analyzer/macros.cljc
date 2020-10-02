@@ -41,6 +41,8 @@
 (defmethod grp.ana.disp/analyze-mm 'clojure.core/let [env sexpr] (analyze-let-like-form! env sexpr))
 
 ;; TODO: all fn's are available in all fn bodies (mutually recursive)
+;; - might need to not emit forms to analyze, but do some funky local binding
+;; - might need to be for v2.0+
 (defmethod grp.ana.disp/analyze-mm 'letfn [env [_ fns & body]]
   (analyze-let-like-form! env
     (let [letfn->fn   (fn [[fn-name arglist & body]]

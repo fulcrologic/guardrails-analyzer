@@ -23,3 +23,6 @@
 #_(>defn -doseq [x] [int? => int?]
   (doseq [i (range 10) :let [X 666]]
     (prn (+ i x))))
+
+(>defn -map [x] [int? => int?]
+  (map (>fn [n] [int? => string?] (str "n="n"x="x)) (range 10)))
