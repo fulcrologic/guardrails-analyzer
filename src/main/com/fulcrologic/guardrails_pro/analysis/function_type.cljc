@@ -1,11 +1,11 @@
 (ns com.fulcrologic.guardrails-pro.analysis.function-type
   (:require
     [clojure.spec.alpha :as s]
-    [taoensso.timbre :as log]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.analysis.sampler :as grp.sampler]
     [com.fulcrologic.guardrails-pro.analysis.spec :as grp.spec]
-    [com.fulcrologic.guardrails.core :refer [>defn =>]]))
+    [com.fulcrologic.guardrails.core :refer [>defn =>]]
+    [taoensso.timbre :as log]))
 
 (s/def ::destructurable
   (s/or
@@ -13,54 +13,85 @@
     :vector vector?
     :map map?))
 
+(declare -destructure!)
+
+(>defn sample! [env ?spec sym]
+  [::grp.art/env any? symbol? => ::grp.art/samples]
+  (if-let [spec (grp.spec/lookup env ?spec)]
+    (grp.sampler/try-sampling! env
+      (grp.spec/generator env spec)
+      {::grp.art/original-expression sym})
+    (do (grp.art/record-warning! env sym
+          :warning/qualified-keyword-missing-spec)
+      #{})))
+
+(>defn destr-map-entry! [env [k v] td]
+  [::grp.art/env map-entry? ::grp.art/type-description
+   => (s/coll-of (s/tuple symbol? ::grp.art/type-description))]
+  (cond
+    (= :keys k) {}
+    (and (qualified-keyword? k) (= (name k) "keys"))
+    #_=> (mapv (fn [sym]
+                 (let [spec-kw (keyword (namespace k) (str sym))
+                       samples (sample! env spec-kw sym)]
+                     [sym {::grp.art/original-expression sym
+                           ::grp.art/samples samples
+                           ::grp.art/spec spec-kw
+                           ::grp.art/type (pr-str spec-kw)}]))
+           v)
+    (qualified-keyword? v)
+    #_=> (-destructure! env k
+           {::grp.art/original-expression k
+            ::grp.art/samples (sample! env v k)
+            ::grp.art/spec v
+            ::grp.art/type (pr-str v)})
+    (= :as k)
+    #_=> [[v (assoc td ::grp.art/original-expression v)]]
+    :else []))
+
+(>defn destr-vector! [env vect td]
+  [::grp.art/env vector? ::grp.art/type-description
+   => (s/coll-of (s/tuple symbol? ::grp.art/type-description))]
+  (let [[symbols specials] (split-with (complement #{'& :as}) vect)
+        sym-count (count symbols)
+        coll-bindings (into {}
+                        (map (fn [[expr bind]]
+                               [bind
+                                (case expr
+                                  :as td
+                                  '&  {::grp.art/samples
+                                       (set (map (partial drop sym-count)
+                                              (::grp.art/samples td)))})]))
+                        (partition 2 specials))]
+    (into coll-bindings
+      (mapcat
+        (fn [i sym]
+          (-destructure! env sym
+            {::grp.art/samples
+             (set (map #(nth % i nil)
+                    (::grp.art/samples td)))}))
+        (range)
+        symbols))))
+
+(>defn -destructure! [env bind-sexpr value-type-desc]
+  [::grp.art/env ::destructurable ::grp.art/type-description
+   => (s/map-of symbol? ::grp.art/type-description)]
+  (let [typ (assoc value-type-desc ::grp.art/original-expression bind-sexpr)]
+    (cond
+      (symbol? bind-sexpr) {bind-sexpr typ}
+      (vector? bind-sexpr) (destr-vector! env bind-sexpr typ)
+      (map? bind-sexpr)
+      (into {}
+        (mapcat #(destr-map-entry! env % value-type-desc))
+        bind-sexpr))))
+
 (>defn destructure! [env bind-sexpr value-type-desc]
   [::grp.art/env ::destructurable ::grp.art/type-description
    => (s/map-of symbol? ::grp.art/type-description)]
-  (log/info :destructure! bind-sexpr value-type-desc)
-  (letfn [(MAP* [[k v :as entry]]
-            (cond
-              (and (qualified-keyword? k) (= (name k) "keys"))
-              #_=> (mapv (fn [sym]
-                           (let [spec-kw (keyword (namespace k) (str sym))]
-                             (if-let [spec (grp.spec/lookup env spec-kw)]
-                               (let [samples (grp.sampler/try-sampling! env (grp.spec/generator env spec) {::grp.art/original-expression entry})
-                                     type    (cond-> {::grp.art/spec                spec
-                                                      ::grp.art/original-expression (pr-str sym)
-                                                      ::grp.art/type                (pr-str sym)}
-                                               samples (assoc ::grp.art/samples (set samples)))]
-                                 (grp.art/record-binding! env sym type)
-                                 [sym type])
-                               (grp.art/record-warning! env sym
-                                 :warning/qualified-keyword-missing-spec))))
-                     v)
-              (qualified-keyword? v)
-              #_=> (when-let [spec (grp.spec/lookup env v)]
-                     (let [samples (grp.sampler/try-sampling! env (grp.spec/generator env spec) {::grp.art/original-expression entry})
-                           type    (cond-> {::grp.art/spec                spec
-                                            ::grp.art/original-expression (pr-str k)
-                                            ::grp.art/type                (pr-str v)}
-                                     samples (assoc ::grp.art/samples (set samples)))]
-                       (grp.art/record-binding! env k type)
-                       [[k type]]))
-              (= :as k)
-              #_=> (let [typ (assoc value-type-desc ::grp.art/original-expression v)]
-                     (grp.art/record-binding! env v typ)
-                     [[v typ]])))]
-    (let [typ (assoc value-type-desc ::grp.art/original-expression bind-sexpr)]
-      (cond
-        (symbol? bind-sexpr) (do
-                               (grp.art/record-binding! env bind-sexpr typ)
-                               {bind-sexpr typ})
-        (vector? bind-sexpr) (let [as-sym (some #(when (= :as (first %))
-                                                   (second %))
-                                            (partition 2 1 bind-sexpr))]
-                               (if as-sym
-                                 (do
-                                   (grp.art/record-binding! env as-sym typ)
-                                   {as-sym typ})
-                                 {}))
-        ;; TODO: might need to return for :keys [x ...] an empty type desc
-        (map? bind-sexpr) (into {} (mapcat MAP*) bind-sexpr)))))
+  (let [bindings (-destructure! env bind-sexpr value-type-desc) ]
+    (doseq [[sym td] bindings]
+      (grp.art/record-binding! env sym td))
+    bindings))
 
 (>defn interpret-gspec [env arglist gspec]
   [::grp.art/env ::grp.art/arglist (s/coll-of ::grp.art/form :kind vector?) => ::grp.art/gspec]

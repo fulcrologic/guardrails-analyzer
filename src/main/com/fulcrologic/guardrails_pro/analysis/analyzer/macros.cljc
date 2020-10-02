@@ -40,6 +40,7 @@
 (defmethod grp.ana.disp/analyze-mm 'let [env sexpr] (analyze-let-like-form! env sexpr))
 (defmethod grp.ana.disp/analyze-mm 'clojure.core/let [env sexpr] (analyze-let-like-form! env sexpr))
 
+;; TODO: all fn's are available in all fn bodies (mutually recursive)
 (defmethod grp.ana.disp/analyze-mm 'letfn [env [_ fns & body]]
   (analyze-let-like-form! env
     (let [letfn->fn   (fn [[fn-name arglist & body]]
