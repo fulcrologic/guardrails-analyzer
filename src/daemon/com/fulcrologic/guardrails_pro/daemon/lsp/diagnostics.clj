@@ -17,8 +17,8 @@
                     column-start column-end]}]
   (new Diagnostic
     (new Range
-      (new Position line-start column-start)
-      (new Position line-end   column-end))
+      (new Position (dec line-start) (dec column-start))
+      (new Position (dec line-end)   (dec column-end)))
     message
     (case (namespace problem-type)
       "error"   DiagnosticSeverity/Error
