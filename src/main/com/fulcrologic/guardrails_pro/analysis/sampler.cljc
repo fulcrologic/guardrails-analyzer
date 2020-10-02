@@ -105,9 +105,7 @@
       :fn-ref (gen/return (get-fn-ref env fd))
       :params (gen/return (sampler-params sampler))
       :argtypes (gen/return argtypes)
-      :return-sample-fn (gen/return #(try (grp.spec/generate env (return-sample-gen env gspec))
-                                       (catch #? (:clj Exception :cljs :default) e
-                                         (log/error e "Failed to generate value from " gspec)))))))
+      :return-sample-fn (gen/return #(grp.spec/generate env (return-sample-gen env gspec))))))
 
 (>defn sample! [env fd argtypes]
   [::grp.art/env

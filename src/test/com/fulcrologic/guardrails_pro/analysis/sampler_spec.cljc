@@ -165,17 +165,16 @@
                         {::grp.art/samples #{[1 2 3]}}
                         {::grp.art/samples #{[4 5 6]}}]
              :gspec {::grp.art/sampler ::grp.sampler/pure}
-             :return-sample-fn (constantly [666])})
+             :return-sample-fn (constantly [:error])})
           => #{[5 7 9]}
-          "if there is no sampler, returns WIP"
+          "if there is no sampler, returns coll of function's return-spec"
          (grp.sampler/propagate-samples! env ::grp.sampler/map-like
-            {:args [+ [1 2 3] [4 5 6]]
-             :argtypes [test-fn-type
-                        {::grp.art/samples #{[1 2 3]}}
-                        {::grp.art/samples #{[4 5 6]}}]
+            {:args [+ []]
+             :argtypes [test-fn-type {}]
              :gspec {::grp.art/sampler ::grp.sampler/pure}
-             :return-sample-fn (constantly [666])})
-          => #{[5 7 9]} )))))
+             :return-sample-fn (constantly [:error])})
+          =check=> (_/all* (_/is?* seq)
+                     (_/every?* (_/is?* number?))))))))
 
 (specification "random-samples-from"
   (let [env (grp.art/build-env)]
