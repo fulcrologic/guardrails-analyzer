@@ -8,10 +8,11 @@
 (defn check! [path]
   (log/debug "commands/check!" path)
   ;; NOTE: path currently always cljs
-  (let [forms (reader/read-file path)]
+  (let [{:keys [NS forms]} (reader/read-file path)]
     (notify-checkers! :check!
       {:forms (grp.forms/form-expression forms)
-       :file  path})))
+       :file  path
+       :NS    NS})))
 
 (def commands
   {"check!" check!})

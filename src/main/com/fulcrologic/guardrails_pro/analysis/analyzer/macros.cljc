@@ -40,19 +40,19 @@
 (defmethod grp.ana.disp/analyze-mm 'let [env sexpr] (analyze-let-like-form! env sexpr))
 (defmethod grp.ana.disp/analyze-mm 'clojure.core/let [env sexpr] (analyze-let-like-form! env sexpr))
 
-;; TODO: all fn's are available in all fn bodies (mutually recursive)
-;; - might need to not emit forms to analyze, but do some funky local binding
-;; - might need to be for v2.0+
-(defmethod grp.ana.disp/analyze-mm 'letfn [env [_ fns & body]]
-  (analyze-let-like-form! env
-    (let [letfn->fn   (fn [[fn-name arglist & body]]
-                        (list* 'fn fn-name arglist body))
-          fn-bindings (mapcat (juxt first letfn->fn) fns)]
-      (concat ['_ fn-bindings] body))))
+(defn analyze:>letfn [env [_ fns & body]]
+  ;;TODO:
+  ;; two pass analysis
+  ;; 1. bind fn gspec's
+  ;; 2. analyze fn bodies & letfn body
+  )
 
 (defmethod grp.ana.disp/analyze-mm 'if [env [_ condition then & [else]]]
   ;; TODO: on each branch (then & else) update env locals used in condition:
-  ;; - filter such-that condition
+  ;; if predicate has sampler, look it up & call it to filter locals used
+  ;; otherwise:
+  ;; - ? maybe further analysis cannot be done
+  ;; - ? maybe annotate x as not accurate
   #_(if (even? x)
       (str "EVEN:" x) ;; x should     be even?
       (str "ODD:" x)) ;; x should not be even?
@@ -115,8 +115,8 @@
   (if (empty? clauses)
     {::grp.art/samples #{nil}}
     (letfn [(COND [clauses]
-            (when-let [[tst expr & rst] (seq clauses)]
-              `(if ~tst ~expr ~(COND rst))))]
+              (when-let [[tst expr & rst] (seq clauses)]
+                `(if ~tst ~expr ~(COND rst))))]
     (grp.ana.disp/-analyze! env (COND clauses)))))
 
 ;; TODO: difficult

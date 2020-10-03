@@ -4,7 +4,7 @@
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.analysis.sampler :as grp.sampler]
     [com.fulcrologic.guardrails-pro.analysis.spec :as grp.spec]
-    [com.fulcrologic.guardrails.core :refer [>defn =>]]
+    [com.fulcrologic.guardrails.core :refer [>defn >defn- =>]]
     [taoensso.timbre :as log]))
 
 (s/def ::destructurable
@@ -15,7 +15,7 @@
 
 (declare -destructure!)
 
-(>defn sample! [env ?spec sym]
+(>defn- sample! [env ?spec sym]
   [::grp.art/env any? symbol? => ::grp.art/samples]
   (if-let [spec (grp.spec/lookup env ?spec)]
     (grp.sampler/try-sampling! env
@@ -150,8 +150,8 @@
   (let [{::grp.art/keys [arities]} (grp.art/function-detail env sym)
         {::grp.art/keys [gspec]} (grp.art/get-arity arities actual-argument-type-descriptors)
         {::grp.art/keys [argument-types argument-specs argument-predicates]} gspec]
-    (doseq [[argument-type argument-spec {::grp.art/keys [samples original-expression] :as descr} n]
-            (map vector argument-types argument-specs actual-argument-type-descriptors (range))
+    (doseq [[arg-idx argument-type argument-spec {::grp.art/keys [samples original-expression]}]
+            (map vector (range) argument-types argument-specs actual-argument-type-descriptors)
             :let [checkable? (and argument-spec (seq samples))]]
       (when-not checkable?
         (grp.art/record-warning! env original-expression :warning/unable-to-check))
@@ -166,7 +166,7 @@
            ::grp.art/expected            {::grp.art/spec argument-spec ::grp.art/type argument-type}
            ::grp.art/actual              {::grp.art/failing-samples #{failing-sample}}
            ::grp.art/problem-type        :error/function-argument-failed-spec
-           ::grp.art/message-params      {:argument-number (inc n)}})))
+           ::grp.art/message-params      {:argument-number (inc arg-idx)}})))
     (doseq [sample-arguments (apply map vector (map ::grp.art/samples actual-argument-type-descriptors))]
       (doseq [argument-pred argument-predicates
               :when (every? (partial apply (partial grp.spec/valid? env))
@@ -184,7 +184,7 @@
   [::grp.art/env qualified-symbol? (s/coll-of ::grp.art/type-description) => any?]
   (let [{::grp.art/keys [arities] :as fd} (grp.art/function-detail env sym)
         {::grp.art/keys [gspec]} (grp.art/get-arity arities argtypes)
-        [return-type return-spec] (::grp.art/return-spec gspec)]
+        {::grp.art/keys [return-type return-spec]} gspec]
     (validate-argtypes! env sym argtypes)
     {::grp.art/spec    return-spec
      ::grp.art/type    return-type

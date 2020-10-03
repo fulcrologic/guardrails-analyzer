@@ -5,24 +5,26 @@
     [com.fulcrologic.guardrails-pro.ftags.clojure-core]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.analysis.analyzer :as grp.ana]
-    [com.fulcrologic.guardrails-pro.forms :as grp.forms]))
+    [com.fulcrologic.guardrails-pro.forms :as grp.forms]
+    [taoensso.timbre :as log]))
 
 (defn check!
   ([msg] (check! (grp.art/build-env) msg))
-  ([env {:keys [forms file]}]
-   (let [env (assoc env ::grp.art/checking-file file)]
+  ([env {:keys [forms file NS]}]
+   (let [env (-> env
+               (assoc ::grp.art/checking-file file)
+               (assoc ::grp.art/current-ns NS))]
      (grp.art/clear-problems! file)
      (doseq [form (grp.forms/interpret forms)]
-       (grp.ana/analyze! env form)))))
+       (try (grp.ana/analyze! env form)
+         (catch #? (:clj Throwable :cljs :default) t
+           ;; TODO: report error
+           (log/error t "Failed to analyze form:" form)))))))
 
-#_(>defn -if [x] [int? => int?]
+(>defn ^:pure -if [x] [int? => int?]
   (if (even? x)
     (str "EVEN:" x)
     (str "ODD:" x)))
 
-#_(>defn -doseq [x] [int? => int?]
-  (doseq [i (range 10) :let [X 666]]
-    (prn (+ i x))))
-
-(>defn -map [x] [int? => int?]
-  (map (>fn [n] [int? => string?] (str "n="n"x="x)) (range 10)))
+(>defn -example [x] [int? => int?]
+  (-if x))

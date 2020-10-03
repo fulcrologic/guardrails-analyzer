@@ -16,7 +16,7 @@
   (-analyze! env sexpr))
 
 (defmethod analyze-mm :unknown [_ sexpr]
-  (log/warn "Could not analyze:" (pr-str sexpr))
+  (log/error "Could not analyze:" (pr-str sexpr))
   {})
 
 (defmethod analyze-mm :symbol.local/lookup [env sym]
@@ -28,11 +28,8 @@
     {::grp.art/samples (grp.sampler/sample! env fd argtypes)}))
 
 (defmethod analyze-mm :function/call [env [function & arguments]]
-  (let [current-ns (some-> env ::grp.art/checking-sym namespace)
-        fqsym      (if (simple-symbol? function) (symbol current-ns (name function)) function)]
-    (log/spy :info [function fqsym])
-    (grp.fnt/calculate-function-type env fqsym
-      (mapv (partial -analyze! env) arguments))))
+  (grp.fnt/calculate-function-type env function
+    (mapv (partial -analyze! env) arguments)))
 
 (defmethod analyze-mm :function.expression/call [env [fn-expr & args]]
   (let [function (-analyze! env fn-expr)

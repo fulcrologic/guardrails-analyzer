@@ -108,21 +108,23 @@
                     :req [::line-start ::column-start]
                     :opt [::line-end ::column-end]))
 (>def ::checking-file string?)
-(>def ::checking-sym qualified-symbol?)
+(>def ::checking-sym symbol?)
 (>def ::current-form ::form)
+(>def ::current-ns string?)
 (>def ::local-symbols (s/map-of symbol? ::type-description))
-(>def ::externs-registry (s/map-of symbol? (s/map-of symbol? ::extern)))
+(>def ::externs-registry (s/map-of string? (s/map-of symbol? (s/map-of symbol? ::extern))))
 (>def ::spec-registry (s/map-of ::form ::spec))
 (>def ::external-function-registry (s/map-of qualified-symbol? ::function))
-(>def ::function-registry (s/map-of symbol? ::function))
+(>def ::function-registry (s/map-of string? (s/map-of symbol? ::function)))
 (>def ::env (s/keys
                :req [::function-registry]
                :opt [::external-function-registry
                      ::externs-registry
                      ::spec-registry
                      ::local-symbols
-                     ::current-form
                      ::checking-sym
+                     ::current-form
+                     ::current-ns
                      ::location]))
 
 (>defn get-arity
@@ -176,31 +178,31 @@
 
 (>defn qualify-extern
   [env sym]
-  [::env symbol? | #(not (namespace sym)) => symbol?]
-  (log/debug "qualify-extern" sym
-    "in" (::checking-sym env)
-    (get-in env [::externs-registry (::checking-sym env)]))
+  [::env simple-symbol? => symbol?]
+  (log/debug "qualify-extern:" sym
+    "checking-sym:" (pr-str (::checking-sym env))
+    "current-ns:" (pr-str (::current-ns env))
+    "externs:" (get-in env [::externs-registry (::checking-sym env)]))
   (log/spy :debug "qualify-extern/return"
     (cljc-rewrite-sym-ns
-      (get-in env [::externs-registry (::checking-sym env) sym ::extern-name]
+      (get-in env [::externs-registry (::current-ns env)
+                   (::checking-sym env) sym ::extern-name]
         #_:or sym))))
 
 (>defn function-detail [env sym]
-  [::env symbol? => (? ::function)]
+  [::env simple-symbol? => (? ::function)]
+  (log/debug "function-detail:" (pr-str sym)
+    "current-ns:" (pr-str (::current-ns env))
+    "ns-fns:" (keys (get-in env [::function-registry (::current-ns env)] {})))
   (log/spy :debug "function-detail/return"
-    (let [sym (cond->> sym (not (qualified-symbol? sym))
-                (qualify-extern env))]
-      (log/debug "function-detail" sym)
-      (get-in env [::function-registry sym]))))
+    (get-in env [::function-registry (::current-ns env) sym])))
 
 (>defn external-function-detail [env sym]
   [::env symbol? => (? (s/keys :req [::name ::fn-ref ::arities]))]
   (log/spy :debug "external-function-detail/return"
-    (let [sym (cond->> sym
-                (not (qualified-symbol? sym))
-                (qualify-extern env)
-                (qualified-symbol? sym)
-                (cljc-rewrite-sym-ns))]
+    (let [sym (if (qualified-symbol? sym)
+                (cljc-rewrite-sym-ns sym)
+                (qualify-extern env sym))]
       (log/debug "external-function-detail" sym
         "in" (::checking-sym env))
       (get-in env [::external-function-registry sym]))))
@@ -211,7 +213,7 @@
   (log/spy :debug "symbol-detail/return"
     (or
       (get-in env [::local-symbols sym])
-      (get-in env [::externs-registry sym ::type-description]))))
+      (get-in env [::externs-registry (::current-ns env) sym ::type-description]))))
 
 (>defn remember-local [env sym td]
   [::env symbol? ::type-description => ::env]
