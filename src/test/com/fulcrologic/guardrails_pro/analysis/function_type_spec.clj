@@ -7,13 +7,16 @@
     [fulcro-spec.core :refer [specification behavior component assertions]]
     [fulcro-spec.check :as _]))
 
-(s/def :NS/foo keyword?)
-(s/def ::foo int?)
-(s/def ::bar string?)
+(s/def :NS/kw keyword?)
+(s/def ::idx int?)
+(s/def ::txt string?)
 
 (specification "destructure!"
-  (let [test-env (assoc (grp.art/build-env)
-                   ::grp.art/checking-sym `fake-test-sym)
+  (let [test-env (merge (grp.art/build-env)
+                   {::grp.art/checking-sym `fake-test-sym
+                    ::grp.art/checking-file "test-file"
+                    ::grp.art/location #::grp.art{:line-start 1
+                                                  :column-start 1}})
         test-td {::grp.art/type "test type desc"}]
     (assertions
       "simple symbol"
@@ -36,54 +39,57 @@
           =check=> (_/embeds?*
                      {'one {::grp.art/samples #{1 :a 'x}}
                       'rst {::grp.art/samples #{[2 3] [:b :c] '[y z]}}}))))
-    (component "map destructuring"
-      (assertions
-        "simple keyword"
-        (grp.fnt/-destructure! test-env '{foo ::foo} test-td)
-        =check=> (_/embeds?*
-                   {'foo {::grp.art/spec ::foo
-                          ::grp.art/samples (_/all*
-                                              (_/is?* seq)
-                                              (_/every?* (_/is?* int?)))}})
-        "if the keyword does not have a spec it returns no entry for it"
-        (grp.fnt/-destructure! test-env '{foo :ERROR} test-td)
-        => {})
-      (component ":as binding"
+    (let [map-td {::grp.art/samples #{{::idx 123
+                                       :NS/kw :abc}}}]
+      (component "map destructuring"
         (assertions
-          (grp.fnt/-destructure! test-env '{:as foo} test-td)
-          => {'foo (assoc test-td ::grp.art/original-expression 'foo)}
-          (grp.fnt/-destructure! test-env '{:ERROR/as foo} test-td)
-          => {}))
-      (component "keys destructuring"
-        (assertions
-          "not namespaced keywords are ignored"
-          (grp.fnt/-destructure! test-env '{:keys [foo]} test-td)
-          => {}
-          "can lookup specs by namespace"
-          (-> (grp.fnt/-destructure! test-env '{:NS/keys [foo]} test-td)
-            (get-in ['foo ::grp.art/spec]))
-          => :NS/foo
-          (-> (grp.fnt/-destructure! test-env '{:NS/keys [foo]} test-td)
-            (get-in ['foo ::grp.art/samples]))
-          =check=> (_/every?* (_/is?* keyword?))
-          (-> (grp.fnt/-destructure! test-env '{::keys [foo]} test-td)
-            (get-in ['foo ::grp.art/spec]))
-          => ::foo
-          (-> (grp.fnt/-destructure! test-env '{::keys [foo]} test-td)
-            (get-in ['foo ::grp.art/samples]))
-          =check=> (_/every?* (_/is?* int?))
-          (-> (grp.fnt/-destructure! test-env '{::keys [foo bar]} test-td)
-            (get-in ['foo ::grp.art/spec]))
-          => ::foo
-          (-> (grp.fnt/-destructure! test-env '{::keys [foo bar]} test-td)
-            (get-in ['bar ::grp.art/spec]))
-          => ::bar
-          "warns if qualified symbol has no spec"
-          (tf/capture-warnings grp.fnt/-destructure! test-env '{:FAKE/keys [foo]} test-td)
-          =check=> (_/seq-matches?*
-                     [(_/embeds?*
-                        #::grp.art{:problem-type :warning/qualified-keyword-missing-spec
-                                   :original-expression 'foo})]))))))
+          "simple keyword"
+          (grp.fnt/-destructure! test-env '{idx ::idx} map-td)
+          =check=> (_/embeds?*
+                     {'idx {::grp.art/spec ::idx
+                            ::grp.art/samples (_/all*
+                                                (_/is?* seq)
+                                                (_/every?* (_/is?* int?)))}})
+          "if the keyword does not have a spec it returns no entry for it"
+          (grp.fnt/-destructure! test-env '{err :ERROR} map-td)
+          => {})
+        (component ":as binding"
+          (assertions
+            (grp.fnt/-destructure! test-env '{:as foo} map-td)
+            => {'foo (assoc map-td ::grp.art/original-expression 'foo)}
+            (grp.fnt/-destructure! test-env '{:ERROR/as foo} map-td)
+            => {}))
+        (component "keys destructuring"
+          (assertions
+            "not namespaced keywords are ignored"
+            (grp.fnt/-destructure! test-env '{:keys [foo]} map-td)
+            => {}
+            "can lookup specs by namespace"
+            (grp.fnt/-destructure! test-env '{:NS/keys [kw]} map-td)
+            =check=> (_/embeds?*
+                       {'kw {::grp.art/spec :NS/kw
+                             ::grp.art/samples (_/every?* (_/is?* keyword?))}})
+            (grp.fnt/-destructure! test-env '{::keys [idx]} map-td)
+            =check=> (_/embeds?*
+                       {'idx {::grp.art/spec ::idx
+                              ::grp.art/samples (_/every?* (_/is?* int?))}})
+            (grp.fnt/-destructure! test-env '{::keys [idx txt]} map-td)
+            =check=> (_/embeds?*
+                       {'idx {::grp.art/spec ::idx}
+                        'txt {::grp.art/spec ::txt}})
+            "warns if qualified symbol has no spec"
+            (tf/capture-warnings grp.fnt/-destructure! test-env '{:FAKE/keys [foo]} map-td)
+            =check=> (_/seq-matches?*
+                       [(_/embeds?*
+                          #::grp.art{:problem-type :warning/qualified-keyword-missing-spec
+                                     :original-expression :FAKE/foo})])
+            "errors if value for qualified keyword fails spec"
+            (tf/capture-errors grp.fnt/-destructure! test-env '{::keys [idx]}
+              (update map-td ::grp.art/samples conj {::idx :ERROR}))
+            =check=> (_/seq-matches?*
+                       [(_/embeds?*
+                          #::grp.art{:problem-type :error/value-failed-spec
+                                     :original-expression 'idx})])))))))
 
 (specification "interpret-gspec"
   (let [env (update (grp.art/build-env)

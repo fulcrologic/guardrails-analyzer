@@ -25,6 +25,23 @@
           :warning/qualified-keyword-missing-spec)
       #{})))
 
+(>defn- ?validate-samples! [env kw samples & [orig-expr]]
+  [::grp.art/env qualified-keyword? ::grp.art/samples
+   (s/cat :orig-expr (s/? ::grp.art/original-expression)) => any?]
+  (if-let [spec (grp.spec/lookup env kw)]
+    (do
+      (when-not (some #(contains? % kw) samples)
+        (grp.art/record-warning! env kw :warning/failed-to-find-keyword-in-hashmap-samples))
+      (when-let [failing-case (some #(when-not (grp.spec/valid? env spec %) %) samples)]
+        (grp.art/record-error! env
+          #::grp.art{:problem-type :error/value-failed-spec
+                     :expected {::grp.art/spec spec
+                                ::grp.art/type (pr-str kw)}
+                     :actual failing-case
+                     :original-expression (or orig-expr kw)})))
+    (grp.art/record-warning! env kw
+      :warning/qualified-keyword-missing-spec)))
+
 (>defn destr-map-entry! [env [k v] td]
   [::grp.art/env map-entry? ::grp.art/type-description
    => (s/coll-of (s/tuple symbol? ::grp.art/type-description))]
@@ -32,19 +49,22 @@
     (= :keys k) {}
     (and (qualified-keyword? k) (= (name k) "keys"))
     #_=> (mapv (fn [sym]
-                 (let [spec-kw (keyword (namespace k) (str sym))
-                       samples (sample! env spec-kw sym)]
-                     [sym {::grp.art/original-expression sym
-                           ::grp.art/samples samples
-                           ::grp.art/spec spec-kw
-                           ::grp.art/type (pr-str spec-kw)}]))
+                 (let [spec-kw (keyword (namespace k) (str sym))]
+                   (?validate-samples! env spec-kw (::grp.art/samples td) sym)
+                   [sym {::grp.art/original-expression sym
+                         ::grp.art/samples (set (map spec-kw (::grp.art/samples td)))
+                         ::grp.art/spec spec-kw
+                         ::grp.art/type (pr-str spec-kw)}]))
            v)
     (qualified-keyword? v)
-    #_=> (-destructure! env k
-           {::grp.art/original-expression k
-            ::grp.art/samples (sample! env v k)
-            ::grp.art/spec v
-            ::grp.art/type (pr-str v)})
+    #_=> (do
+           (?validate-samples! env v (::grp.art/samples td))
+           (-destructure! env k
+             {::grp.art/original-expression k
+              ;; get from `td` samples
+              ::grp.art/samples (set (map v (::grp.art/samples td)))
+              ::grp.art/spec v
+              ::grp.art/type (pr-str v)}))
     (= :as k)
     #_=> [[v (assoc td ::grp.art/original-expression v)]]
     :else []))

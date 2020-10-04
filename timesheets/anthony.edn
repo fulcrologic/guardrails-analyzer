@@ -72,4 +72,6 @@
  {:date "2020-09-30" :description "exploration / research" :timespans [[1730 1810]]}
  {:date "2020-10-01" :description "destructuring" :timespans [[1800 1900] [1945 2100]]}
  {:date "2020-10-02" :description "map-like sampler" :timespans [[1240 1320]]}
+ {:date "2020-10-02" :description "lsp diagnostics & function-registry" :timespans [[1400 1600] [1700 1740] [1830 2000] [2030 2200]]}
+ {:date "2020-10-04" :description "destructuring" :timespans [[1000 1035] [1630 1700]]}
  ]

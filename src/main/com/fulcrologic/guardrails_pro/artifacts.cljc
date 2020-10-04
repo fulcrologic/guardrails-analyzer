@@ -284,7 +284,8 @@
 (>def ::warning (s/and ::problem (comp #{"warning"} namespace ::problem-type)))
 (>def ::errors (s/coll-of ::error))
 (>def ::warnings (s/coll-of ::warning))
-(>def ::by-sym (s/map-of qualified-keyword? ::problem))
+(>def ::by-sym (s/map-of qualified-symbol?
+                 (s/keys :opt [::errors ::warnings])))
 (>def ::problems (s/keys :req [::by-sym]))
 
 (defonce problems (atom {::by-sym {}}))
@@ -292,7 +293,7 @@
 (>defn- insert-problem [problems problem-list-type sym problem]
   [::problems #{::errors ::warnings} qualified-symbol? ::problem => ::problems]
   (update-in problems
-    [problem-list-type ::by-sym sym]
+    [::by-sym sym problem-list-type]
     (fnil conj [])
     problem))
 
