@@ -15,16 +15,6 @@
 
 (declare -destructure!)
 
-(>defn- sample! [env ?spec sym]
-  [::grp.art/env any? symbol? => ::grp.art/samples]
-  (if-let [spec (grp.spec/lookup env ?spec)]
-    (grp.sampler/try-sampling! env
-      (grp.spec/generator env spec)
-      {::grp.art/original-expression sym})
-    (do (grp.art/record-warning! env sym
-          :warning/qualified-keyword-missing-spec)
-      #{})))
-
 (>defn- ?validate-samples! [env kw samples & [orig-expr]]
   [::grp.art/env qualified-keyword? ::grp.art/samples
    (s/cat :orig-expr (s/? ::grp.art/original-expression)) => any?]

@@ -1,6 +1,7 @@
 (ns com.fulcrologic.guardrails-pro.analysis.function-type-spec
   (:require
     [clojure.spec.alpha :as s]
+    [clojure.spec.gen.alpha :as gen]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.analysis.function-type :as grp.fnt]
     [com.fulcrologic.guardrails-pro.test-fixtures :as tf]

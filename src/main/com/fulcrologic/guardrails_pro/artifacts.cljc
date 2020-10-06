@@ -2,7 +2,7 @@
   (:require
     [clojure.set :as set]
     [clojure.spec.alpha :as s]
-    [clojure.spec.gen.alpha :as gen]
+    [clojure.test.check.generators :as gen]
     [com.fulcrologic.guardrails-pro.analysis.spec :as grp.spec]
     [com.fulcrologic.guardrails.core :refer [>def >defn >defn- => | ?]]
     [com.fulcrologic.guardrails.registry :as gr.reg]
@@ -25,18 +25,18 @@
 
 (def posint?
   (s/with-gen pos-int?
-    #(gen/such-that pos? (gen/int))))
+    #(gen/such-that pos? gen/int)))
 
-(def fn-gen #(gen/elements [string? int? keyword? symbol?]))
+(def gen-predicate #(gen/elements [string? int? keyword? symbol?]))
 
 (>def ::spec (s/with-gen
                 (s/or
                   :spec-name qualified-keyword?
                   :spec-object #(s/spec? %)
                   :predicate ifn?)
-                fn-gen))
+                gen-predicate))
 (>def ::type string?)
-(>def ::form any?) ;; TASK
+(>def ::form any?) ;; TODO
 (>def ::samples
   "samples is for generated data only"
   (s/coll-of any? :min-count 0 :kind set?))
@@ -55,7 +55,7 @@
 (>def ::key (s/or
                :offset int?
                :typed-key qualified-keyword?
-               :homogenous ::homogenous
+               ;:homogenous ::homogenous
                :arbitrary any?))
 (>def ::positional-types (s/map-of ::key ::type-description))
 (>def ::recursive-description (s/keys :req [::positional-types]))
@@ -72,17 +72,20 @@
 (>def ::actual (s/keys :opt [::type-description ::failing-samples]))
 (>def ::Unknown (s/and ::type-description empty?))
 (>def ::name qualified-symbol?)
-(>def ::fn-ref (s/with-gen fn? fn-gen))
-(>def ::arglist (s/or :vector vector? :quoted-vector (s/and seq? #(vector? (second %)))))
-(>def ::argument-predicates vector?)
+(>def ::fn-ref (s/with-gen fn? #(gen/let [any gen/any] (constantly any))))
+(>def ::arglist (s/or :vector (s/coll-of simple-symbol? :kind vector?)
+                  :quoted-vector (s/cat :quote #{'quote}
+                                   :symbols (s/coll-of simple-symbol? :kind vector?))))
+(>def ::predicate (s/with-gen fn? gen-predicate))
+(>def ::argument-predicates (s/coll-of ::predicate :kind vector?))
 (>def ::argument-types (s/coll-of ::type :kind vector?))
 (>def ::return-type ::type)
 (>def ::argument-specs (s/coll-of ::spec :kind vector?))
 (>def ::return-spec ::spec)
 (>def ::quoted.argument-specs (s/coll-of ::form :kind vector?))
 (>def ::quoted.return-spec ::form)
-(>def ::return-predicates (s/with-gen (s/coll-of fn? :kind vector?) fn-gen))
-(>def ::generator any?)
+(>def ::return-predicates (s/coll-of ::predicate :kind vector?))
+(>def ::generator (s/with-gen gen/generator? #(gen/return gen/any)))
 (>def ::metadata map?)
 (>def ::gspec (s/keys :req [::return-spec ::return-type]
                  :opt [::argument-specs ::metadata ::generator
@@ -93,7 +96,7 @@
 (>def ::last-changed posint?)
 (>def ::last-checked posint?)
 (>def ::last-seen posint?)
-(>def ::env->fn fn?)
+(>def ::env->fn (s/with-gen fn? #(gen/let [any gen/any] (fn [env] (constantly any)))))
 (>def ::lambda-name simple-symbol?)
 (>def ::lambda (s/keys :req [::env->fn ::arities] :opt [::lambda-name]))
 (>def ::lambdas (s/map-of symbol? ::lambda))
@@ -282,15 +285,19 @@
                         ::line-end ::message-params]))
 (>def ::error (s/and ::problem (comp #{"error"} namespace ::problem-type)))
 (>def ::warning (s/and ::problem (comp #{"warning"} namespace ::problem-type)))
+(>def ::info (s/and ::problem (comp #{"info"} namespace ::problem-type)))
+(>def ::hint (s/and ::problem (comp #{"hint"} namespace ::problem-type)))
 (>def ::errors (s/coll-of ::error))
 (>def ::warnings (s/coll-of ::warning))
+(>def ::infos (s/coll-of ::infos))
+(>def ::hints (s/coll-of ::hints))
 (>def ::by-sym (s/map-of qualified-symbol?
-                 (s/keys :opt [::errors ::warnings])))
+                 (s/keys :opt [::errors ::warnings ::infos ::hints])))
 (>def ::problems (s/keys :req [::by-sym]))
 
 (defonce problems (atom {::by-sym {}}))
 
-(>defn- insert-problem [problems problem-list-type sym problem]
+(>defn- insert-problem-by-sym [problems problem-list-type sym problem]
   [::problems #{::errors ::warnings} qualified-symbol? ::problem => ::problems]
   (update-in problems
     [::by-sym sym problem-list-type]
@@ -309,7 +316,7 @@
   ([env error]
    [::env (s/keys :req [::problem-type ::original-expression]) => nil?]
    (log/info :record-error! (::checking-sym env) "\n" (::location env) "\n" error)
-   (swap! problems insert-problem ::errors (::checking-sym env)
+   (swap! problems insert-problem-by-sym ::errors (::checking-sym env)
      (merge error (::location env) {::file (::checking-file env)}))
    nil))
 
@@ -324,8 +331,24 @@
                          ::message-params message-params}))
   ([env warning]
    [::env (s/keys :req [::problem-type ::original-expression]) => nil?]
-   (swap! problems insert-problem ::warnings (::checking-sym env)
+   (swap! problems insert-problem-by-sym ::warnings (::checking-sym env)
      (merge warning (::location env) {::file (::checking-file env)}))
+   nil))
+
+(>defn record-info!
+  ([env original-expression problem-type]
+   [::env ::original-expression ::problem-type => nil?]
+   (record-info! env original-expression problem-type {}))
+  ([env original-expression problem-type message-params]
+   [::env ::original-expression ::problem-type ::message-params => nil?]
+   (record-info! env {::problem-type problem-type
+                      ::original-expression original-expression
+                      ::message-params message-params}))
+  ([env info]
+   [::env (s/keys :req [::problem-type ::original-expression]) => nil?]
+   (swap! problems update-in [::infos (::location env)]
+     (fnil conj [])
+     (merge info (::location env) {::file (::checking-file env)}))
    nil))
 
 (defn- clear-problems-by-file [problems file]
@@ -333,5 +356,5 @@
     $/NONE problems))
 
 (defn clear-problems!
-  ([] (swap! problems dissoc ::warnings ::errors))
+  ([] (swap! problems dissoc ::errors ::warnings ::infos ::hints))
   ([file] (swap! problems clear-problems-by-file file)))

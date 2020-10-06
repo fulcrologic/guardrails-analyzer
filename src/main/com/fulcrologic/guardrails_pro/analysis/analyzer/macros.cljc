@@ -23,8 +23,10 @@
         (analyze-single-arity! env arity))))
   {})
 
-(defmethod grp.ana.disp/analyze-mm '>defn    [env sexpr] (analyze:>defn! env sexpr))
-(defmethod grp.ana.disp/analyze-mm `gr/>defn [env sexpr] (analyze:>defn! env sexpr))
+(defmethod grp.ana.disp/analyze-mm '>defn     [env sexpr] (analyze:>defn! env sexpr))
+(defmethod grp.ana.disp/analyze-mm `gr/>defn  [env sexpr] (analyze:>defn! env sexpr))
+(defmethod grp.ana.disp/analyze-mm '>defn-    [env sexpr] (analyze:>defn! env sexpr))
+(defmethod grp.ana.disp/analyze-mm `gr/>defn- [env sexpr] (analyze:>defn! env sexpr))
 
 (defmethod grp.ana.disp/analyze-mm 'do [env [_ & body]] (grp.ana.disp/analyze-statements! env body))
 

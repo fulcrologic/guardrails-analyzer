@@ -81,13 +81,10 @@
       (get-in (grp.art/external-function-detail env THIS)
         [::grp.art/arities 1 ::grp.art/gspec])
       #::grp.art{:lambda-name (gensym "juxt$")
+                 ;; TODO: validate args (count & spec) w/ fns-td
+                 ;; put in argument-predicates
                  :env->fn (fn [env]
                             (fn [& args]
-                              ;; TODO validate args (count & spec) w/ fns-td
-                              ;; is here the right spot?
-                              ;; what if not pure?
-                              ;; should the caller of functions do checks?
-                              ;; can a lambda td include a way to specify those checks?
                               (reduce #(conj %1 (apply %2 args))
                                 [] (map (partial grp.sampler/get-fn-ref env) fns-td))))})))
 

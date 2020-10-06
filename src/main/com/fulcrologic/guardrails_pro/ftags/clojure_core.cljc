@@ -313,6 +313,9 @@
   ([name] [::named => symbol?])
   ([ns name] [string? string? => symbol?]))
 
+(>fdef ^:pure clojure.core/symbol?
+  [x] [any? => boolean?])
+
 (>fdef ^:pure clojure.core/take-last
   [n coll] [number? coll? => coll?])
 
@@ -330,6 +333,9 @@
 
 (>fdef ^:pure clojure.core/vector
   [& xs] [(s/* any?) => vector?])
+
+(>fdef ^:pure clojure.core/vector?
+  [x] [any? => boolean?])
 
 (>fdef ^:pure clojure.core/zipmap
   [keys vals] [coll? coll? => map?])

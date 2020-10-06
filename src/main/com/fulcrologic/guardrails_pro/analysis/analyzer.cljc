@@ -15,8 +15,9 @@
   [::grp.art/env any? => ::grp.art/type-description]
   (-analyze! env sexpr))
 
-(defmethod analyze-mm :unknown [_ sexpr]
-  (log/error "Could not analyze:" (pr-str sexpr))
+(defmethod analyze-mm :unknown [env sexpr]
+  (log/error "Unknown expression:" (pr-str sexpr))
+  (grp.art/record-info! env sexpr :info/failed-to-analyze-unknown-expression)
   {})
 
 (defmethod analyze-mm :symbol.local/lookup [env sym]

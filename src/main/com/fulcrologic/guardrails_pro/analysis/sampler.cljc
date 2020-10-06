@@ -34,18 +34,16 @@
   [env _ {:keys [args return-sample-fn] N :params}]
   (merge (return-sample-fn) (nth args (or N 0) {})))
 
-(s/def ::generator gen/generator?)
-
 (defn ->samples [x] (with-meta x {::samples? true}))
 (defn flatten-samples [x]
   (letfn [(samples? [x] (and (set? x) (some-> x meta ::samples?)))]
     (set (mapcat #(if (samples? %) % [%]) x))))
 
 (>defn try-sampling!
-  ([env gen] [::grp.art/env (? ::generator) => ::grp.art/samples]
+  ([env gen] [::grp.art/env (? ::grp.art/generator) => ::grp.art/samples]
    (try-sampling! env gen {}))
   ([env gen extra]
-   [::grp.art/env (? ::generator) map? => ::grp.art/samples]
+   [::grp.art/env (? ::grp.art/generator) map? => ::grp.art/samples]
    (try
      (if-not gen (throw (ex-info "derp" {}))
        (if-let [samples (seq (grp.spec/sample env gen))]
@@ -76,7 +74,7 @@
     (second sampler)))
 
 (>defn return-sample-gen [env {::grp.art/keys [generator return-spec return-type]}]
-  [::grp.art/env (s/keys :req [(or ::grp.art/generator ::grp.art/return-spec)]) => ::generator]
+  [::grp.art/env (s/keys :req [(or ::grp.art/generator ::grp.art/return-spec)]) => ::grp.art/generator]
   (try (or generator (grp.spec/generator env return-spec))
     (catch #? (:clj Exception :cljs :default) e
       (log/error e "Could not create generator for" return-type)
@@ -92,14 +90,14 @@
              {::grp.art/type-description td}))))
 
 (>defn args-gen [env args]
-  [::grp.art/env (s/coll-of (s/coll-of any? :min-count 1)) => ::generator]
+  [::grp.art/env (s/coll-of (s/coll-of any? :min-count 1)) => ::grp.art/generator]
   (apply gen/tuple (map gen/elements args)))
 
 (>defn params-gen [env fd argtypes]
   [::grp.art/env
    (s/keys :req [(or ::grp.art/fn-ref ::grp.art/env->fn)])
    (s/coll-of ::grp.art/type-description)
-   => ::generator]
+   => ::grp.art/generator]
   (let [{::grp.art/keys [sampler] :as gspec} (get-gspec fd argtypes)]
     (gen/hash-map
       :fn-ref (gen/return (get-fn-ref env fd))

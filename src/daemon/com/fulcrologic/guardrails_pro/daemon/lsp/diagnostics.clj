@@ -34,7 +34,7 @@
       (new PublishDiagnosticsParams uri
         (mapv problem->diagnostic problems)))))
 
-(defn update-problems! [{:as problems ::grp.art/keys [errors warnings]}]
+(defn update-problems! [problems]
   (let [uri @currently-open-uri
         file (.getPath (new URI uri))]
     (publish-problems-for uri
@@ -42,4 +42,4 @@
         ($/select
           [($/walker ::grp.art/problem-type)
            ($/pred (comp (partial = file) ::grp.art/file))]
-          (concat errors warnings))))))
+          problems)))))

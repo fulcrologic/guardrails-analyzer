@@ -74,4 +74,6 @@
  {:date "2020-10-02" :description "map-like sampler" :timespans [[1240 1320]]}
  {:date "2020-10-02" :description "lsp diagnostics & function-registry" :timespans [[1400 1600] [1700 1740] [1830 2000] [2030 2200]]}
  {:date "2020-10-04" :description "destructuring" :timespans [[1000 1035] [1630 1700]]}
+ {:date "2020-10-05" :description "chat with tony" :timespans [[845 1010]]}
+ {:date "2020-10-05" :description "view unchecked code & fixes" :timespans [[1735 2020]]}
  ]
