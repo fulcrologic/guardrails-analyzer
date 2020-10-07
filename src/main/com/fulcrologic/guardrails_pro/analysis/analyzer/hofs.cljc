@@ -5,6 +5,8 @@
     [com.fulcrologic.guardrails-pro.analysis.function-type :as grp.fnt]
     [com.fulcrologic.guardrails-pro.analysis.sampler :as grp.sampler]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
+    [com.rpl.specter :as $]
+    [taoensso.encore :as enc]
     [taoensso.timbre :as log]))
 
 ;; TODO potential duplication with >defn
@@ -30,7 +32,9 @@
 (defmethod grp.ana.disp/analyze-mm '>fn [env sexpr] (analyze-lambda! env sexpr))
 (defmethod grp.ana.disp/analyze-mm `gr/>fn [env sexpr] (analyze-lambda! env sexpr))
 
-;; TODO HOFs fn -> val
+;; CONTEXT: ============ fn * -> val ============
+
+;; TODO
 (comment
   reduce
   filter
@@ -46,7 +50,7 @@
   )
 
 (defn analyze-map-like! [env [map-like-sym f & colls]]
-  (let [lambda (log/spy :debug :lambda (grp.ana.disp/-analyze! env f))
+  (let [lambda (grp.ana.disp/-analyze! env f)
         colls (map (partial grp.ana.disp/-analyze! env) colls)]
     {::grp.art/samples (grp.sampler/sample! env
                          (grp.art/external-function-detail env map-like-sym)
@@ -55,49 +59,53 @@
 (defmethod grp.ana.disp/analyze-mm 'map [env sexpr] (analyze-map-like! env sexpr))
 (defmethod grp.ana.disp/analyze-mm 'clojure.core/map [env sexpr] (analyze-map-like! env sexpr))
 
-;; TODO HOFs * -> fn
-(comment
-  comp
-  partial
-  fnil
-  )
+;; CONTEXT: ============ * -> fn ============
 
-;; TODO: WIP: FIXME
-(defn analyze-complement! [env [THIS f]]
-  (let [fn-td (grp.ana.disp/-analyze! env f)]
-    (merge
-      (get-in (grp.art/external-function-detail env THIS)
-        [::grp.art/arities 1 ::grp.art/gspec])
-      #::grp.art{:lambda-name (gensym "complement$")
-                 :env->fn (fn [env]
-                            (fn [& args]
-                              ;; TODO validate args (count & spec) w/ fn-td
-                              (not (apply (grp.sampler/get-fn-ref env fn-td) args))))})))
-
-;; TODO: WIP: FIXME
-(defn analyze-juxt! [env [THIS & fns]]
-  (let [fns-td (map (partial grp.ana.disp/-analyze! env) fns)]
-    (merge
-      (get-in (grp.art/external-function-detail env THIS)
-        [::grp.art/arities 1 ::grp.art/gspec])
-      #::grp.art{:lambda-name (gensym "juxt$")
-                 ;; TODO: validate args (count & spec) w/ fns-td
-                 ;; put in argument-predicates
-                 :env->fn (fn [env]
-                            (fn [& args]
-                              (reduce #(conj %1 (apply %2 args))
-                                [] (map (partial grp.sampler/get-fn-ref env) fns-td))))})))
-
-(defn analyze-constantly! [env [THIS value]]
+(defn analyze-constantly! [env [this-sym value]]
   (let [value-td (grp.ana.disp/-analyze! env value)]
     (merge
-      (get-in (grp.art/external-function-detail env THIS)
-        [::grp.art/arities 1 ::grp.art/gspec])
+      (get-in (grp.art/external-function-detail env this-sym)
+        [::grp.art/arities 1 ::grp.art/gspec ::grp.art/return-spec])
       #::grp.art{:lambda-name (gensym "constantly$")
                  :env->fn (fn [env] (fn [& _] (rand-nth (vec (::grp.art/samples value-td)))))})))
 
 (defmethod grp.ana.disp/analyze-mm 'constantly [env sexpr] (analyze-constantly! env sexpr))
 (defmethod grp.ana.disp/analyze-mm 'clojure.core/constantly [env sexpr] (analyze-constantly! env sexpr))
+
+(defn update-fn-ref [{:as function ::grp.art/keys [fn-ref env->fn]} env f]
+  (cond
+    fn-ref (update function ::grp.art/fn-ref f)
+    env->fn (assoc function ::grp.art/env->fn
+              (f (env->fn env)))
+    :else function))
+
+;; TODO
+(defn analyze-comp! [env [this-sym & _]])
+
+(defn analyze-complement! [env [this-sym f]]
+  (-> (grp.ana.disp/-analyze! env f)
+    (update-fn-ref env #(comp not %))
+    (update ::grp.art/arities
+      (partial enc/map-vals
+        #(merge % #::grp.art{:return-spec boolean?
+                             :return-type (pr-str boolean?)})))))
+
+(defmethod grp.ana.disp/analyze-mm 'complement [env sexpr] (analyze-complement! env sexpr))
+(defmethod grp.ana.disp/analyze-mm 'clojure.core/complement [env sexpr] (analyze-complement! env sexpr))
+
+;; TODO
+(defn analyze-fnil [env [this-sym & _]])
+
+;; TODO
+(defn analyze-juxt! [env [this-sym & fns]]
+  (let [fns-td (map (partial grp.ana.disp/-analyze! env) fns)]
+    {}
+    #_(fn [& args]
+        (reduce #(conj %1 (apply %2 args))
+          [] (map (partial grp.sampler/get-fn-ref env) fns-td)))))
+
+;; TODO
+(defn analyze-partial [env [this-sym & _]])
 
 ;; TODO transducers
 (comment

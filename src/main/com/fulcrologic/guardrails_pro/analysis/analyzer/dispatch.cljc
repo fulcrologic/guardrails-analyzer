@@ -34,7 +34,7 @@
 (defn analyze-dispatch [env sexpr]
   (cond
     (seq? sexpr) (list-dispatch env sexpr)
-    (symbol? sexpr) :symbol.local/lookup
+    (symbol? sexpr) :symbol/lookup
 
     (char? sexpr) :literal/char
     (number? sexpr) :literal/number
@@ -59,7 +59,9 @@
   [env sexpr]
   [::grp.art/env any? => ::grp.art/type-description]
   (log/info "analyzing:" (pr-str sexpr) ", meta:" (meta sexpr))
-  (log/spy :debug (str "analyze! " (pr-str sexpr) " returned:")
+  (log/spy :debug (str "analyze! " (pr-str sexpr)
+                    " dispatched to: " (analyze-dispatch env sexpr)
+                    " returned:")
     (-> env
       (grp.art/update-location (meta sexpr))
       (analyze-mm sexpr))))

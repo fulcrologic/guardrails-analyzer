@@ -1,7 +1,6 @@
 (ns com.fulcrologic.guardrails-pro.analysis.function-type-spec
   (:require
     [clojure.spec.alpha :as s]
-    [clojure.spec.gen.alpha :as gen]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.analysis.function-type :as grp.fnt]
     [com.fulcrologic.guardrails-pro.test-fixtures :as tf]
@@ -13,11 +12,7 @@
 (s/def ::txt string?)
 
 (specification "destructure!"
-  (let [test-env (merge (grp.art/build-env)
-                   {::grp.art/checking-sym `fake-test-sym
-                    ::grp.art/checking-file "test-file"
-                    ::grp.art/location #::grp.art{:line-start 1
-                                                  :column-start 1}})
+  (let [test-env (tf/test-env)
         test-td {::grp.art/type "test type desc"}]
     (assertions
       "simple symbol"

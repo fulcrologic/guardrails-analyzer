@@ -3,14 +3,26 @@
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [>fdef >fspec => | ?]]))
 
-(>fdef ^:map-like clojure.core/map
-  ([f coll & colls] [fn? sequential? (s/+ sequential?) => (s/coll-of any?)]))
-
-(>fdef ^:pure clojure.core/partial
-  [f & args] [fn? (s/+ any?) => fn?])
-
 (>fdef ^:pure clojure.core/constantly
   [value] [any? => (>fspec [& args] ^:pure [(s/* any?) => any?])])
+
+(>fdef ^:pure clojure.core/comp
+  [& fs] [(s/* ifn?) => (>fspec [& args] [(s/* any?) => any?])])
+
+(>fdef ^:pure clojure.core/complement
+  [f] [ifn? => (>fspec [& args] [(s/* any?) => any?])])
+
+(>fdef ^:pure clojure.core/fnil
+  [& values] [(s/+ some?) => (>fspec [& args] [(s/* any?) => any?])])
+
+(>fdef ^:pure clojure.core/juxt
+  [& fs] [(s/+ ifn?) => (>fspec [& args] [(s/* any?) => vector?])])
+
+(>fdef ^:map-like clojure.core/map
+  ([f coll & colls] [ifn? sequential? (s/+ sequential?) => (s/coll-of any?)]))
+
+(>fdef ^:pure clojure.core/partial
+  [f & args] [ifn? (s/+ any?) => (>fspec [& args] [(s/* any?) => any?])])
 
 ;; CONTEXT: future design work
 

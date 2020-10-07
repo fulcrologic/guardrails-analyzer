@@ -76,4 +76,5 @@
  {:date "2020-10-04" :description "destructuring" :timespans [[1000 1035] [1630 1700]]}
  {:date "2020-10-05" :description "chat with tony" :timespans [[845 1010]]}
  {:date "2020-10-05" :description "view unchecked code & fixes" :timespans [[1735 2020]]}
+ {:date "2020-10-06" :description "complement" :timespans [[1145 1945]]}
  ]

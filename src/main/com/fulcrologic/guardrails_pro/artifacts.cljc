@@ -73,10 +73,12 @@
 (>def ::Unknown (s/and ::type-description empty?))
 (>def ::name qualified-symbol?)
 (>def ::fn-ref (s/with-gen fn? #(gen/let [any gen/any] (constantly any))))
-(>def ::arglist (s/or :vector (s/coll-of simple-symbol? :kind vector?)
-                  :quoted-vector (s/cat :quote #{'quote}
-                                   :symbols (s/coll-of simple-symbol? :kind vector?))))
+(>def ::arglist (s/with-gen (s/or :vector vector?
+                              :quoted-vector (s/cat :quote #{'quote}
+                                               :symbols vector?))
+                  #(gen/vector gen/symbol)))
 (>def ::predicate (s/with-gen fn? gen-predicate))
+;; TODO generated predicates might not work for argument-predicates
 (>def ::argument-predicates (s/coll-of ::predicate :kind vector?))
 (>def ::argument-types (s/coll-of ::type :kind vector?))
 (>def ::return-type ::type)
@@ -98,7 +100,7 @@
 (>def ::last-seen posint?)
 (>def ::env->fn (s/with-gen fn? #(gen/let [any gen/any] (fn [env] (constantly any)))))
 (>def ::lambda-name simple-symbol?)
-(>def ::lambda (s/keys :req [::env->fn ::arities] :opt [::lambda-name]))
+(>def ::lambda (s/keys :req [(or ::fn-ref ::env->fn) ::arities] :opt [::lambda-name]))
 (>def ::lambdas (s/map-of symbol? ::lambda))
 (>def ::fn-name symbol?)
 (>def ::var-name qualified-symbol?)
@@ -133,7 +135,10 @@
 (>defn get-arity
   [arities argtypes]
   [::arities (s/coll-of ::type-description) => ::arity-detail]
-  (get arities (count argtypes) (get arities :n)))
+  (get arities (count argtypes)
+    (get arities :n
+      ;; TODO: WIP
+      (get arities (first (sort (keys (dissoc arities :n))))))))
 
 (defn- fix-kw-nss [x]
   ($/transform [($/walker qualified-keyword?)
@@ -168,7 +173,9 @@
    (build-env function-registry @gr.externs/external-function-registry))
   ([function-registry external-function-registry]
    [map? map? => ::env]
-   (let [spec-registry @gr.externs/spec-registry]
+   (let [spec-registry (->> @gr.externs/spec-registry
+                         (fix-kw-nss)
+                         (#(resolve-quoted-specs % %)))]
      (-> {::external-function-registry (->> external-function-registry
                                          (fix-kw-nss)
                                          (resolve-quoted-specs spec-registry))
@@ -193,15 +200,18 @@
         #_:or sym))))
 
 (>defn function-detail [env sym]
-  [::env simple-symbol? => (? ::function)]
+  [::env symbol? => (? ::function)]
   (log/debug "function-detail:" (pr-str sym)
     "current-ns:" (pr-str (::current-ns env))
     "ns-fns:" (keys (get-in env [::function-registry (::current-ns env)] {})))
   (log/spy :debug "function-detail/return"
-    (get-in env [::function-registry (::current-ns env) sym])))
+    (get-in env [::function-registry
+                 (or (namespace sym) (::current-ns env))
+                 (cond-> sym (namespace sym)
+                   (-> name symbol))])))
 
 (>defn external-function-detail [env sym]
-  [::env symbol? => (? (s/keys :req [::name ::fn-ref ::arities]))]
+  [::env symbol? => (? ::function)]
   (log/spy :debug "external-function-detail/return"
     (let [sym (if (qualified-symbol? sym)
                 (cljc-rewrite-sym-ns sym)

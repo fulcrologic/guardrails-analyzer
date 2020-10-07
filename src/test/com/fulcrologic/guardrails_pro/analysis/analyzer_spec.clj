@@ -1,10 +1,8 @@
 (ns com.fulcrologic.guardrails-pro.analysis.analyzer-spec
   (:require
-    [clojure.spec.alpha :as s]
-    [com.fulcrologic.guardrails-pro.analysis.analyzer :as grp.ana]
     [com.fulcrologic.guardrails-pro.analysis.analyzer.dispatch :as grp.ana.disp]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
-    [fulcro-spec.core :refer [specification component assertions when-mocking]]))
+    [fulcro-spec.core :refer [specification assertions when-mocking]]))
 
 (defmethod grp.art/cljc-rewrite-sym-ns-mm "analyzer-spec" [sym] "cljc-analyzer-spec")
 

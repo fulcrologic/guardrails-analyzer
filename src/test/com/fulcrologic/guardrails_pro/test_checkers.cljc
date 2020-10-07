@@ -1,5 +1,7 @@
 (ns com.fulcrologic.guardrails-pro.test-checkers
   (:require
+    #?@(:cljs [[goog.string.format]
+               [goog.string :refer [format]]])
     [fulcro-spec.check :refer [checker]]))
 
 (defn of-length?* [exp-len]

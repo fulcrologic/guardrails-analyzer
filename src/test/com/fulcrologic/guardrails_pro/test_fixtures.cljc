@@ -28,6 +28,13 @@
      (reset! test-logs [])
      ~@body))
 
+(defn test-env [& args]
+  (merge (grp.art/build-env)
+    {::grp.art/checking-sym `test-sym
+     ::grp.art/checking-file "test-file"
+     ::grp.art/location #::grp.art{:line-start 1
+                                   :column-start 1}}))
+
 (defn capture-errors [f & args]
   (let [errors (atom [])]
     (with-redefs

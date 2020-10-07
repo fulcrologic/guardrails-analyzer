@@ -5,7 +5,6 @@
     [com.fulcrologic.guardrails-pro.analysis.analyzer.macros]
     [com.fulcrologic.guardrails-pro.analysis.analyzer.hofs]
     [com.fulcrologic.guardrails-pro.analysis.function-type :as grp.fnt]
-    [com.fulcrologic.guardrails-pro.analysis.sampler :as grp.sampler]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails.core :as gr :refer [>defn =>]]
     [taoensso.timbre :as log]))
@@ -20,19 +19,24 @@
   (grp.art/record-info! env sexpr :info/failed-to-analyze-unknown-expression)
   {})
 
-(defmethod analyze-mm :symbol.local/lookup [env sym]
-  (or (grp.art/symbol-detail env sym) {}))
+(defmethod analyze-mm :symbol/lookup [env sym]
+  (or
+    (grp.art/symbol-detail env sym)
+    (grp.art/function-detail env sym)
+    (grp.art/external-function-detail env sym)
+    {}))
 
 (defmethod analyze-mm :function.external/call [env [f & args]]
-  (let [fd       (grp.art/external-function-detail env f)
+  (let [function (grp.art/external-function-detail env f)
         argtypes (mapv (partial -analyze! env) args)]
-    {::grp.art/samples (grp.sampler/sample! env fd argtypes)}))
+    (grp.fnt/calculate-function-type env function argtypes)))
 
-(defmethod analyze-mm :function/call [env [function & arguments]]
-  (grp.fnt/calculate-function-type env function
-    (mapv (partial -analyze! env) arguments)))
+(defmethod analyze-mm :function/call [env [f & arguments]]
+  (let [function (grp.art/function-detail env f)
+        argtypes (mapv (partial -analyze! env) arguments)]
+    (grp.fnt/calculate-function-type env function argtypes)))
 
 (defmethod analyze-mm :function.expression/call [env [fn-expr & args]]
   (let [function (-analyze! env fn-expr)
         argtypes (mapv (partial -analyze! env) args)]
-    {::grp.art/samples (grp.sampler/sample! env function argtypes)}))
+    (grp.fnt/calculate-function-type env function argtypes)))
