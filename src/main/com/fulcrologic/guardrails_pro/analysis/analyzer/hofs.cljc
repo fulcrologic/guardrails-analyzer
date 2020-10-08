@@ -5,6 +5,7 @@
     [com.fulcrologic.guardrails-pro.analysis.analyzer.literals]
     [com.fulcrologic.guardrails-pro.analysis.function-type :as grp.fnt]
     [com.fulcrologic.guardrails-pro.analysis.sampler :as grp.sampler]
+    [com.fulcrologic.guardrails-pro.analysis.spec :as grp.spec]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails.core :as gr]
     [taoensso.encore :as enc]
@@ -33,13 +34,19 @@
 (defmethod grp.ana.disp/analyze-mm '>fn [env sexpr] (analyze-lambda! env sexpr))
 (defmethod grp.ana.disp/analyze-mm `gr/>fn [env sexpr] (analyze-lambda! env sexpr))
 
+(defn update-fn-ref [{:as function ::grp.art/keys [fn-ref env->fn]} env f]
+  (cond
+    fn-ref (update function ::grp.art/fn-ref f)
+    env->fn (assoc function ::grp.art/env->fn
+              (f (env->fn env)))
+    :else function))
+
 ;; CONTEXT: ============ fn * -> val ============
 
 ;; TODO
 (comment
   reduce
   filter
-  apply
   update
   sort-by
   group-by
@@ -50,11 +57,38 @@
   iterate
   )
 
-(defn analyze-map-like! [env [map-like-sym f & colls]]
+(defn analyze-apply! [env [this-sym f & args]]
+  (let [apply-td (grp.art/external-function-detail env this-sym)
+        function (grp.ana.disp/-analyze! env f)
+        [args-td args-coll-td] ((juxt drop-last last)
+                                (map (partial grp.ana.disp/-analyze! env) args))
+        fn-args-td (conj (vec args-td) args-coll-td)
+        apply-args-td (cons function fn-args-td)]
+    (if-not (grp.fnt/validate-argtypes!? env
+              (grp.art/get-arity
+                (::grp.art/arities apply-td)
+                apply-args-td)
+              apply-args-td)
+      {::grp.art/samples (grp.sampler/try-sampling! env
+                           (grp.spec/generator env
+                             (get-in (grp.art/get-arity
+                                       (::grp.art/arities function)
+                                       fn-args-td)
+                               [::grp.art/gspec ::grp.art/return-spec]))
+                           {::grp.art/original-expression function})}
+      (grp.fnt/calculate-function-type! env function
+        (concat args-td
+          (apply map #(hash-map ::grp.art/samples #{%})
+            (::grp.art/samples args-coll-td)))))))
+
+(defmethod grp.ana.disp/analyze-mm 'apply [env sexpr] (analyze-apply! env sexpr))
+(defmethod grp.ana.disp/analyze-mm 'clojure.core/apply [env sexpr] (analyze-apply! env sexpr))
+
+(defn analyze-map-like! [env [this-sym f & colls]]
   (let [lambda (grp.ana.disp/-analyze! env f)
         colls (map (partial grp.ana.disp/-analyze! env) colls)]
     {::grp.art/samples (grp.sampler/sample! env
-                         (grp.art/external-function-detail env map-like-sym)
+                         (grp.art/external-function-detail env this-sym)
                          (cons lambda colls))}))
 
 (defmethod grp.ana.disp/analyze-mm 'map [env sexpr] (analyze-map-like! env sexpr))
@@ -73,13 +107,6 @@
 
 (defmethod grp.ana.disp/analyze-mm 'constantly [env sexpr] (analyze-constantly! env sexpr))
 (defmethod grp.ana.disp/analyze-mm 'clojure.core/constantly [env sexpr] (analyze-constantly! env sexpr))
-
-(defn update-fn-ref [{:as function ::grp.art/keys [fn-ref env->fn]} env f]
-  (cond
-    fn-ref (update function ::grp.art/fn-ref f)
-    env->fn (assoc function ::grp.art/env->fn
-              (f (env->fn env)))
-    :else function))
 
 ;; TODO
 (defn analyze-comp! [env [this-sym & _]])

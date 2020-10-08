@@ -7,11 +7,36 @@
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.analysis.sampler :as grp.sampler]
     [com.fulcrologic.guardrails-pro.test-fixtures :as tf]
-    [com.fulcrologic.guardrails.core :as gr :refer [=>]]
+    [com.fulcrologic.guardrails.core :as gr]
     [fulcro-spec.check :as _]
     [fulcro-spec.core :refer [specification assertions provided!]]))
 
 (tf/use-fixtures :once tf/with-default-test-logging-config)
+
+(specification "analyze-apply!" :integration
+  (let [env (tf/test-env)]
+    (assertions
+      (grp.ana/analyze! env
+        `(apply + 1 [2 3]))
+      =check=> (_/embeds?* {::grp.art/samples #{6}})
+      "validates that apply was called correctly"
+      (tf/capture-errors grp.ana/analyze! env
+        `(apply + 1 2 3))
+      =check=>
+      (_/seq-matches?*
+        [(_/embeds?* {::grp.art/problem-type :error/function-arguments-failed-predicate})])
+      "validates single arguments wrt function"
+      (tf/capture-errors grp.ana/analyze! env
+        `(apply + :kw []))
+      =check=>
+      (_/seq-matches?*
+        [(_/embeds?* {::grp.art/problem-type :error/function-argument-failed-spec})])
+      "validates the collection argument wrt function"
+      (tf/capture-errors grp.ana/analyze! env
+        `(apply + 1 2 [:kw]))
+      =check=>
+      (_/seq-matches?*
+        [(_/embeds?* {::grp.art/problem-type :error/function-arguments-failed-spec})]))))
 
 (specification "analyze-constantly!" :integration
   (let [env (tf/test-env)]

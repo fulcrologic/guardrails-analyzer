@@ -6,6 +6,9 @@
 
 ;; CONTEXT: Higher Order FunctionS
 
+(>fdef ^:pure clojure.core/apply
+  [f & args] [ifn? (s/+ any?) | #(seqable? (last args)) => any?])
+
 (>fdef ^:pure clojure.core/constantly
   [value] [any? => (>fspec [& args] [(s/* any?) => any?])])
 

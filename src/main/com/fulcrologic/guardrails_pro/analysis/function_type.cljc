@@ -155,6 +155,7 @@
   [env {::grp.art/keys [arglist gspec]} argtypes]
   [::grp.art/env ::grp.art/arity-detail (s/coll-of ::grp.art/type-description) => boolean?]
   (let [failed? (atom false)
+        get-samples (comp set (partial grp.sampler/get-args env))
         {::grp.art/keys [argument-types argument-specs argument-predicates]} gspec]
     (when-not (or (some #{'&} arglist)
                 (= (count arglist) (count argtypes)))
@@ -164,8 +165,9 @@
                    :problem-type        :error/invalid-function-arguments-count}))
     (when-not @failed?
       (let [[syms specials] (split-with (complement #{:as '&}) arglist)]
-        (doseq [[arg-sym argument-type argument-spec {::grp.art/keys [samples original-expression]}]
-                (map vector syms argument-types argument-specs argtypes)
+        (doseq [[arg-sym argument-type argument-spec [samples original-expression]]
+                (map vector syms argument-types argument-specs
+                  (map (juxt get-samples ::grp.art/original-expression) argtypes))
                 :let [checkable? (and argument-spec (seq samples))]]
           (when-not checkable?
             (grp.art/record-warning! env original-expression :warning/unable-to-check))
@@ -187,7 +189,7 @@
                       rst-sym (get (apply hash-map specials) '& nil)
                       args-spec (first (drop (count syms) argument-specs))
                       args-type (first (drop (count syms) argument-types))]
-                sample-rest-arguments (apply map vector (map ::grp.art/samples rest-argtypes))
+                sample-rest-arguments (apply map vector (map get-samples rest-argtypes))
                 :when (not (grp.spec/valid? env args-spec sample-rest-arguments))]
           (reset! failed? true)
           (grp.art/record-error! env
@@ -196,15 +198,15 @@
                        :expected            #::grp.art{:spec args-spec :type args-type}
                        :problem-type        :error/function-arguments-failed-spec}))))
     (when (not @failed?)
-      (doseq [sample-arguments (apply map vector (map ::grp.art/samples argtypes))
-              argument-pred argument-predicates
-              :when (not (apply argument-pred sample-arguments))]
-        (reset! failed? true)
-        (grp.art/record-error! env
-          {::grp.art/original-expression (map ::grp.art/original-expression argtypes)
-           ::grp.art/actual              {::grp.art/failing-samples #{sample-arguments}}
-           ::grp.art/expected            {::grp.art/spec argument-pred}
-           ::grp.art/problem-type        :error/function-arguments-failed-predicate})))
+      (doseq [sample-arguments (apply map vector (map get-samples argtypes))
+              argument-pred argument-predicates]
+        (when-not (apply argument-pred sample-arguments)
+          (reset! failed? true)
+          (grp.art/record-error! env
+            {::grp.art/original-expression (map ::grp.art/original-expression argtypes)
+             ::grp.art/actual              {::grp.art/failing-samples #{sample-arguments}}
+             ::grp.art/expected            {::grp.art/spec argument-pred}
+             ::grp.art/problem-type        :error/function-arguments-failed-predicate}))))
     (not @failed?)))
 
 (>defn calculate-function-type! [env function argtypes]
