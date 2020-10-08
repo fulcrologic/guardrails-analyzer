@@ -1,11 +1,12 @@
 (ns com.fulcrologic.guardrails-pro.analysis.analyzer.hofs
   (:require
+    [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails-pro.analysis.analyzer.dispatch :as grp.ana.disp]
     [com.fulcrologic.guardrails-pro.analysis.analyzer.literals]
     [com.fulcrologic.guardrails-pro.analysis.function-type :as grp.fnt]
     [com.fulcrologic.guardrails-pro.analysis.sampler :as grp.sampler]
+    [com.fulcrologic.guardrails-pro.analysis.spec :as grp.spec]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
-    [com.rpl.specter :as $]
     [taoensso.encore :as enc]
     [taoensso.timbre :as log]))
 
@@ -63,11 +64,12 @@
 
 (defn analyze-constantly! [env [this-sym value]]
   (let [value-td (grp.ana.disp/-analyze! env value)]
-    (merge
-      (get-in (grp.art/external-function-detail env this-sym)
-        [::grp.art/arities 1 ::grp.art/gspec ::grp.art/return-spec])
-      #::grp.art{:lambda-name (gensym "constantly$")
-                 :env->fn (fn [env] (fn [& _] (rand-nth (vec (::grp.art/samples value-td)))))})))
+    (-> (get-in (grp.art/external-function-detail env this-sym)
+          [::grp.art/arities 1 ::grp.art/gspec ::grp.art/return-spec])
+      (merge #::grp.art{:fn-name (gensym "constantly$")
+                        :fn-ref (fn [& _] (rand-nth (vec (::grp.art/samples value-td))))})
+      (assoc-in [::grp.art/arities :n ::grp.art/gspec ::grp.art/sampler]
+        ::grp.sampler/pure))))
 
 (defmethod grp.ana.disp/analyze-mm 'constantly [env sexpr] (analyze-constantly! env sexpr))
 (defmethod grp.ana.disp/analyze-mm 'clojure.core/constantly [env sexpr] (analyze-constantly! env sexpr))
@@ -93,8 +95,51 @@
 (defmethod grp.ana.disp/analyze-mm 'complement [env sexpr] (analyze-complement! env sexpr))
 (defmethod grp.ana.disp/analyze-mm 'clojure.core/complement [env sexpr] (analyze-complement! env sexpr))
 
-;; TODO
-(defn analyze-fnil [env [this-sym & _]])
+(defn analyze-fnil! [env [this-sym f & nil-patches :as this-expr]]
+  (let [nil-patches-td (map (partial grp.ana.disp/-analyze! env) nil-patches)
+        function (grp.ana.disp/-analyze! env f)
+        fnil-args-td (cons function nil-patches-td)]
+    (grp.fnt/validate-argtypes!? env
+      (grp.art/get-arity
+        (::grp.art/arities (grp.art/external-function-detail env this-sym))
+        fnil-args-td)
+      fnil-args-td)
+    (-> function
+      (update-fn-ref env #(apply fnil % (mapv (comp rand-nth vec ::grp.art/samples) nil-patches-td)))
+      (update ::grp.art/arities
+        (partial enc/map-vals
+          (fn [arity]
+            (-> arity
+              (update ::grp.art/gspec
+                (fn [gspec]
+                  (-> gspec
+                    (update ::grp.art/argument-specs
+                      (fn [arg-specs]
+                        (mapv (fn [spec patch]
+                                (cond-> spec (not= ::not-found patch)
+                                  (s/nilable)))
+                          arg-specs (concat nil-patches (repeat ::not-found)))))
+                    (update ::grp.art/argument-types
+                      (fn [arg-specs]
+                        (mapv (fn [-type patch]
+                                (cond-> -type (some? patch)
+                                  (#(str "(nilable " % ")"))))
+                          arg-specs (concat nil-patches (repeat nil))))))))
+              (as-> arity
+                (update-in arity [::grp.art/gspec ::grp.art/argument-predicates]
+                  (fnil conj [])
+                  (fn [& args]
+                    (grp.fnt/validate-argtypes!? env arity
+                      (map (fn [arg patch]
+                             (let [value (if (some? arg) arg patch)]
+                               (hash-map
+                                 ::grp.art/samples #{value}
+                                 ::grp.art/original-expression value)))
+                        args (map (comp rand-nth vec ::grp.art/samples) nil-patches-td))))
+                  (partial grp.fnt/validate-arguments-predicate!? env arity))))))))))
+
+(defmethod grp.ana.disp/analyze-mm 'fnil [env sexpr] (analyze-fnil! env sexpr))
+(defmethod grp.ana.disp/analyze-mm 'clojure.core/fnil [env sexpr] (analyze-fnil! env sexpr))
 
 ;; TODO
 (defn analyze-juxt! [env [this-sym & fns]]
@@ -105,7 +150,7 @@
           [] (map (partial grp.sampler/get-fn-ref env) fns-td)))))
 
 ;; TODO
-(defn analyze-partial [env [this-sym & _]])
+(defn analyze-partial! [env [this-sym & _]])
 
 ;; TODO transducers
 (comment

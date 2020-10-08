@@ -29,14 +29,14 @@
 (defmethod analyze-mm :function.external/call [env [f & args]]
   (let [function (grp.art/external-function-detail env f)
         argtypes (mapv (partial -analyze! env) args)]
-    (grp.fnt/calculate-function-type env function argtypes)))
+    (grp.fnt/calculate-function-type! env function argtypes)))
 
 (defmethod analyze-mm :function/call [env [f & arguments]]
   (let [function (grp.art/function-detail env f)
         argtypes (mapv (partial -analyze! env) arguments)]
-    (grp.fnt/calculate-function-type env function argtypes)))
+    (grp.fnt/calculate-function-type! env function argtypes)))
 
 (defmethod analyze-mm :function.expression/call [env [fn-expr & args]]
   (let [function (-analyze! env fn-expr)
         argtypes (mapv (partial -analyze! env) args)]
-    (grp.fnt/calculate-function-type env function argtypes)))
+    (grp.fnt/calculate-function-type! env function argtypes)))

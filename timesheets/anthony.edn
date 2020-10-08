@@ -1,15 +1,15 @@
 [
  {:date "2020-06-17" :description "Planning with tony" :timespans [[1345 1430]]}
- {:date "2020-06-18" :description "Research into reader" :timespans [[1130 1245]]}
- {:date "2020-06-18" :description "AOT research" :timespans [[1950 2020]]}
- {:date "2020-08-05" :description "Planning with tony" :timespans [[1245 1400]]}
- {:date "2020-08-05" :description "calculate-function-type" :timespans [[1915 2015]]}
- {:date "2020-08-06" :description "calculate-function-type" :timespans [[1500 1630]]}
- {:date "2020-08-07" :description "calculate-function-type" :timespans [[1130 1310] [1630 1820] [1900 1930]]}
- {:date "2020-08-10" :description "calculate-function-type" :timespans [[2030 2130]]}
- {:date "2020-08-11" :description "Planning with tony" :timespans [[1600 1645]]}
- {:date "2020-08-12" :description "analyze" :timespans [[1000 1300] [1720 1920]]}
- {:date "2020-08-13" :description "analyze" :timespans [[1420 1515]]}
+{:date "2020-06-18" :description "Research into reader" :timespans [[1130 1245]]}
+{:date "2020-06-18" :description "AOT research" :timespans [[1950 2020]]}
+{:date "2020-08-05" :description "Planning with tony" :timespans [[1245 1400]]}
+{:date "2020-08-05" :description "calculate-function-type" :timespans [[1915 2015]]}
+{:date "2020-08-06" :description "calculate-function-type" :timespans [[1500 1630]]}
+{:date "2020-08-07" :description "calculate-function-type" :timespans [[1130 1310] [1630 1820] [1900 1930]]}
+{:date "2020-08-10" :description "calculate-function-type" :timespans [[2030 2130]]}
+{:date "2020-08-11" :description "Planning with tony" :timespans [[1600 1645]]}
+{:date "2020-08-12" :description "analyze" :timespans [[1000 1300] [1720 1920]]}
+{:date "2020-08-13" :description "analyze" :timespans [[1420 1515]]}
  {:date "2020-08-13" :description "clojure reader" :timespans [[1630 1715]]}
  {:date "2020-08-14" :description "research into linters" :timespans [[1200 1300]]}
  {:date "2020-08-14" :description "refactoring, research, clojure reader integration" :timespans [[1515 1900]]}
@@ -77,4 +77,5 @@
  {:date "2020-10-05" :description "chat with tony" :timespans [[845 1010]]}
  {:date "2020-10-05" :description "view unchecked code & fixes" :timespans [[1735 2020]]}
  {:date "2020-10-06" :description "complement" :timespans [[1145 1945]]}
+ {:date "2020-10-07" :description "analyze fnil" :timespans [[945 1055] [1500 1815]]}
  ]

@@ -1,8 +1,6 @@
 (ns com.fulcrologic.guardrails-pro.analysis.analyzer.hofs-spec
   (:require
-    [clojure.spec.alpha :as s]
-    [com.fulcrologic.guardrails.core :refer [>defn =>]]
-    com.fulcrologic.guardrails-pro.ftags.clojure-core
+    com.fulcrologic.guardrails-pro.ftags.clojure-core ;; NOTE: required
     [com.fulcrologic.guardrails-pro.analysis.analyzer :as grp.ana]
     [com.fulcrologic.guardrails-pro.analysis.analyzer.hofs :as grp.ana.hofs]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
@@ -11,6 +9,13 @@
     [fulcro-spec.core :refer [specification assertions]]))
 
 (tf/use-fixtures :once tf/with-default-test-logging-config)
+
+(specification "analyze-constantly!" :integration
+  (let [env (tf/test-env)]
+    (assertions
+      (grp.ana/analyze! env
+        `((constantly :ok) "foo" "bar"))
+      =check=> (_/embeds?* {::grp.art/samples #{:ok}}))))
 
 (specification "analyze-complement!" :integration
   (let [env (tf/test-env)]
@@ -30,3 +35,50 @@
       =check=>
       (_/seq-matches?*
         [(_/embeds?* {::grp.art/problem-type :error/function-argument-failed-spec})]))))
+
+#_(specification "analyze-comp!" :integration
+  (let [env (tf/test-env)]
+    (assertions
+      (grp.ana/analyze! env
+        `(() "str"))
+      =check=> (_/embeds?* {::grp.art/samples #{true}})
+      )))
+
+(specification "analyze-fnil!" :integration
+  (let [env (tf/test-env)]
+    (assertions
+      (grp.ana/analyze! env
+        `((fnil + 1000) 7))
+      =check=> (_/embeds?* {::grp.art/samples #{7}})
+      "nil patches arguments"
+      (grp.ana/analyze! env
+        `((fnil + 1000) nil))
+      =check=> (_/embeds?* {::grp.art/samples #{1000}})
+      "fnil does not take nil nil-patches"
+      (tf/capture-errors grp.ana/analyze! env
+        `((fnil + nil) 100))
+      =check=>
+      (_/seq-matches?*
+        [(_/embeds?* {::grp.art/problem-type :error/function-arguments-failed-spec})])
+      "checks nil patches with function specs"
+      (tf/capture-errors grp.ana/analyze! env
+        `((fnil + :kw) nil))
+      =check=>
+      (_/seq-matches?*
+        [(_/embeds?* {::grp.art/problem-type :error/function-argument-failed-spec})]))))
+
+#_(specification "analyze-juxt!" :integration
+  (let [env (tf/test-env)]
+    (assertions
+      (grp.ana/analyze! env
+        `(() "str"))
+      =check=> (_/embeds?* {::grp.art/samples #{true}})
+      )))
+
+#_(specification "analyze-partial!" :integration
+  (let [env (tf/test-env)]
+    (assertions
+      (grp.ana/analyze! env
+        `(() "str"))
+      =check=> (_/embeds?* {::grp.art/samples #{true}})
+      )))

@@ -36,9 +36,13 @@
                                    :column-start 1}}))
 
 (defn capture-errors [f & args]
-  (let [errors (atom [])]
+  (let [errors (atom [])
+        record! grp.art/record-error!]
     (with-redefs
-      [grp.art/record-error! (fn [_ error] (swap! errors conj error))]
+      [grp.art/record-error! (fn [& args]
+                               (if (= 2 (count args))
+                                 (swap! errors conj (second args))
+                                 (apply record! args)))]
       (apply f args)
       @errors)))
 

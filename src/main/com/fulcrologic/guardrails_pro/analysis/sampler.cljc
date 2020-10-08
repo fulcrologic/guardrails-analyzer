@@ -110,7 +110,7 @@
   [::grp.art/env
    (s/keys :req [::grp.art/arities
                  (or ::grp.art/fn-ref ::grp.art/env->fn)
-                 (or ::grp.art/name ::grp.art/fn-name ::grp.art/var-name ::grp.art/lambda-name)])
+                 (or ::grp.art/fn-name ::grp.art/var-name ::grp.art/lambda-name)])
    (s/coll-of ::grp.art/type-description)
    => ::grp.art/samples]
   (let [{::grp.art/keys [sampler] :as gspec} (get-gspec fd argtypes)
@@ -120,7 +120,7 @@
                       (assoc params :args args)))]
     (try-sampling! env generator
       {::grp.art/original-expression
-       ((some-fn ::grp.art/name ::grp.art/fn-name ::grp.art/var-name ::grp.art/lambda-name) fd)})))
+       ((some-fn ::grp.art/fn-name ::grp.art/var-name ::grp.art/lambda-name) fd)})))
 
 (defn map-like-args [env colls]
   (let [coll-args (map (partial get-args env) colls)]

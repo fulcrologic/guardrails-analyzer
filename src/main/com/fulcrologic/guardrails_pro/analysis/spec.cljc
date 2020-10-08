@@ -36,7 +36,6 @@
 ;; - a dispatch keyword or ns sym
 ;; - use it to pick implementation
 ;; TODO: overriden by namespace metadata
-;; ? controlled by a dynamic binding ?
 
 (defn with-spec-impl [env impl-type]
   (assoc env ::impl
@@ -53,4 +52,6 @@
       (log/error e "spec/generator failed to gen for" spec)
       nil)))
 (defn generate [env spec] (-generate (::impl env) spec))
+
+;; TODO: try with-redefs clojure.test.check.generators/make-size-range-seq
 (defn sample [env spec] (-sample (::impl env) spec))

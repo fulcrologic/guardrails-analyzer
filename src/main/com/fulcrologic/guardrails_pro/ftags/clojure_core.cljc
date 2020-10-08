@@ -1,10 +1,13 @@
 (ns com.fulcrologic.guardrails-pro.ftags.clojure-core
   (:require
+    clojure.test.check.generators
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [>fdef >fspec => | ?]]))
 
+;; CONTEXT: Higher Order FunctionS
+
 (>fdef ^:pure clojure.core/constantly
-  [value] [any? => (>fspec [& args] ^:pure [(s/* any?) => any?])])
+  [value] [any? => (>fspec [& args] [(s/* any?) => any?])])
 
 (>fdef ^:pure clojure.core/comp
   [& fs] [(s/* ifn?) => (>fspec [& args] [(s/* any?) => any?])])
@@ -13,7 +16,7 @@
   [f] [ifn? => (>fspec [& args] [(s/* any?) => any?])])
 
 (>fdef ^:pure clojure.core/fnil
-  [& values] [(s/+ some?) => (>fspec [& args] [(s/* any?) => any?])])
+  [f & values] [ifn? (s/+ some?) => (>fspec [& args] [(s/* any?) => any?])])
 
 (>fdef ^:pure clojure.core/juxt
   [& fs] [(s/+ ifn?) => (>fspec [& args] [(s/* any?) => vector?])])
@@ -105,7 +108,7 @@
   ([coll k v & kvs] [map? any? any? (s/* any?) | #(even? (count kvs)) => map?]))
 
 (>fdef ^:pure clojure.core/assoc-in
-  [m [k & ks] v] [map? (s/+ any?) any? => map?])
+  [m ks v] [map? (s/+ any?) any? => map?])
 
 (>fdef ^:pure clojure.core/butlast
   [coll] [coll? => coll?])
