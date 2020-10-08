@@ -78,4 +78,5 @@
  {:date "2020-10-05" :description "view unchecked code & fixes" :timespans [[1735 2020]]}
  {:date "2020-10-06" :description "complement" :timespans [[1145 1945]]}
  {:date "2020-10-07" :description "analyze fnil" :timespans [[945 1055] [1500 1815]]}
+ {:date "2020-10-08" :description "analyze partial" :timespans [[1020 1230]]}
  ]

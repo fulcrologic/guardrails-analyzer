@@ -4,7 +4,7 @@
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.analysis.sampler :as grp.sampler]
     [com.fulcrologic.guardrails-pro.analysis.spec :as grp.spec]
-    [com.fulcrologic.guardrails.core :refer [>defn >defn- >fspec =>]]
+    [com.fulcrologic.guardrails.core :as gr :refer [>defn >defn- >fspec =>]]
     [taoensso.timbre :as log]))
 
 (s/def ::destructurable
@@ -104,16 +104,17 @@
 
 (>defn interpret-gspec [env arglist gspec]
   [::grp.art/env ::grp.art/arglist (s/coll-of ::grp.art/form :kind vector?) => ::grp.art/gspec]
-  (let [[argument-specs      gspec]     (split-with (complement #{:st '| :ret '=>}) gspec)
-        [argument-predicates gspec]     (split-with (complement #{:ret '=>}) gspec)
-        [return-spec         gspec]     (split-with (complement #{:st '|})   gspec)
-        [return-predicates   generator] (split-with (complement #{:gen '<-}) gspec)]
+  (let [[argument-specs      gspec]     (split-with (complement #{:st '| `gr/| :ret '=> `gr/=>}) gspec)
+        [argument-predicates gspec]     (split-with (complement #{:ret '=> `gr/=>}) gspec)
+        [return-spec         gspec]     (split-with (complement #{:st '| `gr/|})   gspec)
+        [return-predicates   generator] (split-with (complement #{:gen '<- `gr/<-}) gspec)]
+    ;; ? TODO: generator
     #::grp.art{:argument-specs      (mapv (partial grp.art/lookup-spec env) argument-specs)
                :argument-types      (mapv pr-str argument-specs)
-               :argument-predicates (some-> (next argument-predicates) vec)
+               :argument-predicates (vec (rest argument-predicates))
                :return-spec         (grp.art/lookup-spec env (second return-spec))
                :return-type         (pr-str (second return-spec))
-               :return-predicates   (some-> (next return-predicates) vec)}))
+               :return-predicates   (vec (rest return-predicates))}))
 
 (>defn bind-type-desc
   [env typename clojure-spec err]
@@ -195,8 +196,7 @@
                        :expected            #::grp.art{:spec args-spec :type args-type}
                        :problem-type        :error/function-arguments-failed-spec}))))
     (when (not @failed?)
-      (doseq [;:when (not @failed?)
-              sample-arguments (apply map vector (map ::grp.art/samples argtypes))
+      (doseq [sample-arguments (apply map vector (map ::grp.art/samples argtypes))
               argument-pred argument-predicates
               :when (not (apply argument-pred sample-arguments))]
         (reset! failed? true)
@@ -208,21 +208,25 @@
     (not @failed?)))
 
 (>defn calculate-function-type! [env function argtypes]
-  [::grp.art/env ::grp.art/function (s/coll-of ::grp.art/type-description) => any?]
-  (let [{::grp.art/keys [arities]} function
+  [::grp.art/env (s/or :function ::grp.art/function :lambda ::grp.art/lambda)
+   (s/coll-of ::grp.art/type-description) => any?]
+  (let [{::grp.art/keys [arities] ::keys [partial-argtypes]} function
+        argtypes (concat partial-argtypes argtypes)
         {::grp.art/keys [gspec] :as arity} (grp.art/get-arity arities argtypes)
         {::grp.art/keys [return-type return-spec]} gspec
         function-type #::grp.art{:type return-type :spec return-spec}]
-    ;; TODO: if not valid: sample return-spec
     (assoc function-type ::grp.art/samples
       (if (validate-argtypes!? env arity argtypes)
         (grp.sampler/sample! env function argtypes)
         (grp.sampler/try-sampling! env (grp.spec/generator env return-spec)
           {::grp.art/original-expression function})))))
 
+(>defn sample->type-description [sample]
+  [any? => ::grp.art/type-description]
+  {::grp.art/samples #{sample}
+   ::grp.art/original-expression sample})
+
 (>defn validate-arguments-predicate!? [env arity & args]
   [::grp.art/env ::grp.art/arity-detail (s/+ any?) => boolean?]
   (validate-argtypes!? env arity
-    (map #(hash-map ::grp.art/samples #{%}
-            ::grp.art/original-expression %)
-      args)))
+    (map sample->type-description args)))

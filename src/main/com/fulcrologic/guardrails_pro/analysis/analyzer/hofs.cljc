@@ -5,8 +5,8 @@
     [com.fulcrologic.guardrails-pro.analysis.analyzer.literals]
     [com.fulcrologic.guardrails-pro.analysis.function-type :as grp.fnt]
     [com.fulcrologic.guardrails-pro.analysis.sampler :as grp.sampler]
-    [com.fulcrologic.guardrails-pro.analysis.spec :as grp.spec]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
+    [com.fulcrologic.guardrails.core :as gr]
     [taoensso.encore :as enc]
     [taoensso.timbre :as log]))
 
@@ -96,47 +96,50 @@
 (defmethod grp.ana.disp/analyze-mm 'clojure.core/complement [env sexpr] (analyze-complement! env sexpr))
 
 (defn analyze-fnil! [env [this-sym f & nil-patches :as this-expr]]
-  (let [nil-patches-td (map (partial grp.ana.disp/-analyze! env) nil-patches)
+  (let [fnil-td (grp.art/external-function-detail env this-sym)
+        nil-patches-td (map (partial grp.ana.disp/-analyze! env) nil-patches)
         function (grp.ana.disp/-analyze! env f)
-        fnil-args-td (cons function nil-patches-td)]
-    (grp.fnt/validate-argtypes!? env
-      (grp.art/get-arity
-        (::grp.art/arities (grp.art/external-function-detail env this-sym))
-        fnil-args-td)
-      fnil-args-td)
-    (-> function
-      (update-fn-ref env #(apply fnil % (mapv (comp rand-nth vec ::grp.art/samples) nil-patches-td)))
-      (update ::grp.art/arities
-        (partial enc/map-vals
-          (fn [arity]
-            (-> arity
-              (update ::grp.art/gspec
-                (fn [gspec]
-                  (-> gspec
-                    (update ::grp.art/argument-specs
-                      (fn [arg-specs]
-                        (mapv (fn [spec patch]
-                                (cond-> spec (not= ::not-found patch)
-                                  (s/nilable)))
-                          arg-specs (concat nil-patches (repeat ::not-found)))))
-                    (update ::grp.art/argument-types
-                      (fn [arg-specs]
-                        (mapv (fn [-type patch]
-                                (cond-> -type (some? patch)
-                                  (#(str "(nilable " % ")"))))
-                          arg-specs (concat nil-patches (repeat nil))))))))
-              (as-> arity
-                (update-in arity [::grp.art/gspec ::grp.art/argument-predicates]
-                  (fnil conj [])
-                  (fn [& args]
-                    (grp.fnt/validate-argtypes!? env arity
-                      (map (fn [arg patch]
-                             (let [value (if (some? arg) arg patch)]
-                               (hash-map
-                                 ::grp.art/samples #{value}
-                                 ::grp.art/original-expression value)))
-                        args (map (comp rand-nth vec ::grp.art/samples) nil-patches-td))))
-                  (partial grp.fnt/validate-arguments-predicate!? env arity))))))))))
+        args-td (cons function nil-patches-td)]
+    (if-not (grp.fnt/validate-argtypes!? env
+              (grp.art/get-arity
+                (::grp.art/arities fnil-td)
+                args-td)
+              args-td)
+      ;; TASK: ? return a function
+      {}
+      (-> function
+        (update-fn-ref env #(apply fnil % (mapv (comp rand-nth vec ::grp.art/samples) nil-patches-td)))
+        (update ::grp.art/arities
+          (partial enc/map-vals
+            (fn [arity]
+              (-> arity
+                (update ::grp.art/gspec
+                  (fn [gspec]
+                    (-> gspec
+                      (update ::grp.art/argument-specs
+                        (fn [arg-specs]
+                          (mapv (fn [spec patch]
+                                  (cond-> spec (not= ::not-found patch)
+                                    (s/nilable)))
+                            arg-specs (concat nil-patches (repeat ::not-found)))))
+                      (update ::grp.art/argument-types
+                        (fn [arg-specs]
+                          (mapv (fn [-type patch]
+                                  (cond-> -type (some? patch)
+                                    (#(str "(nilable " % ")"))))
+                            arg-specs (concat nil-patches (repeat nil))))))))
+                (as-> arity
+                  (update-in arity [::grp.art/gspec ::grp.art/argument-predicates]
+                    (fnil conj [])
+                    (fn [& args]
+                      (grp.fnt/validate-argtypes!? env arity
+                        (map (fn [arg patch]
+                               (let [value (if (some? arg) arg patch)]
+                                 (hash-map
+                                   ::grp.art/samples #{value}
+                                   ::grp.art/original-expression value)))
+                          args (map (comp rand-nth vec ::grp.art/samples) nil-patches-td))))
+                    (partial grp.fnt/validate-arguments-predicate!? env arity)))))))))))
 
 (defmethod grp.ana.disp/analyze-mm 'fnil [env sexpr] (analyze-fnil! env sexpr))
 (defmethod grp.ana.disp/analyze-mm 'clojure.core/fnil [env sexpr] (analyze-fnil! env sexpr))
@@ -149,8 +152,23 @@
         (reduce #(conj %1 (apply %2 args))
           [] (map (partial grp.sampler/get-fn-ref env) fns-td)))))
 
-;; TODO
-(defn analyze-partial! [env [this-sym & _]])
+(defn analyze-partial! [env [this-sym f & values]]
+  (let [partial-td (grp.art/external-function-detail env this-sym)
+        values-td (map (partial grp.ana.disp/-analyze! env) values)
+        function (grp.ana.disp/-analyze! env f)
+        args-td (cons function values-td)]
+    (if-not (grp.fnt/validate-argtypes!? env
+              (grp.art/get-arity
+                (::grp.art/arities partial-td)
+                args-td)
+              args-td)
+      ;; TASK: ? return a function
+      {}
+      (-> function
+        (update ::grp.fnt/partial-argtypes concat values-td)))))
+
+(defmethod grp.ana.disp/analyze-mm 'partial [env sexpr] (analyze-partial! env sexpr))
+(defmethod grp.ana.disp/analyze-mm 'clojure.core/partial [env sexpr] (analyze-partial! env sexpr))
 
 ;; TODO transducers
 (comment

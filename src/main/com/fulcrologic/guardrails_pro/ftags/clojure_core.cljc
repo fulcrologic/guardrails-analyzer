@@ -16,6 +16,7 @@
   [f] [ifn? => (>fspec [& args] [(s/* any?) => any?])])
 
 (>fdef ^:pure clojure.core/fnil
+  ;; TODO: try s/& count values <= 3
   [f & values] [ifn? (s/+ some?) => (>fspec [& args] [(s/* any?) => any?])])
 
 (>fdef ^:pure clojure.core/juxt

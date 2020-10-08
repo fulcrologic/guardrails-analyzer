@@ -6,6 +6,7 @@
     [com.fulcrologic.guardrails-pro.analysis.sampler :as grp.sampler]
     [com.fulcrologic.guardrails-pro.analysis.spec :as grp.spec]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
+    [com.fulcrologic.guardrails.core :as gr]
     [taoensso.timbre :as log]))
 
 (defn analyze-single-arity! [env [arglist gspec & body]]
