@@ -3,13 +3,11 @@
     com.fulcrologic.guardrails-pro.ftags.clojure-core ;; NOTE: required
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails-pro.analysis.analyzer :as grp.ana]
-    [com.fulcrologic.guardrails-pro.analysis.analyzer.hofs :as grp.ana.hofs]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
-    [com.fulcrologic.guardrails-pro.analysis.sampler :as grp.sampler]
     [com.fulcrologic.guardrails-pro.test-fixtures :as tf]
-    [com.fulcrologic.guardrails.core :as gr]
+    [com.fulcrologic.guardrails-pro.test-checkers :as tc]
     [fulcro-spec.check :as _]
-    [fulcro-spec.core :refer [specification assertions provided!]]))
+    [fulcro-spec.core :refer [specification assertions behavior]]))
 
 (tf/use-fixtures :once tf/with-default-test-logging-config)
 
@@ -150,22 +148,16 @@
         `((partial + 1 2 3) "err"))
       =check=> (_/seq-matches?*
                  [(_/embeds?* {::grp.art/problem-type :error/function-arguments-failed-spec})]))
-    (provided! "the varargs spec is an s/cat"
-      (grp.ana.hofs/analyze-lambda! _ _)
-      => (let [gspec #::grp.art{:argument-specs [(s/cat :int int? :nums (s/+ number?))]
-                                :argument-types ["(s/cat :int int? :nums (s/+ number?))"]
-                                :sampler        ::grp.sampler/pure
-                                :return-spec    number?
-                                :return-type    "number?"}]
-           #::grp.art{:lambda-name 'mock-lambda
-                      :fn-ref (fn [& args] (apply + args))
-                      :arities {:n #::grp.art{:arglist '[& xs] :gspec gspec}}})
-      (assertions
-        "can still partial its arguments"
-        (grp.ana/analyze! env
-          `((partial (gr/>fn mock-lambda) 1) 2 3))
-        =check=> (_/embeds?* {::grp.art/samples #{6}})
-        (tf/capture-errors grp.ana/analyze! env
-          `((partial (gr/>fn mock-lambda) 1.0) 3))
-        =check=> (_/seq-matches?*
-                   [(_/embeds?* {::grp.art/problem-type :error/function-arguments-failed-spec})])))))
+    (behavior "the varargs spec is an s/cat"
+      (let [lambda (tc/>test-fn [& args]
+                     ^:pure [(s/cat :int int? :nums (s/+ number?)) :ret number?]
+                     (apply + args))]
+        (assertions
+          "can still partial its arguments"
+          (grp.ana/analyze! env
+            `((partial ~lambda 1) 2 3))
+          =check=> (_/embeds?* {::grp.art/samples #{6}})
+          (tf/capture-errors grp.ana/analyze! env
+            `((partial ~lambda 1.0) 3))
+          =check=> (_/seq-matches?*
+                     [(_/embeds?* {::grp.art/problem-type :error/function-arguments-failed-spec})]))))))

@@ -139,7 +139,7 @@
       ;; TODO: WIP
       (get arities (first (sort (keys (dissoc arities :n))))))))
 
-(defn- fix-kw-nss [x]
+(defn fix-kw-nss [x]
   ($/transform [($/walker qualified-keyword?)
                 $/NAMESPACE ($/pred= (namespace ::gr.reg/_))]
     (constantly (namespace ::this))
