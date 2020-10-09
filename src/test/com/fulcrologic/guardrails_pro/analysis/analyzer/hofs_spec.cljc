@@ -94,6 +94,11 @@
       (grp.ana/analyze! env
         `((fnil str nil 2 3) nil nil ":three"))
       =check=> (_/embeds?* {::grp.art/samples #{"2:three"}})
+      "fnil only takes at most 3 arguments"
+      (tf/capture-errors grp.ana/analyze! env
+        `(fnil + 1 2 3 4))
+      =check=> (_/seq-matches?*
+                 [(_/embeds?* {::grp.art/problem-type :error/function-arguments-failed-predicate})])
       "checks nil patches with function specs"
       (tf/capture-errors grp.ana/analyze! env
         `((fnil + :kw) nil))
