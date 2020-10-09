@@ -90,12 +90,10 @@
       (grp.ana/analyze! env
         `((fnil + 1000) nil))
       =check=> (_/embeds?* {::grp.art/samples #{1000}})
-      "fnil does not take nil nil-patches"
-      (tf/capture-errors grp.ana/analyze! env
-        `(fnil + nil))
-      =check=>
-      (_/seq-matches?*
-        [(_/embeds?* {::grp.art/problem-type :error/function-arguments-failed-spec})])
+      "fnil can take nil nil-patches"
+      (grp.ana/analyze! env
+        `((fnil str nil 2 3) nil nil ":three"))
+      =check=> (_/embeds?* {::grp.art/samples #{"2:three"}})
       "checks nil patches with function specs"
       (tf/capture-errors grp.ana/analyze! env
         `((fnil + :kw) nil))

@@ -146,15 +146,15 @@
                       (update ::grp.art/argument-specs
                         (fn [arg-specs]
                           (mapv (fn [spec patch]
-                                  (cond-> spec (not= ::not-found patch)
-                                    (s/nilable)))
+                                  (if (= ::not-found patch) spec
+                                    #(or (nil? %) (grp.spec/valid? env spec %))))
                             arg-specs (concat nil-patches (repeat ::not-found)))))
                       (update ::grp.art/argument-types
                         (fn [arg-specs]
                           (mapv (fn [-type patch]
-                                  (cond-> -type (some? patch)
-                                    (#(str "(nilable " % ")"))))
-                            arg-specs (concat nil-patches (repeat nil))))))))
+                                  (if (= ::not-found patch) -type
+                                    (str "(or nil? " -type ")")))
+                            arg-specs (concat nil-patches (repeat ::not-found))))))))
                 (as-> arity
                   (update-in arity [::grp.art/gspec ::grp.art/argument-predicates]
                     (fnil conj [])
