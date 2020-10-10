@@ -80,4 +80,5 @@
  {:date "2020-10-07" :description "analyze fnil" :timespans [[945 1055] [1500 1815]]}
  {:date "2020-10-08" :description "analyze partial" :timespans [[1020 1230]]}
  {:date "2020-10-08" :description "analyze apply" :timespans [[1500 1600]]}
+ {:date "2020-10-09" :description "chat with tony, analyze comp" :timespans [[1055 1335] [1455 1920]]}
  ]

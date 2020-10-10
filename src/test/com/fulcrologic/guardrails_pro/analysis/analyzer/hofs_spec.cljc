@@ -23,6 +23,10 @@
       =check=>
       (_/seq-matches?*
         [(_/embeds?* {::grp.art/problem-type :error/function-arguments-failed-predicate})])
+      "if did not validate, still returns valid samples"
+      (grp.ana/analyze! env
+        `(apply + 1 2 3))
+      =check=> (_/embeds?* {::grp.art/samples (_/every?* (_/is?* number?))})
       "validates single arguments wrt function"
       (tf/capture-errors grp.ana/analyze! env
         `(apply + :kw []))
@@ -62,13 +66,23 @@
       (_/seq-matches?*
         [(_/embeds?* {::grp.art/problem-type :error/function-argument-failed-spec})]))))
 
-#_(specification "analyze-comp!" :integration
+(specification "analyze-comp!" :integration
   (let [env (tf/test-env)]
     (assertions
       (grp.ana/analyze! env
-        `(() "str"))
-      =check=> (_/embeds?* {::grp.art/samples #{true}})
-      )))
+        `((comp inc inc) 0))
+      =check=> (_/embeds?* {::grp.art/samples #{2}})
+      (tf/capture-errors grp.ana/analyze! env
+        `((comp inc str) 0))
+      =check=>
+      (_/all*
+        (tc/of-length?* 1)
+        (_/seq-matches?*
+          [(_/embeds?* {::grp.art/problem-type :error/function-argument-failed-spec})]))
+      (grp.ana/analyze! env
+        `((comp inc str) 0))
+      =check=>
+      (_/embeds?* {::grp.art/samples (_/every?* (_/is?* number?))}))))
 
 (specification "analyze-fnil!" :integration
   (let [env (tf/test-env)]
@@ -81,9 +95,14 @@
         `(fnil "error" 1000))
       =check=> (_/seq-matches?*
                  [(_/embeds?* {::grp.art/problem-type :error/function-argument-failed-spec})])
+      "if not passed a function, returns an empty type description"
       (grp.ana/analyze! env
         `(fnil "error" 1000))
       => {}
+      "if the arguments failed validation, returns the function as is"
+      (grp.ana/analyze! env
+        `((fnil + "str") 1 2))
+      =check=> (_/embeds?* {::grp.art/samples #{3}})
       "nil patches arguments"
       (grp.ana/analyze! env
         `((fnil + 1000) nil))
@@ -118,7 +137,7 @@
       (grp.ana/analyze! env
         `((partial + 1) 2))
       =check=> (_/embeds?* {::grp.art/samples #{3}})
-      "validates partial itself received valid arguments"
+      "if not passed a function errors and returns an empty type description"
       (tf/capture-errors grp.ana/analyze! env
         `(partial "error" 1))
       =check=> (_/seq-matches?*
@@ -131,11 +150,17 @@
         `((partial + "err") 1))
       =check=> (_/seq-matches?*
                  [(_/embeds?* {::grp.art/problem-type :error/function-argument-failed-spec})])
+      (grp.ana/analyze! env
+        `((partial + "err") 1))
+      =check=> (_/embeds?* {::grp.art/samples (_/every?* (_/is?* number?))})
       "checks arguments to the returned function against the function's specs"
       (tf/capture-errors grp.ana/analyze! env
         `((partial + 1) "err"))
       =check=> (_/seq-matches?*
                  [(_/embeds?* {::grp.art/problem-type :error/function-argument-failed-spec})])
+      (grp.ana/analyze! env
+        `((partial + 1) "err"))
+      =check=> (_/embeds?* {::grp.art/samples (_/every?* (_/is?* number?))})
       "can partial varargs arguments"
       (grp.ana/analyze! env
         `((partial + 1 2 3) 100))

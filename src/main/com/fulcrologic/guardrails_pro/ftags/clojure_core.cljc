@@ -29,7 +29,7 @@
   ([f coll & colls] [ifn? sequential? (s/+ sequential?) => (s/coll-of any?)]))
 
 (>fdef ^:pure clojure.core/partial
-  [f & args] [ifn? (s/+ any?) => (>fspec [& args] [(s/* any?) => any?])])
+  [f & args] [ifn? (s/* any?) => (>fspec [& args] [(s/* any?) => any?])])
 
 ;; CONTEXT: future design work
 

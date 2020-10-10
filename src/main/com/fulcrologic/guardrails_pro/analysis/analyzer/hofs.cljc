@@ -76,7 +76,7 @@
                                        fn-args-td)
                                [::grp.art/gspec ::grp.art/return-spec]))
                            {::grp.art/original-expression function})}
-      (grp.fnt/calculate-function-type! env function
+      (grp.fnt/analyze-function-call! env function
         (concat args-td
           (apply map #(hash-map ::grp.art/samples #{%})
             (::grp.art/samples args-coll-td)))))))
@@ -108,8 +108,42 @@
 (defmethod grp.ana.disp/analyze-mm 'constantly [env sexpr] (analyze-constantly! env sexpr))
 (defmethod grp.ana.disp/analyze-mm 'clojure.core/constantly [env sexpr] (analyze-constantly! env sexpr))
 
-;; TODO
-(defn analyze-comp! [env [this-sym & _]])
+(defn analyze-comp! [env [this-sym & fns]]
+  (let [comp-td (grp.art/external-function-detail env this-sym)
+        fns-td (map (partial grp.ana.disp/-analyze! env) fns)
+        [f & fs] (reverse fns-td)
+        valid? (atom true)]
+    (doseq [return-spec (map #(get-in % [::grp.art/gspec ::grp.art/return-spec])
+                          (vals (::grp.art/arities f)))
+            :let [initial-samples (grp.sampler/try-sampling! env
+                                    (grp.spec/generator env return-spec)
+                                    {::grp.art/original-expression f})]]
+      (loop [td {::grp.art/samples initial-samples}
+             [g & gs] fs]
+        (when (and @valid? g)
+          (if-let [td (when (grp.fnt/validate-argtypes!? env
+                              (grp.art/get-arity (::grp.art/arities g) [td])
+                              [td])
+                        (grp.sampler/sample! env g [td]))]
+            (recur td gs)
+            (reset! valid? false)))))
+    (let [return-gspec (select-keys
+                         (get-in (first fns-td) [::grp.art/arities 1 ::grp.art/gspec])
+                         [::grp.art/return-spec
+                          ::grp.art/return-type
+                          ::grp.art/return-predicates])]
+      #::grp.art{:fn-name (gensym "comp$")
+                 :fn-ref (apply comp (map (partial grp.sampler/get-fn-ref env) fns-td))
+                 :arities (enc/map-vals
+                            (fn [arity]
+                              (-> arity
+                                (update ::grp.art/gspec merge return-gspec)
+                                (cond-> (not @valid?)
+                                  (assoc-in [::grp.art/gspec ::grp.art/metadata ::grp.sampler/sampler] :default))))
+                            (get (last fns-td) ::grp.art/arities))})))
+
+(defmethod grp.ana.disp/analyze-mm 'comp [env sexpr] (analyze-comp! env sexpr))
+(defmethod grp.ana.disp/analyze-mm 'clojure.core/comp [env sexpr] (analyze-comp! env sexpr))
 
 (defn analyze-complement! [env [this-sym f]]
   (-> (grp.ana.disp/-analyze! env f)
@@ -132,7 +166,6 @@
                 (::grp.art/arities fnil-td)
                 args-td)
               args-td)
-      ;; TASK: ? return a function
       {}
       (-> function
         (update-fn-ref env #(apply fnil % (mapv (comp rand-nth vec ::grp.art/samples) nil-patches-td)))
@@ -165,7 +198,9 @@
                                  (hash-map
                                    ::grp.art/samples #{value}
                                    ::grp.art/original-expression value)))
-                          args (map (comp rand-nth vec ::grp.art/samples) nil-patches-td))))
+                          args (concat
+                                 (map (comp rand-nth vec ::grp.art/samples) nil-patches-td)
+                                 (repeat nil)))))
                     (partial grp.fnt/validate-arguments-predicate!? env arity)))))))))))
 
 (defmethod grp.ana.disp/analyze-mm 'fnil [env sexpr] (analyze-fnil! env sexpr))
@@ -183,14 +218,13 @@
   (let [partial-td (grp.art/external-function-detail env this-sym)
         values-td (map (partial grp.ana.disp/-analyze! env) values)
         function (grp.ana.disp/-analyze! env f)
-        args-td (cons function values-td)]
-    (if-not (grp.fnt/validate-argtypes!? env
-              (grp.art/get-arity
-                (::grp.art/arities partial-td)
-                args-td)
-              args-td)
-      ;; TASK: ? return a function
-      {}
+        args-td (cons function values-td)
+        valid-args? (grp.fnt/validate-argtypes!? env
+                      (grp.art/get-arity
+                        (::grp.art/arities partial-td)
+                        args-td)
+                      args-td)]
+    (if (not valid-args?) {}
       (-> function
         (update ::grp.fnt/partial-argtypes concat values-td)))))
 

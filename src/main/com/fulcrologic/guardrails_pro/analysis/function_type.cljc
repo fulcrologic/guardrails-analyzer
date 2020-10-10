@@ -4,7 +4,7 @@
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.analysis.sampler :as grp.sampler]
     [com.fulcrologic.guardrails-pro.analysis.spec :as grp.spec]
-    [com.fulcrologic.guardrails.core :as gr :refer [>defn >defn- >fspec =>]]
+    [com.fulcrologic.guardrails.core :as gr :refer [>def >defn >defn- >fspec =>]]
     [taoensso.timbre :as log]))
 
 (s/def ::destructurable
@@ -209,9 +209,12 @@
              ::grp.art/problem-type        :error/function-arguments-failed-predicate}))))
     (not @failed?)))
 
-(>defn calculate-function-type! [env function argtypes]
+(>def ::partial-argtypes (s/coll-of ::grp.art/type-description))
+
+(>defn analyze-function-call! [env function argtypes]
   [::grp.art/env (s/or :function ::grp.art/function :lambda ::grp.art/lambda)
-   (s/coll-of ::grp.art/type-description) => any?]
+   (s/coll-of ::grp.art/type-description)
+   => ::grp.art/type-description]
   (let [{::grp.art/keys [arities] ::keys [partial-argtypes]} function
         argtypes (concat partial-argtypes argtypes)
         {::grp.art/keys [gspec] :as arity} (grp.art/get-arity arities argtypes)
