@@ -54,6 +54,6 @@
  {:date "2020-10-02" :description "check-in" :timespans [[1420 1442]]}
  {:date "2020-10-05" :description "check-in" :timespans [[845 1010]]}
  {:date "2020-10-09" :description "check-in" :timespans [[1100 1200]]}
- {:date "2020-10-11" :description "check-in" :timespans [[1011 ]]}
+ {:date "2020-10-11" :description "check-in" :timespans [[1011 1300]]}
  ]
 
