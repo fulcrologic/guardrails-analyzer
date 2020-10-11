@@ -1,0 +1,56 @@
+= Extensions to GSpec for defining HOF that can generate their own analysis
+
+The goal of this specification is to define a DSL that can describe the common patterns of HOF so that
+we can generate analysis without having to hand code every detail.
+
+== Examples
+
+In order to come up with a DSL, let's examine some common use-cases and propose what we would minimally need to express.
+
+=== Function composition
+
+. `(comp f ... g)`
+
+In this case `g` can be a multi-arity function. Any number of functions can appear between `f` and `g`, but each of
+those must return a type that is compatible with the next in the chain.
+
+What you need is the ability to say something about the return type of each, and how they relate to the input types of the others.
+
+Let's say our DSL uses capital `F_n` to mean the nth argument is a function, and `A_n` means the nth argument is some other
+non-function data type (which are sampled, and therefore could *vary* in data type). `R` is always the final return type of the function.
+
+
+// Let `RT_n(f)` mean the return type of arity `n` of `f`, where a range can be supplied for `n`.
+
+In this specific case we need to be able to:
+
+* Say how the functional arguments *relate* to one another (if they do)
+* Say how any hard-core arguments relate to HOF arguments (if they do)
+
+[source]
+-----
+[F_0 ... F_n => R]
+R: [F_n[*] => RT(F_0)] ; this ends up selecting the acceptable arities, which happen to be all of them
+Induction: RT(F_n) =t= F_(n-1)[0] ; This has to be unified. We cannot use the arities of F_n that F_(n-1) cannot accept.
+Constraint: F_0..F_(n-1) are arity 1
+-----
+
+. `(partial f x ... z)`
+
+[source]
+-----
+[F_0 A_0...A_n => R]
+R: RT(F_0)  ; NOTE: Since F_0 can have multiple arities, this return type may become a subset of the original
+For x 0..n: F_0[x] =t= A_x ; this ends up filtering arities
+-----
+
+. `(juxt f g h)`
+
+[source]
+-----
+[F_0 ... F_n => R]
+; runtime-arity matters
+R: [A_n => [RT(F_0) ... RT(F_n)]]
+For x 0..n: F_x[*]
+-----
+
