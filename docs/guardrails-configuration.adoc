@@ -1,0 +1,37 @@
+use cases / perspectives:
+- notational convenience for generative testing
+- gspec for grp to check your code
+- cljs build size, no unnecessary bloat
+
+do not need `>fdef!`
+`>fdef` always emits a spec, configurable grp recording, put in different namespace (for external/library functions)
+`>defn` always emits a spec, switches on guardrails config (instrument run-check, or grp recording)
+`>def` always emits, deprecated
+
+supported ns-aliases:
+clean-guardrails: `>defn` => `defn`, rest are noops
+
+you want runtime specs, dont use ns-aliases, so everything works
+
+
+
+`>defn` has multiple use cases:
+- gr.pro check my code
+- generative testing
+- runtime checks
+
+multiple contexts:
+- editing (gr.pro checker)
+- dev repl (runtime checks)
+- behavioral tests (runtime checks)
+- generative tests (**just** specs)
+- production
+
+
+
+guardrails config:
+remove `:pro? boolean?` option
+
+-Dguardrails.mode = `(one-of :runtime :pro :all)`
+-Dguardrails.enabled = true (defaults to mode = `:runtime`)
+-Dguardrails.config = ...
