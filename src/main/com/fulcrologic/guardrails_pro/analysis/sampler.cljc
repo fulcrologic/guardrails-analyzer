@@ -139,7 +139,7 @@
                   (assoc params :args %))
             (map-like-args env colls))))
       {::grp.art/original-expression
-       ((some-fn ::grp.art/name ::grp.art/lambda-name) function)} )))
+       ((some-fn ::grp.art/name ::grp.art/lambda-name) function)})))
 
 (s/def ::dispatch keyword?)
 (s/def ::sampler (s/or

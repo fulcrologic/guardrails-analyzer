@@ -86,3 +86,35 @@
      ::grp.art/type                "literal-vector"}))
 
 (defmethod grp.ana.disp/analyze-mm :collection/vector [env coll] (analyze-vector! env coll))
+
+(defn cartesian-product
+  "taken from clojure.math.combinatorics
+   All the ways to take one item from each sequence"
+  [& seqs]
+  (let [v-original-seqs (vec seqs)
+        step (fn step [v-seqs]
+               (let [increment
+                     (fn [v-seqs]
+                       (loop [i (dec (count v-seqs)), v-seqs v-seqs]
+                         (if (= i -1) nil
+                           (if-let [rst (next (v-seqs i))]
+                             (assoc v-seqs i rst)
+                             (recur (dec i) (assoc v-seqs i (v-original-seqs i)))))))]
+                 (when v-seqs
+                   (cons (map first v-seqs)
+                     (lazy-seq (step (increment v-seqs)))))))]
+    (when (every? seq seqs)
+      (lazy-seq (step v-original-seqs)))))
+
+(>defn analyze-set! [env s]
+  [::grp.art/env set? => ::grp.art/type-description]
+  (let [samples (->> s
+                  (map (comp ::grp.art/samples (partial grp.ana.disp/-analyze! env)))
+                  (apply cartesian-product)
+                  (map set)
+                  set)]
+    {::grp.art/samples             samples
+     ::grp.art/original-expression s
+     ::grp.art/type                "literal-set"}))
+
+(defmethod grp.ana.disp/analyze-mm :collection/set [env coll] (analyze-set! env coll))

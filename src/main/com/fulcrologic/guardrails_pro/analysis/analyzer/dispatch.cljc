@@ -2,7 +2,8 @@
   (:require
     [com.fulcrologic.guardrails.core :as gr :refer [>defn =>]]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
-    [taoensso.timbre :as log])
+    [taoensso.timbre :as log]
+    [taoensso.tufte :refer [p]])
   #?(:clj (:import (java.util.regex Pattern))))
 
 (declare analyze-mm)
@@ -33,7 +34,7 @@
 
 (defn analyze-dispatch [env sexpr]
   (cond
-    (seq? sexpr) (list-dispatch env sexpr)
+    (seq? sexpr) (p ::list-dispatch (list-dispatch env sexpr))
     (symbol? sexpr) :symbol/lookup
 
     (char? sexpr) :literal/char
@@ -52,7 +53,8 @@
 (defmulti analyze-mm
   (fn [env sexpr]
     (log/spy :info :dispatch
-      (analyze-dispatch env sexpr)))
+      (p ::compute-dispatch
+        (analyze-dispatch env sexpr))))
   :default :unknown)
 
 (>defn -analyze!
@@ -62,9 +64,10 @@
   (log/spy :debug (str "analyze! " (pr-str sexpr)
                     " dispatched to: " (analyze-dispatch env sexpr)
                     " returned:")
-    (-> env
-      (grp.art/update-location (meta sexpr))
-      (analyze-mm sexpr))))
+    (p ::-analyze!
+      (-> env
+        (grp.art/update-location (meta sexpr))
+        (analyze-mm sexpr)))))
 
 (defn analyze-statements! [env body]
   (doseq [expr (butlast body)]

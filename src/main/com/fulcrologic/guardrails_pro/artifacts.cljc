@@ -4,7 +4,7 @@
     [clojure.spec.alpha :as s]
     [clojure.test.check.generators :as gen]
     [com.fulcrologic.guardrails-pro.analysis.spec :as grp.spec]
-    [com.fulcrologic.guardrails.core :refer [>def >defn >defn- => | ?]]
+    [com.fulcrologic.guardrails.core :refer [>defn >defn- => | ?]]
     [com.fulcrologic.guardrails.registry :as gr.reg]
     [com.fulcrologic.guardrails.impl.externs :as gr.externs]
     [com.rpl.specter :as $]
@@ -27,100 +27,114 @@
   (s/with-gen pos-int?
     #(gen/such-that pos? gen/int)))
 
-(def gen-predicate #(gen/elements [string? int? keyword? symbol?]))
+(def gen-predicate #(gen/return (fn [& _] (rand-nth [true false]))))
+#_(map (fn [pf] (pf)) (gen/sample (gen-predicate)))
 
-(>def ::spec (s/with-gen
+(s/def ::spec (s/with-gen
                 (s/or
                   :spec-name qualified-keyword?
                   :spec-object #(s/spec? %)
                   :predicate ifn?)
                 gen-predicate))
-(>def ::type string?)
-(>def ::form any?) ;; TODO
-(>def ::samples
-  "samples is for generated data only"
-  (s/coll-of any? :min-count 0 :kind set?))
-(>def ::failing-samples ::samples)
-(>def ::original-expression ::form)
-(>def ::literal-value ::original-expression)
-(>def ::problem-type (s/and qualified-keyword?
+(s/def ::type string?)
+(s/def ::form any?) ;; TODO
+;; samples is for generated data only
+(s/def ::samples (s/coll-of any? :min-count 0 :kind set?))
+(s/def ::failing-samples ::samples)
+(s/def ::original-expression ::form)
+(s/def ::literal-value ::original-expression)
+(s/def ::problem-type (s/and qualified-keyword?
                         (comp #{"error" "warning" "info" "hint"} namespace)))
-(>def ::message-params (s/map-of keyword? some?))
-(>def ::file string?)
-(>def ::source string?)
-(>def ::line-start posint?)
-(>def ::line-end posint?)
-(>def ::column-start posint?)
-(>def ::column-end posint?)
-(>def ::key (s/or
+(s/def ::message-params (s/every-kv keyword? some?
+                          :gen-max 3))
+(s/def ::file string?)
+(s/def ::source string?)
+(s/def ::line-start posint?)
+(s/def ::line-end posint?)
+(s/def ::column-start posint?)
+(s/def ::column-end posint?)
+(s/def ::key (s/or
                :offset int?
                :typed-key qualified-keyword?
                ;:homogenous ::homogenous
                :arbitrary any?))
-(>def ::positional-types (s/map-of ::key ::type-description))
-(>def ::recursive-description (s/keys :req [::positional-types]))
+(s/def ::positional-types (s/map-of ::key ::type-description))
+(s/def ::recursive-description (s/keys :req [::positional-types]))
 ;; NOTE: We can use a generated sample to in turn generate a recursive description
-(>def ::type-description (s/or
+(s/def ::type-description (s/or
                             :function ::lambda
                             :value (s/keys :opt [::spec
-                                                 ::recursive-description
+                                                 ;::recursive-description
                                                  ::type
                                                  ::samples
                                                  ::literal-value
                                                  ::original-expression])))
-(>def ::expected (s/keys :req [(or ::spec ::type)]))
-(>def ::actual (s/keys :opt [::type-description ::failing-samples]))
-(>def ::Unknown (s/and ::type-description empty?))
-(>def ::fn-ref (s/with-gen fn? #(gen/let [any gen/any] (constantly any))))
-(>def ::arglist (s/with-gen (s/or :vector vector?
+(s/def ::expected (s/keys :req [(or ::spec ::type)]))
+(s/def ::actual (s/keys :opt [::type-description ::failing-samples]))
+(s/def ::Unknown (s/and ::type-description empty?))
+(s/def ::fn-ref (s/with-gen fn? #(gen/let [any gen/any] (constantly any))))
+(s/def ::arglist (s/with-gen (s/or :vector vector?
                               :quoted-vector (s/cat :quote #{'quote}
                                                :symbols vector?))
                   #(gen/vector gen/symbol)))
-(>def ::predicate (s/with-gen fn? gen-predicate))
-;; TODO generated predicates might not work for argument-predicates
-(>def ::argument-predicates (s/coll-of ::predicate :kind vector?))
-(>def ::argument-types (s/coll-of ::type :kind vector?))
-(>def ::return-type ::type)
-(>def ::argument-specs (s/coll-of ::spec :kind vector?))
-(>def ::return-spec ::spec)
-(>def ::quoted.argument-specs (s/coll-of ::form :kind vector?))
-(>def ::quoted.return-spec ::form)
-(>def ::return-predicates (s/coll-of ::predicate :kind vector?))
-(>def ::generator (s/with-gen gen/generator? #(gen/return gen/any)))
-(>def ::metadata map?)
-(>def ::gspec (s/keys :req [::return-spec ::return-type]
-                 :opt [::argument-specs ::metadata ::generator
+(s/def ::predicate (s/with-gen fn? gen-predicate))
+(s/def ::argument-predicates (s/coll-of ::predicate :kind vector?))
+(s/def ::argument-types (s/coll-of ::type :kind vector?))
+(s/def ::return-type ::type)
+(s/def ::argument-specs (s/coll-of ::spec :kind vector?))
+(s/def ::return-spec ::spec)
+(s/def ::quoted.argument-specs (s/coll-of ::form :kind vector?))
+(s/def ::quoted.return-spec ::form)
+(s/def ::return-predicates (s/coll-of ::predicate :kind vector?))
+(s/def ::generator (s/with-gen gen/generator? #(gen/return gen/any)))
+(s/def ::metadata map?)
+(s/def ::gspec (s/keys :req [::return-spec ::return-type]
+                 :opt [::argument-specs ::argument-types
+                       ::metadata ::generator
                        ::argument-predicates ::return-predicates]))
-(>def ::arity-detail (s/keys :req [::arglist ::gspec]))
-(>def ::arity #{0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 :n})
-(>def ::arities (s/map-of ::arity ::arity-detail))
-(>def ::last-changed posint?)
-(>def ::last-checked posint?)
-(>def ::last-seen posint?)
-(>def ::env->fn (s/with-gen fn? #(gen/let [any gen/any] (fn [env] (constantly any)))))
-(>def ::lambda-name simple-symbol?)
-(>def ::lambda (s/keys :req [(or ::fn-ref ::env->fn) ::arities] :opt [::lambda-name]))
-(>def ::lambdas (s/map-of symbol? ::lambda))
-(>def ::fn-name symbol?)
-(>def ::var-name qualified-symbol?)
-(>def ::function (s/keys :req [(or ::fn-name ::var-name) ::fn-ref ::arities]))
-(>def ::value any?)
-(>def ::class? boolean?)
-(>def ::extern-name symbol?)
-(>def ::extern (s/keys :req [::extern-name] :opt [::class? ::value]))
-(>def ::location (s/keys
+(s/def ::arity-detail (s/keys :req [::arglist ::gspec]))
+(s/def ::arity (conj (set (range (inc 20))) :n))
+(s/def ::arities (s/every-kv ::arity ::arity-detail
+                   :gen-max 3))
+(s/def ::last-changed posint?)
+(s/def ::last-checked posint?)
+(s/def ::last-seen posint?)
+(s/def ::env->fn (s/with-gen fn? #(gen/let [any gen/any] (fn [env] (constantly any)))))
+(s/def ::lambda-name simple-symbol?)
+(s/def ::lambda (s/keys :req [(or ::fn-ref ::env->fn) ::arities] :opt [::lambda-name]))
+(s/def ::lambdas (s/every-kv symbol? ::lambda
+                   :gen-max 3))
+(s/def ::fn-name symbol?)
+(s/def ::var-name qualified-symbol?)
+(s/def ::function (s/keys :req [(or ::fn-name ::var-name) ::fn-ref ::arities]))
+(s/def ::value any?)
+(s/def ::class? boolean?)
+(s/def ::extern-name symbol?)
+(s/def ::extern (s/keys :req [::extern-name] :opt [::class? ::value]))
+(s/def ::location (s/keys
                     :req [::line-start ::column-start]
                     :opt [::line-end ::column-end]))
-(>def ::checking-file string?)
-(>def ::checking-sym symbol?)
-(>def ::current-form ::form)
-(>def ::current-ns string?)
-(>def ::local-symbols (s/map-of symbol? ::type-description))
-(>def ::externs-registry (s/map-of string? (s/map-of symbol? (s/map-of symbol? ::extern))))
-(>def ::spec-registry (s/map-of ::form ::spec))
-(>def ::external-function-registry (s/map-of qualified-symbol? ::function))
-(>def ::function-registry (s/map-of string? (s/map-of symbol? ::function)))
-(>def ::env (s/keys
+(s/def ::checking-file string?)
+(s/def ::checking-sym symbol?)
+(s/def ::current-form ::form)
+(s/def ::current-ns string?)
+(s/def ::local-symbols (s/every-kv symbol? ::type-description
+                         :gen-max 10))
+(s/def ::externs-registry (s/every-kv string?
+                            (s/every-kv symbol?
+                              (s/every-kv symbol? ::extern
+                                :gen-max 10)
+                              :gen-max 10)
+                            :gen-max 10))
+(s/def ::spec-registry (s/every-kv ::form ::spec
+                         :gen-max 20))
+(s/def ::external-function-registry (s/every-kv qualified-symbol? ::function
+                                      :gen-max 20))
+(s/def ::function-registry (s/every-kv string?
+                             (s/every-kv symbol? ::function
+                               :gen-max 20)
+                             :gen-max 10))
+(s/def ::env (s/keys
                :req [::function-registry]
                :opt [::external-function-registry
                      ::externs-registry
@@ -187,7 +201,7 @@
 
 (>defn qualify-extern
   [env sym]
-  [::env simple-symbol? => symbol?]
+  [::env symbol? => symbol?]
   (cljc-rewrite-sym-ns
     (get-in env [::externs-registry (::current-ns env)
                  (::checking-sym env) sym ::extern-name]
@@ -195,10 +209,11 @@
 
 (>defn function-detail [env sym]
   [::env symbol? => (? ::function)]
-  (get-in env [::function-registry
-               (or (namespace sym) (::current-ns env))
-               (cond-> sym (namespace sym)
-                 (-> name symbol))]))
+  (let [qsym (qualify-extern env sym)
+        NS   (or (namespace qsym) (::current-ns env))
+        SYM  (cond-> sym (namespace qsym)
+               (-> name symbol))]
+    (get-in env [::function-registry NS SYM])))
 
 (>defn external-function-detail [env sym]
   [::env symbol? => (? ::function)]
@@ -272,23 +287,25 @@
 
 ;; ========== PROBLEMS ==========
 
-(>def ::problem (s/keys
+(s/def ::problem (s/keys
                   :req [::original-expression ::problem-type
                         ::file ::line-start]
                   :opt [::expected ::actual
                         ::column-start ::column-end
                         ::line-end ::message-params]))
-(>def ::error (s/and ::problem (comp #{"error"} namespace ::problem-type)))
-(>def ::warning (s/and ::problem (comp #{"warning"} namespace ::problem-type)))
-(>def ::info (s/and ::problem (comp #{"info"} namespace ::problem-type)))
-(>def ::hint (s/and ::problem (comp #{"hint"} namespace ::problem-type)))
-(>def ::errors (s/coll-of ::error))
-(>def ::warnings (s/coll-of ::warning))
-(>def ::infos (s/coll-of ::infos))
-(>def ::hints (s/coll-of ::hints))
-(>def ::by-sym (s/map-of qualified-symbol?
-                 (s/keys :opt [::errors ::warnings ::infos ::hints])))
-(>def ::problems (s/keys :req [::by-sym]))
+(s/def ::error (s/and ::problem (comp #{"error"} namespace ::problem-type)))
+(s/def ::warning (s/and ::problem (comp #{"warning"} namespace ::problem-type)))
+(s/def ::info (s/and ::problem (comp #{"info"} namespace ::problem-type)))
+(s/def ::hint (s/and ::problem (comp #{"hint"} namespace ::problem-type)))
+(s/def ::errors (s/coll-of ::error))
+(s/def ::warnings (s/coll-of ::warning))
+(s/def ::infos (s/every-kv ::location (s/coll-of ::infos)))
+(s/def ::hints (s/every-kv ::location (s/coll-of ::hints)))
+(s/def ::by-sym (s/every-kv qualified-symbol?
+                  (s/keys :opt [::errors ::warnings])
+                  :gen-max 10))
+(s/def ::problems (s/keys :req [::by-sym]
+                    :opt [::infos ::hints]))
 
 (defonce problems (atom {::by-sym {}}))
 

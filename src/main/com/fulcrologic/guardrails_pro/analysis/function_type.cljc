@@ -4,8 +4,9 @@
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.analysis.sampler :as grp.sampler]
     [com.fulcrologic.guardrails-pro.analysis.spec :as grp.spec]
-    [com.fulcrologic.guardrails.core :as gr :refer [>def >defn >defn- >fspec =>]]
-    [taoensso.timbre :as log]))
+    [com.fulcrologic.guardrails.core :as gr :refer [>defn >defn- >fspec =>]]
+    [taoensso.timbre :as log]
+    [taoensso.tufte :refer [p]]))
 
 (s/def ::destructurable
   (s/or
@@ -17,7 +18,8 @@
 
 (>defn- ?validate-samples! [env kw samples & [orig-expr]]
   [::grp.art/env qualified-keyword? ::grp.art/samples
-   (s/cat :orig-expr (s/? ::grp.art/original-expression)) => any?]
+   (s/? ::grp.art/original-expression)
+   => any?]
   (if-let [spec (grp.spec/lookup env kw)]
     (do
       (when-not (some #(contains? % kw) samples)
@@ -50,7 +52,6 @@
            (?validate-samples! env v (::grp.art/samples td))
            (-destructure! env k
              {::grp.art/original-expression k
-              ;; get from `td` samples
               ::grp.art/samples (set (map v (::grp.art/samples td)))
               ::grp.art/spec v
               ::grp.art/type (pr-str v)}))
@@ -97,7 +98,7 @@
 (>defn destructure! [env bind-sexpr value-type-desc]
   [::grp.art/env ::destructurable ::grp.art/type-description
    => (s/map-of symbol? ::grp.art/type-description)]
-  (let [bindings (-destructure! env bind-sexpr value-type-desc) ]
+  (let [bindings (p ::-destructure! (-destructure! env bind-sexpr value-type-desc)) ]
     (doseq [[sym td] bindings]
       (grp.art/record-binding! env sym td))
     bindings))
@@ -154,62 +155,63 @@
 (>defn validate-argtypes!?
   [env {::grp.art/keys [arglist gspec]} argtypes]
   [::grp.art/env ::grp.art/arity-detail (s/coll-of ::grp.art/type-description) => boolean?]
-  (let [failed? (atom false)
-        get-samples (comp set (partial grp.sampler/get-args env))
-        {::grp.art/keys [argument-types argument-specs argument-predicates]} gspec]
-    (when-not (or (some #{'&} arglist)
-                (= (count arglist) (count argtypes)))
-      (reset! failed? true)
-      (grp.art/record-error! env
-        #::grp.art{:original-expression (map ::grp.art/original-expression argtypes)
-                   :problem-type        :error/invalid-function-arguments-count}))
-    (when-not @failed?
-      (let [[syms specials] (split-with (complement #{:as '&}) arglist)]
-        (doseq [[arg-sym argument-type argument-spec [samples original-expression]]
-                (map vector syms argument-types argument-specs
-                  (map (juxt get-samples ::grp.art/original-expression) argtypes))
-                :let [checkable? (and argument-spec (seq samples))]]
-          (when-not checkable?
-            (grp.art/record-warning! env original-expression :warning/unable-to-check))
-          (when-let [{:keys [failing-sample]}
-                     (and checkable?
-                       (some (fn _invalid-sample [sample]
-                               (when-not (grp.spec/valid? env argument-spec sample)
-                                 {:failing-sample sample}))
-                         samples))]
+  (p ::validate-argtypes!?
+    (let [failed? (atom false)
+          get-samples (comp set (partial grp.sampler/get-args env))
+          {::grp.art/keys [argument-types argument-specs argument-predicates]} gspec]
+      (when-not (or (some #{'&} arglist)
+                  (= (count arglist) (count argtypes)))
+        (reset! failed? true)
+        (grp.art/record-error! env
+          #::grp.art{:original-expression (map ::grp.art/original-expression argtypes)
+                     :problem-type        :error/invalid-function-arguments-count}))
+      (when-not @failed?
+        (let [[syms specials] (split-with (complement #{:as '&}) arglist)]
+          (doseq [[arg-sym argument-type argument-spec [samples original-expression]]
+                  (map vector syms argument-types argument-specs
+                    (map (juxt get-samples ::grp.art/original-expression) argtypes))
+                  :let [checkable? (and argument-spec (seq samples))]]
+            (when-not checkable?
+              (grp.art/record-warning! env original-expression :warning/unable-to-check))
+            (when-let [{:keys [failing-sample]}
+                       (and checkable?
+                         (some (fn _invalid-sample [sample]
+                                 (when-not (grp.spec/valid? env argument-spec sample)
+                                   {:failing-sample sample}))
+                           samples))]
+              (reset! failed? true)
+              (grp.art/record-error! env
+                {::grp.art/original-expression original-expression
+                 ::grp.art/expected            #::grp.art{:spec argument-spec :type argument-type}
+                 ::grp.art/actual              {::grp.art/failing-samples #{failing-sample}}
+                 ::grp.art/problem-type        :error/function-argument-failed-spec
+                 ::grp.art/message-params      {:argument arg-sym}})))
+          (doseq [:when (some #{'&} specials)
+                  :let [rest-argtypes (seq (drop (count syms) argtypes))
+                        rst-sym (get (apply hash-map specials) '& nil)
+                        args-spec (first (drop (count syms) argument-specs))
+                        args-type (first (drop (count syms) argument-types))]
+                  sample-rest-arguments (apply map vector (map get-samples rest-argtypes))
+                  :when (not (grp.spec/valid? env args-spec sample-rest-arguments))]
             (reset! failed? true)
             (grp.art/record-error! env
-              {::grp.art/original-expression original-expression
-               ::grp.art/expected            #::grp.art{:spec argument-spec :type argument-type}
-               ::grp.art/actual              {::grp.art/failing-samples #{failing-sample}}
-               ::grp.art/problem-type        :error/function-argument-failed-spec
-               ::grp.art/message-params      {:argument arg-sym}})))
-        (doseq [:when (some #{'&} specials)
-                :let [rest-argtypes (seq (drop (count syms) argtypes))
-                      rst-sym (get (apply hash-map specials) '& nil)
-                      args-spec (first (drop (count syms) argument-specs))
-                      args-type (first (drop (count syms) argument-types))]
-                sample-rest-arguments (apply map vector (map get-samples rest-argtypes))
-                :when (not (grp.spec/valid? env args-spec sample-rest-arguments))]
-          (reset! failed? true)
-          (grp.art/record-error! env
-            #::grp.art{:original-expression (map ::grp.art/original-expression rest-argtypes)
-                       :actual              {::grp.art/failing-samples #{sample-rest-arguments}}
-                       :expected            #::grp.art{:spec args-spec :type args-type}
-                       :problem-type        :error/function-arguments-failed-spec}))))
-    (when (not @failed?)
-      (doseq [sample-arguments (apply map vector (map get-samples argtypes))
-              argument-pred argument-predicates]
-        (when-not (apply argument-pred sample-arguments)
-          (reset! failed? true)
-          (grp.art/record-error! env
-            {::grp.art/original-expression (map ::grp.art/original-expression argtypes)
-             ::grp.art/actual              {::grp.art/failing-samples #{sample-arguments}}
-             ::grp.art/expected            {::grp.art/spec argument-pred}
-             ::grp.art/problem-type        :error/function-arguments-failed-predicate}))))
-    (not @failed?)))
+              #::grp.art{:original-expression (map ::grp.art/original-expression rest-argtypes)
+                         :actual              {::grp.art/failing-samples #{sample-rest-arguments}}
+                         :expected            #::grp.art{:spec args-spec :type args-type}
+                         :problem-type        :error/function-arguments-failed-spec}))))
+      (when (not @failed?)
+        (doseq [sample-arguments (apply map vector (map get-samples argtypes))
+                argument-pred argument-predicates]
+          (when-not (apply argument-pred sample-arguments)
+            (reset! failed? true)
+            (grp.art/record-error! env
+              {::grp.art/original-expression (map ::grp.art/original-expression argtypes)
+               ::grp.art/actual              {::grp.art/failing-samples #{sample-arguments}}
+               ::grp.art/expected            {::grp.art/spec argument-pred}
+               ::grp.art/problem-type        :error/function-arguments-failed-predicate}))))
+      (not @failed?))))
 
-(>def ::partial-argtypes (s/coll-of ::grp.art/type-description))
+(s/def ::partial-argtypes (s/coll-of ::grp.art/type-description))
 
 (>defn analyze-function-call! [env function argtypes]
   [::grp.art/env (s/or :function ::grp.art/function :lambda ::grp.art/lambda)

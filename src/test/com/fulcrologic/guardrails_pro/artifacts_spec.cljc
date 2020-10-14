@@ -3,7 +3,7 @@
     [com.fulcrologic.guardrails.registry :as gr.reg]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [fulcro-spec.check :as _]
-    [fulcro-spec.core :refer [specification component assertions]]))
+    [fulcro-spec.core :refer [specification assertions]]))
 
 (specification "fix-kw-nss"
   (assertions

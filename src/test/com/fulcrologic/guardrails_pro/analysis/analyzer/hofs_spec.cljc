@@ -66,7 +66,7 @@
       (_/seq-matches?*
         [(_/embeds?* {::grp.art/problem-type :error/function-argument-failed-spec})]))))
 
-(specification "analyze-comp!" :integration
+(specification "analyze-comp!" :integration :wip
   (let [env (tf/test-env)]
     (assertions
       (grp.ana/analyze! env
@@ -186,3 +186,39 @@
             `((partial ~lambda 1.0) 3))
           =check=> (_/seq-matches?*
                      [(_/embeds?* {::grp.art/problem-type :error/function-arguments-failed-spec})]))))))
+
+(specification "analyze-some!" :wip
+  (let [env (tf/test-env)]
+    (assertions
+      (grp.ana/analyze! env
+        `(some #{:kw} ["str" :kw 123]))
+      =check=> (_/embeds?*
+                 {::grp.art/samples #{:kw}})
+      (grp.ana/analyze! env
+        `(some #{(rand-nth ["str" :kw])} ["str" :kw 123]))
+      =check=> (_/embeds?*
+                 {::grp.art/samples #{"str" :kw}}))))
+
+(specification "analyze-split-with!" :wip
+  (let [env (tf/test-env)]
+    (assertions
+      (grp.ana/analyze! env
+        `(split-with keyword? [:a :b 1 2]))
+      =check=> (_/embeds?*
+                 {::grp.art/samples #{[[:a :b] [1 2]]}})
+      (grp.ana/analyze! env
+        `(split-with string? :not-a-coll))
+      =check=> (_/embeds?*
+                 {::grp.art/samples (_/every?*
+                                      (_/is?* vector?)
+                                      (tc/of-length?* 2)
+                                      (_/every?*
+                                        (_/is?* sequential?)))})
+      (grp.ana/analyze! env
+        `(split-with "err" [:foo 44]))
+      =check=> (_/embeds?*
+                 {::grp.art/samples (_/every?*
+                                      (_/is?* vector?)
+                                      (tc/of-length?* 2)
+                                      (_/every?*
+                                        (_/is?* sequential?)))}))))

@@ -25,10 +25,18 @@
   (if ((every-pred ::test-fn? ::grp.art/arities) hashmap) hashmap
     (grp.ana.lit/analyze-hashmap! env hashmap)))
 
-(defn of-length?* [exp-len]
-  (checker [actual]
-    (let [length (count actual)]
-      (when-not (= exp-len length)
-        {:actual actual
-         :expected `(~'of-length?* ~exp-len)
-         :message (format "Expected count to be %d was %d" exp-len length)}))))
+(defn of-length?*
+  ([exp-len]
+   (checker [actual]
+     (let [length (count actual)]
+       (when-not (= exp-len length)
+         {:actual actual
+          :expected `(~'of-length?* :eq ~exp-len)
+          :message (format "Expected count to be %d was %d" exp-len length)}))))
+  ([min-len max-len]
+   (checker [actual]
+     (let [length (count actual)]
+       (when-not (<= min-len length max-len)
+         {:actual actual
+          :expected `(~'of-length?* :min ~min-len :max ~max-len)
+          :message (format "Expected count to be [%d,%d] was %d" min-len max-len length)})))))

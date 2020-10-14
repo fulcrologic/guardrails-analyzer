@@ -31,6 +31,12 @@
 (>fdef ^:pure clojure.core/partial
   [f & args] [ifn? (s/* any?) => (>fspec [& args] [(s/* any?) => any?])])
 
+(>fdef ^:pure clojure.core/some
+  [pred coll] [ifn? seqable? => any?])
+
+(>fdef ^:pure clojure.core/split-with
+  [pred coll] [ifn? seqable? => (s/tuple sequential? sequential?)])
+
 ;; CONTEXT: future design work
 
 ;; NOTE: objects
@@ -180,6 +186,9 @@
 (>fdef ^:pure clojure.core/keyword
   ([name] [string? => keyword?])
   ([ns name] [string? string? => keyword?]))
+
+(>fdef ^:pure clojure.core/keyword?
+  [x] [any? => boolean?])
 
 (>fdef ^:pure clojure.core/key
   [e] [map-entry? => any?])

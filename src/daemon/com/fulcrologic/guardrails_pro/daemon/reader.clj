@@ -38,7 +38,7 @@
         _ (assert (= 'ns (first ns-decl))
             (format "First form in file <%s> was not a ns declaration!"
               file))
-        NS (str (second ns-decl))
+        NS (second ns-decl)
         aliases (parse-ns-aliases ns-decl)
         forms (loop [forms []]
                 (let [form (binding [reader/*alias-map* aliases, *ns* NS]
@@ -46,4 +46,4 @@
                   (if (identical? form eof)
                     (do (.close reader) forms)
                     (recur (conj forms form)))))]
-    {:NS NS :forms forms}))
+    {:NS (str NS) :forms forms}))

@@ -81,4 +81,8 @@
  {:date "2020-10-08" :description "analyze partial" :timespans [[1020 1230]]}
  {:date "2020-10-08" :description "analyze apply" :timespans [[1500 1600]]}
  {:date "2020-10-09" :description "chat with tony, analyze comp" :timespans [[1055 1335] [1455 1920]]}
+ {:date "2020-10-10" :description "emit specs & guardrails mode" :timespans [[1145 1345] [1440 1605]]}
+ {:date "2020-10-11" :description "review & plan with tony" :timespans [[1015 1300]]}
+ {:date "2020-10-12" :description "guardrails mode" :timespans [[1230 1400]]}
+ {:date "2020-10-13" :description "analyze sets, some, split-with" :timespans [[1020 1310] [1420 1515] [1730 1900]]}
  ]

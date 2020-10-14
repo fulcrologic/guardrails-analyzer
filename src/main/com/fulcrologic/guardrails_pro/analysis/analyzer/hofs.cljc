@@ -50,7 +50,6 @@
   update
   sort-by
   group-by
-  split-with
   partition-by
   swap!
   repeatedly
@@ -85,14 +84,51 @@
 (defmethod grp.ana.disp/analyze-mm 'clojure.core/apply [env sexpr] (analyze-apply! env sexpr))
 
 (defn analyze-map-like! [env [this-sym f & colls]]
-  (let [lambda (grp.ana.disp/-analyze! env f)
-        colls (map (partial grp.ana.disp/-analyze! env) colls)]
-    {::grp.art/samples (grp.sampler/sample! env
-                         (grp.art/external-function-detail env this-sym)
-                         (cons lambda colls))}))
+  (let [map-td (grp.art/external-function-detail env this-sym)
+        lambda (grp.ana.disp/-analyze! env f)
+        colls  (map (partial grp.ana.disp/-analyze! env) colls)]
+    {::grp.art/samples (grp.sampler/sample! env map-td (cons lambda colls))}))
 
 (defmethod grp.ana.disp/analyze-mm 'map [env sexpr] (analyze-map-like! env sexpr))
 (defmethod grp.ana.disp/analyze-mm 'clojure.core/map [env sexpr] (analyze-map-like! env sexpr))
+
+(defn analyze-some! [env [this-sym pred coll]]
+  (let [some-td (grp.art/external-function-detail env this-sym)
+        pred-td (grp.ana.disp/-analyze! env pred)
+        coll-td (grp.ana.disp/-analyze! env coll)]
+    (if-not (grp.fnt/validate-argtypes!? env
+              (grp.art/get-arity (::grp.art/arities some-td) [pred-td coll-td])
+              [pred-td coll-td])
+      {::grp.art/samples (grp.sampler/try-sampling! env
+                           (grp.spec/generator env
+                             (get-in (grp.art/get-arity
+                                       (::grp.art/arities some-td)
+                                       [pred-td coll-td])
+                               [::grp.art/gspec ::grp.art/return-spec])))}
+      ;; TODO: validate that pred accepts coll elements
+      (grp.fnt/analyze-function-call! env some-td [pred-td coll-td]))))
+
+(defmethod grp.ana.disp/analyze-mm 'some [env sexpr] (analyze-some! env sexpr))
+(defmethod grp.ana.disp/analyze-mm 'clojure.core/some [env sexpr] (analyze-some! env sexpr))
+
+(defn analyze-split-with! [env [this-sym pred coll]]
+  (let [split-with-td (grp.art/external-function-detail env this-sym)
+        pred-td       (grp.ana.disp/-analyze! env pred)
+        coll-td       (grp.ana.disp/-analyze! env coll)]
+    (if-not (grp.fnt/validate-argtypes!? env
+              (grp.art/get-arity (::grp.art/arities split-with-td) [pred-td coll-td])
+              [pred-td coll-td])
+      {::grp.art/samples (grp.sampler/try-sampling! env
+                           (grp.spec/generator env
+                             (get-in (grp.art/get-arity
+                                       (::grp.art/arities split-with-td)
+                                       [pred-td coll-td])
+                               [::grp.art/gspec ::grp.art/return-spec])))}
+      ;; TODO: validate that pred accepts coll elements
+      (grp.fnt/analyze-function-call! env split-with-td [pred-td coll-td]))))
+
+(defmethod grp.ana.disp/analyze-mm 'split-with [env sexpr] (analyze-split-with! env sexpr))
+(defmethod grp.ana.disp/analyze-mm 'clojure.core/split-with [env sexpr] (analyze-split-with! env sexpr))
 
 ;; CONTEXT: ============ * -> fn ============
 
