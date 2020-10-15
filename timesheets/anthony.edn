@@ -87,4 +87,5 @@
  {:date "2020-10-13" :description "analyze sets, some, split-with" :timespans [[1020 1310] [1420 1515] [1730 1900]]}
  {:date "2020-10-14" :description "analyze reduce, swap!" :timespans [[1130 1400]]}
  {:date "2020-10-14" :description "stateful generators" :timespans [[1500 1730]]}
+ {:date "2020-10-15" :description "analyze for, doseq" :timespans [[1130 1300] [1500 1530]]}
  ]

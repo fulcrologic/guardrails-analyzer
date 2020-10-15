@@ -4,10 +4,11 @@
     #?@(:cljs [[goog.string.format]
                [goog.string :refer [format]]])
     #?@(:clj [[com.fulcrologic.guardrails.impl.parser :as impl.parser]])
+    [clojure.set :as set]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.analysis.analyzer.dispatch :refer [analyze-mm]]
     [com.fulcrologic.guardrails-pro.analysis.analyzer.literals :as grp.ana.lit]
-    [fulcro-spec.check :refer [checker]]))
+    [fulcro-spec.check :as _ :refer [checker]]))
 
 #?(:clj
    (defmacro >test-fn [& args]
@@ -40,3 +41,13 @@
          {:actual actual
           :expected `(~'of-length?* :min ~min-len :max ~max-len)
           :message (format "Expected count to be [%d,%d] was %d" min-len max-len length)})))))
+
+(defn subset?* [expected]
+  {:pre [(set? expected)]}
+  (_/all*
+    (_/is?* set?)
+    (checker [actual]
+      (when-not (set/subset? actual expected)
+        {:actual {:extra-values (set/difference actual expected)}
+         :expected `(~'subset?* ~expected)
+         :message "Found extra values in set"}))))

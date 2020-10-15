@@ -31,13 +31,16 @@
 
 (defmethod grp.ana.disp/analyze-mm 'do [env [_ & body]] (grp.ana.disp/analyze-statements! env body))
 
+(defn analyze-let-bindings! [env bindings]
+  (reduce (fn [env [bind-sexpr sexpr]]
+            (reduce-kv grp.art/remember-local
+              env (grp.fnt/destructure! env bind-sexpr
+                    (grp.ana.disp/-analyze! env sexpr))))
+    env (partition 2 bindings)))
+
 (defn analyze-let-like-form! [env [_ bindings & body]]
   (grp.ana.disp/analyze-statements!
-    (reduce (fn [env [bind-sexpr sexpr]]
-              (reduce-kv grp.art/remember-local
-                env (grp.fnt/destructure! env bind-sexpr
-                      (grp.ana.disp/-analyze! env sexpr))))
-      env (partition 2 bindings))
+    (analyze-let-bindings! env bindings)
     body))
 
 (defmethod grp.ana.disp/analyze-mm 'let [env sexpr] (analyze-let-like-form! env sexpr))
@@ -193,17 +196,33 @@
           [] (partition 2 args))
      subject]))
 
-(defmethod grp.ana.disp/analyze-mm 'doseq [env [_ bindings & body]]
-  ;; TODO wrap destructure to handle: `:let [], :while tst, :when tst`
-  (grp.ana.disp/analyze-statements!
-    (reduce (fn [env [bind-sexpr sexpr]]
+(defn analyze-for-bindings! [env bindings]
+  (reduce (fn [env [bind-sexpr sexpr]]
+            (case bind-sexpr
+              :let (analyze-let-bindings! env sexpr)
+              :when env
+              :while env
               (reduce-kv grp.art/remember-local
                 env (grp.fnt/destructure! env bind-sexpr
-                      (-> (grp.ana.disp/-analyze! env sexpr)
-                        (update ::grp.art/samples
-                          (comp set (partial mapcat identity)))))))
-      env (partition 2 bindings))
-    body)
+                      (let [td (grp.ana.disp/-analyze! env sexpr)]
+                        (if-not (every? seqable? (::grp.art/samples td))
+                          (do (grp.art/record-error! env sexpr
+                                :error/expected-seqable-collection)
+                            {})
+                          (update td ::grp.art/samples
+                            (comp set (partial mapcat identity)))))))))
+    env (partition 2 bindings)))
+
+(defmethod grp.ana.disp/analyze-mm 'for [env [_ bindings & body]]
+  (grp.ana.disp/analyze-statements! (analyze-for-bindings! env bindings) body))
+(defmethod grp.ana.disp/analyze-mm 'clojure.core/for [env [_ bindings & body]]
+  (grp.ana.disp/analyze-statements! (analyze-for-bindings! env bindings) body))
+
+(defmethod grp.ana.disp/analyze-mm 'doseq [env [_ bindings & body]]
+  (grp.ana.disp/analyze-statements! (analyze-for-bindings! env bindings) body)
+  {::grp.art/samples #{nil}})
+(defmethod grp.ana.disp/analyze-mm 'clojure.core/doseq   [env [_ bindings & body]]
+  (grp.ana.disp/analyze-statements! (analyze-for-bindings! env bindings) body)
   {::grp.art/samples #{nil}})
 
 (comment

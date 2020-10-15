@@ -52,7 +52,9 @@
 (defn with-spec-impl
   ([env impl-type] (with-spec-impl env impl-type {}))
   ([env impl-type opts]
-   (let [opts (merge {:num-samples 10} opts)]
+   (let [opts (merge {:num-samples 10
+                      :cache-samples? true}
+                opts)]
      (assoc env ::impl
        (case impl-type
          :clojure.spec.alpha (->ClojureSpecAlpha opts)
@@ -67,14 +69,16 @@
 (defonce cache (atom {}))
 
 (defn sample [env gen]
-  (let [spec (::spec gen gen)]
-    (if-let [samples (get @cache spec)]
-      (do (log/debug "Using cached samples for" spec)
-        samples)
-      (let [samples (p [::-sample spec] (-sample (::impl env) gen))]
-        (log/debug "Caching new samples for:" spec)
-        (swap! cache assoc spec samples)
-        samples))))
+  (if-not (:cache-samples? (:opts (::impl env)))
+    (-sample (::impl env) gen)
+    (let [spec (::spec gen gen)]
+      (if-let [samples (get @cache spec)]
+        (do (log/debug "Using cached samples for" spec)
+          samples)
+        (let [samples (p [::-sample spec] (-sample (::impl env) gen))]
+          (log/debug "Caching new samples for:" spec)
+          (swap! cache assoc spec samples)
+          samples)))))
 
 (defn with-cache [c f & args]
   (reset! cache c)

@@ -2,6 +2,7 @@
   (:require
     [clojure.test :as t]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
+    [com.fulcrologic.guardrails-pro.analysis.spec :as grp.spec]
     [com.fulcrologic.guardrails-pro.test-fixtures.logging :as tf.log]
     [taoensso.timbre :as log]))
 
@@ -29,11 +30,13 @@
      ~@body))
 
 (defn test-env [& args]
-  (merge (grp.art/build-env)
-    {::grp.art/checking-sym `test-sym
-     ::grp.art/checking-file "test-file"
-     ::grp.art/location #::grp.art{:line-start 1
-                                   :column-start 1}}))
+  (-> (grp.art/build-env)
+    (merge {::grp.art/checking-sym `test-sym
+            ::grp.art/checking-file "test-file"
+            ::grp.art/location #::grp.art{:line-start 1
+                                          :column-start 1}})
+    (grp.spec/with-spec-impl :clojure.spec.alpha
+      {:cache-samples? false})))
 
 (defn capture-errors [f & args]
   (let [errors (atom [])
@@ -42,7 +45,8 @@
       [grp.art/record-error! (fn [& args]
                                (if (= 2 (count args))
                                  (swap! errors conj (second args))
-                                 (apply record! args)))]
+                                 (apply record! args))
+                               nil)]
       (apply f args)
       @errors)))
 
