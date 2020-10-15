@@ -71,7 +71,6 @@
                                                  ::original-expression])))
 (s/def ::expected (s/keys :req [(or ::spec ::type)]))
 (s/def ::actual (s/keys :opt [::type-description ::failing-samples]))
-(s/def ::Unknown (s/and ::type-description empty?))
 (s/def ::fn-ref (s/with-gen fn? #(gen/let [any gen/any] (constantly any))))
 (s/def ::arglist (s/with-gen (s/or :vector vector?
                               :quoted-vector (s/cat :quote #{'quote}

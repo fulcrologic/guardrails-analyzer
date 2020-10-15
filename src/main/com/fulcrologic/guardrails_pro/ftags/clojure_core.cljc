@@ -2,7 +2,8 @@
   (:require
     clojure.test.check.generators
     [clojure.spec.alpha :as s]
-    [com.fulcrologic.guardrails.core :refer [>fdef >fspec => | ?]]))
+    [com.fulcrologic.guardrails.core :refer [>fdef >fspec => | ?]]
+    [taoensso.encore :as enc]))
 
 ;; CONTEXT: Higher Order FunctionS
 
@@ -28,6 +29,12 @@
 (>fdef ^:map-like clojure.core/map
   ([f coll & colls] [ifn? sequential? (s/+ sequential?) => (s/coll-of any?)]))
 
+(>fdef ^:pure clojure.core/reduce
+  ([f init coll] [ifn? any? seqable? => any?]))
+
+(>fdef ^:pure clojure.core/reduce-kv
+  [f init coll] [ifn? any? seqable? => any?])
+
 (>fdef ^:pure clojure.core/partial
   [f & args] [ifn? (s/* any?) => (>fspec [& args] [(s/* any?) => any?])])
 
@@ -36,6 +43,9 @@
 
 (>fdef ^:pure clojure.core/split-with
   [pred coll] [ifn? seqable? => (s/tuple sequential? sequential?)])
+
+(>fdef clojure.core/swap!
+  [a f & args] [enc/atom? ifn? (s/* any?) => any?])
 
 ;; CONTEXT: future design work
 
@@ -119,6 +129,9 @@
 
 (>fdef ^:pure clojure.core/assoc-in
   [m ks v] [map? (s/+ any?) any? => map?])
+
+(>fdef ^:pure clojure.core/atom
+  [value] [any? => enc/atom?])
 
 (>fdef ^:pure clojure.core/butlast
   [coll] [coll? => coll?])

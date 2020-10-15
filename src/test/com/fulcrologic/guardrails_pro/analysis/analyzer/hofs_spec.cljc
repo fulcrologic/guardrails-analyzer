@@ -123,14 +123,6 @@
       (_/seq-matches?*
         [(_/embeds?* {::grp.art/problem-type :error/function-argument-failed-spec})]))))
 
-#_(specification "analyze-juxt!" :integration
-  (let [env (tf/test-env)]
-    (assertions
-      (grp.ana/analyze! env
-        `(() "str"))
-      =check=> (_/embeds?* {::grp.art/samples #{true}})
-      )))
-
 (specification "analyze-partial!" :integration
   (let [env (tf/test-env)]
     (assertions
@@ -187,7 +179,17 @@
           =check=> (_/seq-matches?*
                      [(_/embeds?* {::grp.art/problem-type :error/function-arguments-failed-spec})]))))))
 
-(specification "analyze-some!" :wip
+(specification "analyze-reduce!" :integration :wip
+  (let [env (tf/test-env)
+        sum-fn (tc/>test-fn [acc x]
+                 ^:pure [number? number? :ret number?]
+                 (+ acc x))]
+    (assertions
+      (grp.ana/analyze! env
+        `(reduce ~sum-fn 0 (range 5)))
+      =check=> (_/embeds?* {::grp.art/samples #{10}}))))
+
+(specification "analyze-some!" :integration :wip
   (let [env (tf/test-env)]
     (assertions
       (grp.ana/analyze! env
@@ -199,7 +201,7 @@
       =check=> (_/embeds?*
                  {::grp.art/samples #{"str" :kw}}))))
 
-(specification "analyze-split-with!" :wip
+(specification "analyze-split-with!" :integration :wip
   (let [env (tf/test-env)]
     (assertions
       (grp.ana/analyze! env
@@ -222,3 +224,14 @@
                                       (tc/of-length?* 2)
                                       (_/every?*
                                         (_/is?* sequential?)))}))))
+
+(specification "analyze-swap!" :integration :wip
+  (let [env (tf/test-env)]
+    (assertions
+      (grp.ana/analyze! env
+        `(swap! (atom nil) + 100))
+      =check=> (_/embeds?* {::grp.art/samples (_/every?* (_/is?* number?))})
+      (tf/capture-errors grp.ana/analyze! env
+        `(swap! (atom nil) + :kw))
+      =check=> (_/seq-matches?*
+                 [(_/embeds?* {::grp.art/problem-type :error/function-argument-failed-spec})]))))

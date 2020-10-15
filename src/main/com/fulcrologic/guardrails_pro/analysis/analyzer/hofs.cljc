@@ -84,13 +84,23 @@
 (defmethod grp.ana.disp/analyze-mm 'clojure.core/apply [env sexpr] (analyze-apply! env sexpr))
 
 (defn analyze-map-like! [env [this-sym f & colls]]
-  (let [map-td (grp.art/external-function-detail env this-sym)
-        lambda (grp.ana.disp/-analyze! env f)
-        colls  (map (partial grp.ana.disp/-analyze! env) colls)]
-    {::grp.art/samples (grp.sampler/sample! env map-td (cons lambda colls))}))
+  (let [map-td   (grp.art/external-function-detail env this-sym)
+        func-td  (grp.ana.disp/-analyze! env f)
+        colls-td (map (partial grp.ana.disp/-analyze! env) colls)]
+    {::grp.art/samples (grp.sampler/sample! env map-td (cons func-td colls-td))}))
 
 (defmethod grp.ana.disp/analyze-mm 'map [env sexpr] (analyze-map-like! env sexpr))
 (defmethod grp.ana.disp/analyze-mm 'clojure.core/map [env sexpr] (analyze-map-like! env sexpr))
+
+(defn analyze-reduce-like! [env [this-sym f init coll]]
+  (let [reduce-td (grp.art/external-function-detail env this-sym)
+        func-td   (grp.ana.disp/-analyze! env f)
+        init-td   (grp.ana.disp/-analyze! env init)
+        coll-td   (grp.ana.disp/-analyze! env coll)]
+    {::grp.art/samples (grp.sampler/sample! env reduce-td [func-td init-td coll-td])}))
+
+(defmethod grp.ana.disp/analyze-mm 'reduce [env sexpr] (analyze-reduce-like! env sexpr))
+(defmethod grp.ana.disp/analyze-mm 'clojure.core/reduce [env sexpr] (analyze-reduce-like! env sexpr))
 
 (defn analyze-some! [env [this-sym pred coll]]
   (let [some-td (grp.art/external-function-detail env this-sym)
@@ -129,6 +139,33 @@
 
 (defmethod grp.ana.disp/analyze-mm 'split-with [env sexpr] (analyze-split-with! env sexpr))
 (defmethod grp.ana.disp/analyze-mm 'clojure.core/split-with [env sexpr] (analyze-split-with! env sexpr))
+
+(defn analyze-swap! [env [this-sym a f & args]]
+  (let [swap-td (grp.art/external-function-detail env this-sym)
+        atom-td (grp.ana.disp/-analyze! env a)
+        func-td (grp.ana.disp/-analyze! env f)
+        args-td (map (partial grp.ana.disp/-analyze! env) args)
+        swap-args-td (concat [atom-td func-td] args-td)]
+    (if-not (grp.fnt/validate-argtypes!? env
+              (grp.art/get-arity (::grp.art/arities swap-td) swap-args-td)
+              swap-args-td)
+      {::grp.art/samples (grp.sampler/try-sampling! env
+                           (grp.spec/generator env
+                             (get-in (grp.art/get-arity
+                                       (::grp.art/arities func-td)
+                                       (cons {} args-td))
+                               [::grp.art/gspec ::grp.art/return-spec])))}
+      (let [func-arg-td {::grp.art/samples
+                         (grp.sampler/try-sampling! env
+                           (grp.spec/generator env
+                             (get-in (grp.art/get-arity
+                                       (::grp.art/arities func-td)
+                                       (cons {} args-td))
+                               [::grp.art/gspec ::grp.art/argument-specs 0])))}]
+        (grp.fnt/analyze-function-call! env func-td (cons func-arg-td args-td))))))
+
+(defmethod grp.ana.disp/analyze-mm 'swap! [env sexpr] (analyze-swap! env sexpr))
+(defmethod grp.ana.disp/analyze-mm 'clojure.core/swap! [env sexpr] (analyze-swap! env sexpr))
 
 ;; CONTEXT: ============ * -> fn ============
 

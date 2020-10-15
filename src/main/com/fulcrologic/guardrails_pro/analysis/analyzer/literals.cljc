@@ -58,7 +58,7 @@
                          (rand-nth (vec samples))
                          (do
                            (grp.art/record-warning! env v :warning/missing-samples)
-                           ::grp.art/Unknown)))]
+                           ::grp.art/unknown)))]
     (assoc acc k sample-value)))
 
 (>defn analyze-hashmap! [env hashmap]
@@ -76,7 +76,7 @@
                  (when (seq samples) {:sample-value (rand-nth (vec samples))}))]
     (if (contains? sample :sample-value)
       (conj acc (:sample-value sample))
-      (conj acc ::grp.art/Unknown))))
+      (conj acc ::grp.art/unknown))))
 
 (>defn analyze-vector! [env v]
   [::grp.art/env vector? => ::grp.art/type-description]
