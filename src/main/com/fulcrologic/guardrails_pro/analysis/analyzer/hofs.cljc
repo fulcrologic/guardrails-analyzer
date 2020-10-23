@@ -8,6 +8,7 @@
     [com.fulcrologic.guardrails-pro.analysis.spec :as grp.spec]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails.core :as gr]
+    [com.rpl.specter :as $]
     [taoensso.encore :as enc]
     [taoensso.timbre :as log]))
 
@@ -41,17 +42,31 @@
               (f (env->fn env)))
     :else function))
 
+(defn >fn-ret [td]
+  ($/transform [($/walker ::grp.art/gspec) ::grp.art/gspec]
+    #(select-keys %
+       [::grp.art/return-spec
+        ::grp.art/return-type
+        ::grp.art/return-predicates])
+    (select-keys td [::grp.art/arities])))
+
+(defn >fn-args [td]
+  ($/transform [($/walker ::grp.art/gspec) ::grp.art/gspec]
+    #(select-keys %
+       [::grp.art/argument-specs
+        ::grp.art/argument-types
+        ::grp.art/argument-predicates])
+    (select-keys td [::grp.art/arities])))
+
 ;; CONTEXT: ============ fn * -> val ============
 
 ;; TODO
 (comment
-  reduce
   filter
   update
   sort-by
   group-by
   partition-by
-  swap!
   repeatedly
   iterate
   )
@@ -181,6 +196,26 @@
 (defmethod grp.ana.disp/analyze-mm 'constantly [env sexpr] (analyze-constantly! env sexpr))
 (defmethod grp.ana.disp/analyze-mm 'clojure.core/constantly [env sexpr] (analyze-constantly! env sexpr))
 
+(defn >compose!? [env f g] ;; ~> (comp f g)
+  (->> (vals (::grp.art/arities g))
+    (map #(grp.sampler/return-sample-gen env (::grp.art/gspec %)))
+    (every? (fn [generator]
+              (when generator
+                (when-let [initial-samples (seq (grp.sampler/try-sampling! env generator
+                                                  {::grp.art/original-expression g}))]
+                  (let [td {::grp.art/samples (set initial-samples)}]
+                    (grp.fnt/validate-argtypes!? env
+                      (grp.art/get-arity (::grp.art/arities f) [td])
+                      [td]))))))))
+
+#_(let [[f g] (take-last 2 fns-tds)]
+    (apply >compose!? env f g)
+    (for [[f g] (->> fns-tds
+                  (filter (partial enc/filter-keys #{1}))
+                  (partition 2 1)
+                  (butlast))]
+      (>compose!? env f g)))
+
 (defn analyze-comp! [env [this-sym & fns]]
   (let [comp-td (grp.art/external-function-detail env this-sym)
         fns-td (map (partial grp.ana.disp/-analyze! env) fns)
@@ -279,27 +314,39 @@
 (defmethod grp.ana.disp/analyze-mm 'fnil [env sexpr] (analyze-fnil! env sexpr))
 (defmethod grp.ana.disp/analyze-mm 'clojure.core/fnil [env sexpr] (analyze-fnil! env sexpr))
 
-;; TODO
 (defn analyze-juxt! [env [this-sym & fns]]
-  (let [fns-td (map (partial grp.ana.disp/-analyze! env) fns)]
-    {}
-    #_(fn [& args]
-        (reduce #(conj %1 (apply %2 args))
-          [] (map (partial grp.sampler/get-fn-ref env) fns-td)))))
+  (let [juxt-td (grp.ana.disp/-analyze! env this-sym)
+        fns-td (map (partial grp.ana.disp/-analyze! env) fns)
+        fn-ref (fn [& args]
+                 (-> juxt
+                   (apply (map (partial grp.sampler/get-fn-ref env) fns-td))
+                   (apply args)))]
+    {}))
+
+(defmethod grp.ana.disp/analyze-mm 'juxt [env sexpr] (analyze-juxt! env sexpr))
+(defmethod grp.ana.disp/analyze-mm 'clojure.core/juxt [env sexpr] (analyze-juxt! env sexpr))
+
+(defn >partial! [env function args]
+  (let [args-td (mapv (partial grp.ana.disp/-analyze! env) args)
+        ptd (update function ::grp.art/arities
+              (partial enc/filter-vals
+                #(grp.fnt/valid-argtypes? env % args-td)))]
+    (if (seq (::grp.art/arities ptd))
+      (update ptd ::grp.fnt/partial-argtypes concat args-td)
+      (do (grp.art/record-error! env args :error/invalid-function-arguments)
+        {}))))
 
 (defn analyze-partial! [env [this-sym f & values]]
   (let [partial-td (grp.art/external-function-detail env this-sym)
-        values-td (map (partial grp.ana.disp/-analyze! env) values)
-        function (grp.ana.disp/-analyze! env f)
-        args-td (cons function values-td)
-        valid-args? (grp.fnt/validate-argtypes!? env
-                      (grp.art/get-arity
-                        (::grp.art/arities partial-td)
-                        args-td)
-                      args-td)]
-    (if (not valid-args?) {}
-      (-> function
-        (update ::grp.fnt/partial-argtypes concat values-td)))))
+        values-td (mapv (partial grp.ana.disp/-analyze! env) values)
+        function (grp.ana.disp/-analyze! env f)]
+    (if (grp.fnt/validate-argtypes!? env
+          (grp.art/get-arity
+            (::grp.art/arities partial-td)
+            (cons function values-td))
+          (cons function values-td))
+      (>partial! env function values)
+      {})))
 
 (defmethod grp.ana.disp/analyze-mm 'partial [env sexpr] (analyze-partial! env sexpr))
 (defmethod grp.ana.disp/analyze-mm 'clojure.core/partial [env sexpr] (analyze-partial! env sexpr))

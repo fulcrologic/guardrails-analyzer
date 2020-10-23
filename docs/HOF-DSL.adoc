@@ -27,6 +27,8 @@ In this specific case we need to be able to:
 * Say how the functional arguments *relate* to one another (if they do)
 * Say how any hard-core arguments relate to HOF arguments (if they do)
 
+. `(comp f ... g)`
+
 [source]
 -----
 [F_0 ... F_n => R]

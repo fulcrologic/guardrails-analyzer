@@ -9,11 +9,12 @@
 
 (tf/use-fixtures :once tf/with-default-test-logging-config)
 
-(specification "analyze for"
+(specification "analyze for" :integration :wip
   (let [env (tf/test-env)]
     (assertions
       (grp.ana/analyze! env
         `(for [x# (range 5)] x#))
+      ;; TODO: should be #{[0 1 2 3 4]}
       =check=> (_/embeds?* {::grp.art/samples #{0 1 2 3 4}})
       "can bind values using `:let [...]`"
       (grp.ana/analyze! env

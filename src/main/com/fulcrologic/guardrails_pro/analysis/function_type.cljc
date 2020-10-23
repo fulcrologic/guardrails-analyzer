@@ -187,8 +187,9 @@
                  ::grp.art/problem-type        :error/function-argument-failed-spec
                  ::grp.art/message-params      {:argument arg-sym}})))
           (doseq [:when (some #{'&} specials)
-                  :let [rest-argtypes (seq (drop (count syms) argtypes))
-                        rst-sym (get (apply hash-map specials) '& nil)
+                  :let [rest-argtypes (seq (drop (count syms) argtypes))]
+                  :when (seq rest-argtypes)
+                  :let [rst-sym (get (apply hash-map specials) '& nil)
                         args-spec (first (drop (count syms) argument-specs))
                         args-type (first (drop (count syms) argument-types))]
                   sample-rest-arguments (apply map vector (map get-samples rest-argtypes))
@@ -210,6 +211,10 @@
                ::grp.art/expected            {::grp.art/spec argument-pred}
                ::grp.art/problem-type        :error/function-arguments-failed-predicate}))))
       (not @failed?))))
+
+(defn valid-argtypes? [env arity argtypes]
+  (with-redefs [grp.art/record-error! (constantly nil)]
+    (validate-argtypes!? env arity argtypes)))
 
 (s/def ::partial-argtypes (s/coll-of ::grp.art/type-description))
 

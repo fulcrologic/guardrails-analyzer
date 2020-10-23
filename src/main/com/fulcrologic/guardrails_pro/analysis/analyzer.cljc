@@ -17,6 +17,7 @@
 (defmethod analyze-mm :unknown [env sexpr]
   (log/error "Unknown expression:" (pr-str sexpr))
   (grp.art/record-info! env sexpr :info/failed-to-analyze-unknown-expression)
+  ;; NOTE unknown -> dont know, keep checking, dont report
   {})
 
 (defmethod analyze-mm :symbol/lookup [env sym]

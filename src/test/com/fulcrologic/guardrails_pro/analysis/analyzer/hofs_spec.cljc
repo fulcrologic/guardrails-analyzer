@@ -3,11 +3,15 @@
     com.fulcrologic.guardrails-pro.ftags.clojure-core ;; NOTE: required
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails-pro.analysis.analyzer :as grp.ana]
+    [com.fulcrologic.guardrails-pro.analysis.function-type :as grp.fnt]
+    [com.fulcrologic.guardrails-pro.analysis.sampler :as grp.sampler]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.test-fixtures :as tf]
     [com.fulcrologic.guardrails-pro.test-checkers :as tc]
+    [com.rpl.specter :as $]
     [fulcro-spec.check :as _]
-    [fulcro-spec.core :refer [specification assertions behavior]]))
+    [fulcro-spec.core :refer [specification assertions behavior component]]
+    [taoensso.encore :as enc]))
 
 (tf/use-fixtures :once tf/with-default-test-logging-config)
 
@@ -123,13 +127,21 @@
       (_/seq-matches?*
         [(_/embeds?* {::grp.art/problem-type :error/function-argument-failed-spec})]))))
 
+#_(specification "analyze-juxt!" :integration :wip
+  (let [env (tf/test-env)]
+    (assertions
+      (grp.ana/analyze! env
+        `(juxt inc dec))
+      => {}
+      )))
+
 (specification "analyze-partial!" :integration
   (let [env (tf/test-env)]
     (assertions
       (grp.ana/analyze! env
         `((partial + 1) 2))
       =check=> (_/embeds?* {::grp.art/samples #{3}})
-      "if not passed a function errors and returns an empty type description"
+      "if not passed a function: errors and returns an empty type description"
       (tf/capture-errors grp.ana/analyze! env
         `(partial "error" 1))
       =check=> (_/seq-matches?*
@@ -139,12 +151,13 @@
       => {}
       "checks arguments to partial itself against the function's specs"
       (tf/capture-errors grp.ana/analyze! env
-        `((partial + "err") 1))
+        `(partial + "err"))
       =check=> (_/seq-matches?*
-                 [(_/embeds?* {::grp.art/problem-type :error/function-argument-failed-spec})])
+                 [(_/embeds?* {::grp.art/problem-type :error/invalid-function-arguments
+                               ::grp.art/original-expression ["err"]})])
       (grp.ana/analyze! env
-        `((partial + "err") 1))
-      =check=> (_/embeds?* {::grp.art/samples (_/every?* (_/is?* number?))})
+        `(partial + "err"))
+      =check=> (_/equals?* {})
       "checks arguments to the returned function against the function's specs"
       (tf/capture-errors grp.ana/analyze! env
         `((partial + 1) "err"))
@@ -158,16 +171,16 @@
         `((partial + 1 2 3) 100))
       =check=> (_/embeds?* {::grp.art/samples #{106}})
       (tf/capture-errors grp.ana/analyze! env
-        `((partial + 1 2 "err") 100))
+        `(partial + 1 2 "err"))
       =check=> (_/seq-matches?*
-                 [(_/embeds?* {::grp.art/problem-type :error/function-arguments-failed-spec})])
+                 [(_/embeds?* {::grp.art/problem-type :error/invalid-function-arguments})])
       (tf/capture-errors grp.ana/analyze! env
         `((partial + 1 2 3) "err"))
       =check=> (_/seq-matches?*
                  [(_/embeds?* {::grp.art/problem-type :error/function-arguments-failed-spec})]))
     (behavior "the varargs spec is an s/cat"
       (let [lambda (tc/>test-fn [& args]
-                     ^:pure [(s/cat :int int? :nums (s/+ number?)) :ret number?]
+                     ^:pure [(s/cat :int int? :nums (s/* number?)) :ret number?]
                      (apply + args))]
         (assertions
           "can still partial its arguments"
@@ -175,9 +188,9 @@
             `((partial ~lambda 1) 2 3))
           =check=> (_/embeds?* {::grp.art/samples #{6}})
           (tf/capture-errors grp.ana/analyze! env
-            `((partial ~lambda 1.0) 3))
+            `(partial ~lambda 1.0))
           =check=> (_/seq-matches?*
-                     [(_/embeds?* {::grp.art/problem-type :error/function-arguments-failed-spec})]))))))
+                     [(_/embeds?* {::grp.art/problem-type :error/invalid-function-arguments})]))))))
 
 (specification "analyze-reduce!" :integration :wip
   (let [env (tf/test-env)
