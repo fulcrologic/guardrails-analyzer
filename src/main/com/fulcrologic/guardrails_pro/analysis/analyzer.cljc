@@ -1,6 +1,6 @@
 (ns com.fulcrologic.guardrails-pro.analysis.analyzer
   (:require
-    [com.fulcrologic.guardrails-pro.analysis.analyzer.dispatch :refer [analyze-mm -analyze!]]
+    [com.fulcrologic.guardrails-pro.analysis.analyzer.dispatch :as grp.disp]
     [com.fulcrologic.guardrails-pro.analysis.analyzer.literals]
     [com.fulcrologic.guardrails-pro.analysis.analyzer.macros]
     [com.fulcrologic.guardrails-pro.analysis.analyzer.hofs]
@@ -12,32 +12,31 @@
 (>defn analyze!
   [env sexpr]
   [::grp.art/env any? => ::grp.art/type-description]
-  (-analyze! env sexpr))
+  (grp.disp/-analyze! env sexpr))
 
-(defmethod analyze-mm :unknown [env sexpr]
+(defmethod grp.disp/analyze-mm :unknown [env sexpr]
   (log/error "Unknown expression:" (pr-str sexpr))
   (grp.art/record-info! env sexpr :info/failed-to-analyze-unknown-expression)
-  ;; NOTE unknown -> dont know, keep checking, dont report
-  {})
+  (grp.disp/unknown-expr env sexpr))
 
-(defmethod analyze-mm :symbol/lookup [env sym]
+(defmethod grp.disp/analyze-mm :symbol/lookup [env sym]
   (or
     (grp.art/symbol-detail env sym)
     (grp.art/function-detail env sym)
     (grp.art/external-function-detail env sym)
-    {}))
+    (grp.disp/unknown-expr env sym)))
 
-(defmethod analyze-mm :function.external/call [env [f & args]]
+(defmethod grp.disp/analyze-mm :function.external/call [env [f & args]]
   (let [function (grp.art/external-function-detail env f)
-        argtypes (mapv (partial -analyze! env) args)]
+        argtypes (mapv (partial grp.disp/-analyze! env) args)]
     (grp.fnt/analyze-function-call! env function argtypes)))
 
-(defmethod analyze-mm :function/call [env [f & arguments]]
+(defmethod grp.disp/analyze-mm :function/call [env [f & arguments]]
   (let [function (grp.art/function-detail env f)
-        argtypes (mapv (partial -analyze! env) arguments)]
+        argtypes (mapv (partial grp.disp/-analyze! env) arguments)]
     (grp.fnt/analyze-function-call! env function argtypes)))
 
-(defmethod analyze-mm :function.expression/call [env [fn-expr & args]]
-  (let [function (-analyze! env fn-expr)
-        argtypes (mapv (partial -analyze! env) args)]
+(defmethod grp.disp/analyze-mm :function.expression/call [env [fn-expr & args]]
+  (let [function (grp.disp/-analyze! env fn-expr)
+        argtypes (mapv (partial grp.disp/-analyze! env) args)]
     (grp.fnt/analyze-function-call! env function argtypes)))

@@ -61,7 +61,10 @@
 (s/def ::positional-types (s/map-of ::key ::type-description))
 (s/def ::recursive-description (s/keys :req [::positional-types]))
 ;; NOTE: We can use a generated sample to in turn generate a recursive description
+;; NOTE unknown -> dont know, keep checking, dont report
+(s/def ::unknown-expression ::form)
 (s/def ::type-description (s/or
+                            :unknown (s/keys :req [::unknown-expression])
                             :function ::lambda
                             :value (s/keys :opt [::spec
                                                  ;::recursive-description
@@ -73,9 +76,9 @@
 (s/def ::actual (s/keys :opt [::type-description ::failing-samples]))
 (s/def ::fn-ref (s/with-gen fn? #(gen/let [any gen/any] (constantly any))))
 (s/def ::arglist (s/with-gen (s/or :vector vector?
-                              :quoted-vector (s/cat :quote #{'quote}
-                                               :symbols vector?))
-                  #(gen/vector gen/symbol)))
+                               :quoted-vector (s/cat :quote #{'quote}
+                                                :symbols vector?))
+                   #(gen/vector gen/symbol)))
 (s/def ::predicate (s/with-gen fn? gen-predicate))
 (s/def ::argument-predicates (s/coll-of ::predicate :kind vector?))
 (s/def ::argument-types (s/coll-of ::type :kind vector?))

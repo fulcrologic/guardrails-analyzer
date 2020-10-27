@@ -73,3 +73,6 @@
   (doseq [expr (butlast body)]
     (-analyze! env expr))
   (-analyze! env (last body)))
+
+(defn unknown-expr [env expr]
+  {::grp.art/unknown-expression expr})

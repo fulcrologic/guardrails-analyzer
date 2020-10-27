@@ -102,7 +102,7 @@
   (let [map-td   (grp.art/external-function-detail env this-sym)
         func-td  (grp.ana.disp/-analyze! env f)
         colls-td (map (partial grp.ana.disp/-analyze! env) colls)]
-    {::grp.art/samples (grp.sampler/sample! env map-td (cons func-td colls-td))}))
+    (grp.fnt/analyze-function-call! env map-td (cons func-td colls-td))))
 
 (defmethod grp.ana.disp/analyze-mm 'map [env sexpr] (analyze-map-like! env sexpr))
 (defmethod grp.ana.disp/analyze-mm 'clojure.core/map [env sexpr] (analyze-map-like! env sexpr))
@@ -112,7 +112,7 @@
         func-td   (grp.ana.disp/-analyze! env f)
         init-td   (grp.ana.disp/-analyze! env init)
         coll-td   (grp.ana.disp/-analyze! env coll)]
-    {::grp.art/samples (grp.sampler/sample! env reduce-td [func-td init-td coll-td])}))
+    (grp.fnt/analyze-function-call! env reduce-td [func-td init-td coll-td])))
 
 (defmethod grp.ana.disp/analyze-mm 'reduce [env sexpr] (analyze-reduce-like! env sexpr))
 (defmethod grp.ana.disp/analyze-mm 'clojure.core/reduce [env sexpr] (analyze-reduce-like! env sexpr))
