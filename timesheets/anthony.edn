@@ -88,4 +88,7 @@
  {:date "2020-10-14" :description "analyze reduce, swap!" :timespans [[1130 1400]]}
  {:date "2020-10-14" :description "stateful generators" :timespans [[1500 1730]]}
  {:date "2020-10-15" :description "analyze for, doseq" :timespans [[1130 1300] [1500 1530]]}
+ {:date "2020-10-16" :description "hofs" :timespans [[1000 1320] [1645 1845]]}
+ {:date "2020-10-26" :description "hofs fix tests" :timespans [[1250 1350]]}
+ {:date "2020-10-27" :description "chat & check-root-form" :timespans [[1230 1400] [1600 1715]]}
  ]
