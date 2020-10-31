@@ -6,4 +6,4 @@
 
 (defn ^:export refresh [] (reporter/hot-reload!))
 
-(defn ^:export init [] (reporter/start! false))
+(defn ^:export init [] (reporter/start! {:checker? false}))

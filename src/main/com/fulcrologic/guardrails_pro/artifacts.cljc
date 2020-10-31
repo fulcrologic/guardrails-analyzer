@@ -41,6 +41,7 @@
 ;; samples is for generated data only
 (s/def ::samples (s/coll-of any? :min-count 0 :kind set?))
 (s/def ::failing-samples ::samples)
+(s/def ::expression string?)
 (s/def ::original-expression ::form)
 (s/def ::literal-value ::original-expression)
 (s/def ::problem-type (s/and qualified-keyword?
@@ -117,7 +118,7 @@
                     :req [::line-start ::column-start]
                     :opt [::line-end ::column-end]))
 (s/def ::checking-file string?)
-(s/def ::checking-sym symbol?)
+(s/def ::checking-sym simple-symbol?)
 (s/def ::current-form ::form)
 (s/def ::current-ns string?)
 (s/def ::local-symbols (s/every-kv symbol? ::type-description
@@ -148,9 +149,9 @@
                      ::location]))
 
 (>defn get-arity
-  [arities argtypes]
-  [::arities (s/coll-of ::type-description) => ::arity-detail]
-  (get arities (count argtypes)
+  [arities args]
+  [::arities (s/coll-of any?) => ::arity-detail]
+  (get arities (count args)
     (get arities :n
       ;; TODO: WIP
       (get arities (first (sort (keys (dissoc arities :n))))))))
@@ -299,24 +300,9 @@
 (s/def ::warning (s/and ::problem (comp #{"warning"} namespace ::problem-type)))
 (s/def ::info (s/and ::problem (comp #{"info"} namespace ::problem-type)))
 (s/def ::hint (s/and ::problem (comp #{"hint"} namespace ::problem-type)))
-(s/def ::errors (s/coll-of ::error))
-(s/def ::warnings (s/coll-of ::warning))
-(s/def ::infos (s/every-kv ::location (s/coll-of ::infos)))
-(s/def ::hints (s/every-kv ::location (s/coll-of ::hints)))
-(s/def ::by-sym (s/every-kv qualified-symbol?
-                  (s/keys :opt [::errors ::warnings])
-                  :gen-max 10))
-(s/def ::problems (s/keys :req [::by-sym]
-                    :opt [::infos ::hints]))
+(s/def ::problems (s/coll-of ::problem :kind vector? :gen-max 10))
 
-(defonce problems (atom {::by-sym {}}))
-
-(>defn- insert-problem-by-sym [problems problem-list-type sym problem]
-  [::problems #{::errors ::warnings} qualified-symbol? ::problem => ::problems]
-  (update-in problems
-    [::by-sym sym problem-list-type]
-    (fnil conj [])
-    problem))
+(defonce problems (atom []))
 
 (>defn record-error!
   ([env original-expression problem-type]
@@ -330,8 +316,9 @@
   ([env error]
    [::env (s/keys :req [::problem-type ::original-expression]) => nil?]
    (log/info :record-error! (::checking-sym env) "\n" (::location env) "\n" error)
-   (swap! problems insert-problem-by-sym ::errors (::checking-sym env)
-     (merge error (::location env) {::file (::checking-file env)}))
+   (swap! problems conj
+     (merge error (::location env)
+       {::file (::checking-file env)}))
    nil))
 
 (>defn record-warning!
@@ -345,8 +332,9 @@
                          ::message-params message-params}))
   ([env warning]
    [::env (s/keys :req [::problem-type ::original-expression]) => nil?]
-   (swap! problems insert-problem-by-sym ::warnings (::checking-sym env)
-     (merge warning (::location env) {::file (::checking-file env)}))
+   (swap! problems conj
+     (merge warning (::location env)
+       {::file (::checking-file env)}))
    nil))
 
 (>defn record-info!
@@ -360,9 +348,9 @@
                       ::message-params message-params}))
   ([env info]
    [::env (s/keys :req [::problem-type ::original-expression]) => nil?]
-   (swap! problems update-in [::infos (::location env)]
-     (fnil conj [])
-     (merge info (::location env) {::file (::checking-file env)}))
+   (swap! problems conj
+     (merge info (::location env)
+       {::file (::checking-file env)}))
    nil))
 
 (defn- clear-problems-by-file [problems file]
@@ -370,5 +358,5 @@
     $/NONE problems))
 
 (defn clear-problems!
-  ([] (swap! problems dissoc ::errors ::warnings ::infos ::hints))
+  ([] (reset! problems []))
   ([file] (swap! problems clear-problems-by-file file)))

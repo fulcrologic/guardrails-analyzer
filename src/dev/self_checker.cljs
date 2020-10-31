@@ -6,7 +6,7 @@
 (prof/add-basic-println-handler! {})
 
 (defn init []
-  (reporter/start! true))
+  (reporter/start! {:checker? true}))
 
 (defn refresh []
   (reporter/hot-reload!))

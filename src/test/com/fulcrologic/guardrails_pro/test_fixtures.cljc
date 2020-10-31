@@ -31,8 +31,9 @@
 
 (defn test-env [& args]
   (-> (grp.art/build-env)
-    (merge {::grp.art/checking-sym `test-sym
-            ::grp.art/checking-file "test-file"
+    (merge {::grp.art/checking-sym 'fake-sym
+            ::grp.art/checking-file "fake-file"
+            ::grp.art/current-ns "fake-ns"
             ::grp.art/location #::grp.art{:line-start 1
                                           :column-start 1}})
     (grp.spec/with-spec-impl :clojure.spec.alpha

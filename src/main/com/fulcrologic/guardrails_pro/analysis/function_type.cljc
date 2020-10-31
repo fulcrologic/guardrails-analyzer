@@ -24,11 +24,12 @@
     (do
       (when-not (some #(contains? % kw) samples)
         (grp.art/record-warning! env kw :warning/failed-to-find-keyword-in-hashmap-samples))
-      (when-let [failing-case (some #(when-not (grp.spec/valid? env spec %) %) samples)]
+      (when-let [failing-case (some #(when-not (grp.spec/valid? env spec %) %)
+                                (map kw samples))]
         (grp.art/record-error! env
           #::grp.art{:problem-type :error/value-failed-spec
                      :expected #::grp.art{:spec spec :type (pr-str kw)}
-                     :actual failing-case
+                     :actual {::grp.art/failing-samples #{failing-case}}
                      :original-expression (or orig-expr kw)})))
     (grp.art/record-warning! env kw
       :warning/qualified-keyword-missing-spec)))
@@ -55,6 +56,10 @@
               ::grp.art/samples (set (map v (::grp.art/samples td)))
               ::grp.art/spec v
               ::grp.art/type (pr-str v)}))
+    (keyword? v)
+    #_=> (-destructure! env k
+           #::grp.art{:original-expression k
+                      :samples (set (map v (::grp.art/samples td)))})
     (= :as k)
     #_=> [[v (assoc td ::grp.art/original-expression v)]]
     :else []))
@@ -147,7 +152,7 @@
                          samples)]
     (when (contains? sample-failure :failing-case)
       (let [sample-failure (:failing-case sample-failure)]
-        (grp.art/record-error! env
+        (grp.art/record-error! (grp.art/update-location env (meta expr))
           {::grp.art/original-expression expr
            ::grp.art/actual              {::grp.art/failing-samples #{sample-failure}}
            ::grp.art/expected            #::grp.art{:spec return-spec :type return-type}

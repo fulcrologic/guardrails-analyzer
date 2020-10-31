@@ -23,17 +23,17 @@
   (lsp.diag/update-problems! problems)
   {})
 
-(pc/defmutation subscribe [{:keys [websockets cid]} _params]
+(pc/defmutation subscribe [{:keys [websockets cid]} viewer-info]
   {::pc/sym 'daemon/subscribe}
   (log/info "Client subscribed to error updates: " cid)
-  (swap! cmgmt/subscribed-viewers conj cid)
-  (cmgmt/update-viewers! websockets cid)
+  (swap! cmgmt/subscribed-viewers assoc cid viewer-info)
+  (cmgmt/update-viewers! websockets [cid viewer-info])
   {})
 
-(pc/defmutation register-checker [{:keys [cid] :as _env} _params]
+(pc/defmutation register-checker [{:keys [cid] :as _env} checker-info]
   {::pc/sym 'daemon/register-checker}
   (log/info "Checker registered: " cid)
-  (swap! cmgmt/registered-checkers conj cid)
+  (swap! cmgmt/registered-checkers assoc cid checker-info)
   {})
 
 (def all-resolvers [all-problems report-analysis subscribe register-checker])

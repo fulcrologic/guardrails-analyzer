@@ -48,7 +48,7 @@
                                                 (_/every?* (_/is?* int?)))}})
           "if the keyword does not have a spec it returns no entry for it"
           (grp.fnt/-destructure! test-env '{err :ERROR} map-td)
-          => {})
+          => {'err #::grp.art{:samples #{nil} :original-expression 'err}})
         (component ":as binding"
           (assertions
             (grp.fnt/-destructure! test-env '{:as foo} map-td)

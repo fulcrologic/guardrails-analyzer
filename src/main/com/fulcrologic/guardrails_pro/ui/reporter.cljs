@@ -1,6 +1,5 @@
 (ns com.fulcrologic.guardrails-pro.ui.reporter
   (:require
-    [clojure.pprint :refer [pprint]]
     [com.fulcrologic.fulcro.application :as app]
     [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
     [com.fulcrologic.fulcro.dom :as dom :refer [div h3 h4 label input]]
@@ -9,8 +8,6 @@
     [com.fulcrologic.fulcro.routing.dynamic-routing :as dr :refer [defrouter]]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.checker :as grp.checker]
-    [com.fulcrologic.guardrails-pro.ui.problem-formatter :refer [format-problems]]
-    [com.rpl.specter :as sp]
     [taoensso.timbre :as log]))
 
 (f.m/defmutation focus-ns [{:keys [ns]}]
@@ -121,73 +118,50 @@
 
 (declare check! update-problems! report-analysis!)
 
-(defonce app
-  (app/fulcro-app
-    {:remotes
-     {:remote
-      (fws/fulcro-websocket-remote
-        {:push-handler
-         (fn [{:keys [topic msg]}]
-           (log/spy :info topic)
-           (case topic
-             :new-problems (update-problems! msg)
-             :check!       (check! msg)
-             nil))})}}))
+(defonce app (atom nil))
 
 (defn DBG_ENV! []
   (let [env (grp.art/build-env)]
     (js/setTimeout #(tap> env) 2000)))
 
 (defn check! [msg]
+  (DBG_ENV!)
   (try
-    (grp.checker/check! msg)
-    (report-analysis!)
-    (DBG_ENV!)
+    (grp.checker/check! msg
+      #(report-analysis!))
     (catch :default e
       (log/error e "Failed to check!"))))
 
 (defn update-problems! [problems]
   (log/info "received new problem list from daemon")
-  (swap! (::app/state-atom app) set-problems* problems)
-  (app/schedule-render! app))
+  (swap! (::app/state-atom @app) set-problems* problems)
+  (app/schedule-render! @app))
 
 (defn hot-reload! []
   (DBG_ENV!)
-  (app/mount! app CheckerRoot "checker"))
+  (app/mount! @app CheckerRoot "checker"))
 
 (defn start!
-  ([] (start! false))
-  ([checker?]
+  ([] (start! {:checker? false}))
+  ([{:keys [checker? host port]}]
    (log/info "Starting checker app")
+   (reset! app (app/fulcro-app
+                 {:remotes
+                  {:remote
+                   (fws/fulcro-websocket-remote
+                     {:sente-options {:host host :port port}
+                      :push-handler
+                      (fn [{:keys [topic msg]}]
+                        (log/spy :info topic)
+                        (case topic
+                          :new-problems (update-problems! msg)
+                          :check!       (check! msg)
+                          (log/error "invalid websocket message of type:" topic)))})}}))
    (hot-reload!)
    (if checker?
-     (comp/transact! app [(register-checker)])
-     (comp/transact! app [(subscribe)]))))
-
-(defn transit-safe-problems [problems]
-  (sp/transform (sp/walker ::grp.art/problem-type)
-    (fn [problem]
-      (let [ok-keys [::grp.art/problem-type
-                     ::grp.art/message
-                     ::grp.art/file
-                     ::grp.art/line-start
-                     ::grp.art/line-end
-                     ::grp.art/column-end
-                     ::grp.art/column-start]]
-        (select-keys problem ok-keys)))
-    problems))
-
-(defn formatted-bindings [bindings]
-  (reduce-kv
-    (fn [acc location {::grp.art/keys [type samples original-expression]}]
-      (let [pp-samples (mapv (fn [s] (with-out-str (pprint s))) samples)]
-        (assoc acc location {:type       type
-                             :expression (pr-str original-expression)
-                             :samples    pp-samples})))
-    {} bindings))
+     (comp/transact! @app [(register-checker {:checker-type :cljs/browser})])
+     (comp/transact! @app [(subscribe {:viewer-type :browser})]))))
 
 (defn report-analysis! []
-  (let [problems (-> @grp.art/problems format-problems transit-safe-problems)
-        bindings (formatted-bindings @grp.art/binding-annotations)]
-    (comp/transact! app [(report-analysis {:problems problems
-                                           :bindings bindings})])))
+  (let [analysis (grp.checker/gather-analysis!)]
+    (comp/transact! @app [(report-analysis analysis)])))

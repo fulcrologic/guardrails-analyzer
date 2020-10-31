@@ -105,7 +105,7 @@
   (loop [dir start-dir]
     (let [config-file (io/file dir "guardrails.edn")]
       (if (.exists config-file)
-        (io/file dir ".guardrails-pro" "daemon.port")
+        (io/file dir ".guardrails-pro" "lsp-server.port")
         (if-let [parent (.getParentFile dir)]
           (recur parent)
           (throw (ex-info "Failed to find project configuration!"

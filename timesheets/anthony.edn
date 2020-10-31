@@ -91,4 +91,9 @@
  {:date "2020-10-16" :description "hofs" :timespans [[1000 1320] [1645 1845]]}
  {:date "2020-10-26" :description "hofs fix tests" :timespans [[1250 1350]]}
  {:date "2020-10-27" :description "chat & check-root-form" :timespans [[1230 1400] [1600 1715]]}
+ {:date "2020-10-27" :description "guardrails-demo" :timespans [[1825 1915]]}
+ {:date "2020-10-28" :description "guardrails-demo" :timespans [[1230 1400] [1720 1945]]}
+ {:date "2020-10-29" :description "clojure websocket lib" :timespans [[1300 1500] [1550 1900]]}
+ {:date "2020-10-30" :description "cursive-annotator" :timespans [[1040 1430] [1540 2110]]}
+ {:date "2020-10-31" :description "IDEA intgration" :timespans [[1100 1400]]}
  ]

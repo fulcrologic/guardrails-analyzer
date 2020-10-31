@@ -326,17 +326,16 @@
 (defmethod grp.ana.disp/analyze-mm 'juxt [env sexpr] (analyze-juxt! env sexpr))
 (defmethod grp.ana.disp/analyze-mm 'clojure.core/juxt [env sexpr] (analyze-juxt! env sexpr))
 
-(defn >partial! [env function args]
-  (let [args-td (mapv (partial grp.ana.disp/-analyze! env) args)
-        ptd (update function ::grp.art/arities
+(defn >partial! [env [_ f & args] function args-td]
+  (let [ptd (update function ::grp.art/arities
               (partial enc/filter-vals
                 #(grp.fnt/valid-argtypes? env % args-td)))]
     (if (seq (::grp.art/arities ptd))
       (update ptd ::grp.fnt/partial-argtypes concat args-td)
-      (do (grp.art/record-error! env args :error/invalid-function-arguments)
+      (do (grp.art/record-error! env args :error/invalid-function-arguments {:function f})
         {}))))
 
-(defn analyze-partial! [env [this-sym f & values]]
+(defn analyze-partial! [env [this-sym f & values :as sexpr]]
   (let [partial-td (grp.art/external-function-detail env this-sym)
         values-td (mapv (partial grp.ana.disp/-analyze! env) values)
         function (grp.ana.disp/-analyze! env f)]
@@ -345,7 +344,7 @@
             (::grp.art/arities partial-td)
             (cons function values-td))
           (cons function values-td))
-      (>partial! env function values)
+      (>partial! env sexpr function values-td)
       {})))
 
 (defmethod grp.ana.disp/analyze-mm 'partial [env sexpr] (analyze-partial! env sexpr))

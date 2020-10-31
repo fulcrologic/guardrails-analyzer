@@ -9,41 +9,42 @@
     [com.fulcrologic.guardrails-pro.daemon.server.bindings :as bindings]))
 
 (defstate connected-clients :start (atom #{}))
-(defstate registered-checkers :start (atom #{}))
-(defstate subscribed-viewers :start (atom #{}))
+(defstate registered-checkers :start (atom {}))
+(defstate subscribed-viewers :start (atom {}))
 
 (def listener (reify wsp/WSListener
                 (client-added [_ _ cid]
                   (swap! connected-clients conj cid))
                 (client-dropped [_ _ cid]
-                  (swap! registered-checkers disj cid)
-                  (swap! subscribed-viewers disj cid)
+                  (log/debug "Disconnected ws client:" cid)
+                  (swap! registered-checkers dissoc cid)
+                  (swap! subscribed-viewers dissoc cid)
                   (swap! connected-clients disj cid))))
 
 (defn clear-viewer-data!
   "Send the updated problem list to subscribed websocket viewers."
-  [websockets only-cid]
-  (wsp/push websockets only-cid :clear! {}))
+  [websockets cid]
+  (wsp/push websockets cid :clear! {}))
 
 (defn update-problems!
   "Send the updated problem list to subscribed websocket viewers."
-  [websockets only-cid]
-  (wsp/push websockets only-cid :new-problems (problems/get!)))
+  [websockets [cid viewer-info]]
+  (wsp/push websockets cid :new-problems
+    (problems/encode-for viewer-info (problems/get!))))
 
 (defn update-visible-bindings!
   "Sends updated bindings to all viewers"
-  [websockets only-cid]
-  (wsp/push websockets only-cid :new-bindings (bindings/get!)))
+  [websockets [cid viewer-info]]
+  (wsp/push websockets cid :new-bindings (bindings/get!)))
 
 (defn update-viewers!
   "Send the updated problem list to subscribed websocket viewers."
   ([websockets]
-   (let [ui-cids @subscribed-viewers]
-     (log/info ui-cids)
-     (doseq [cid ui-cids]
-       (log/info "Notifying viewer of new problems " cid)
-       (update-viewers! websockets cid))))
-  ([websockets only-cid]
-   (clear-viewer-data! websockets only-cid)
-   (update-problems! websockets only-cid)
-   (update-visible-bindings! websockets only-cid)))
+   (let [viewers @subscribed-viewers]
+     (doseq [v viewers]
+       (update-viewers! websockets v))))
+  ([websockets [cid _viewer-info :as viewer]]
+   (log/info "Updating viewer:" viewer)
+   (clear-viewer-data! websockets cid)
+   (update-problems! websockets viewer)
+   (update-visible-bindings! websockets viewer)))

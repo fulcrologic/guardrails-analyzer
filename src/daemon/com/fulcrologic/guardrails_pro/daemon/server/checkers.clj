@@ -7,6 +7,6 @@
 
 (defn notify-checkers! [event data]
   (log/info "notifiying checkers of event:" event)
-  (doseq [cid @registered-checkers]
+  (doseq [[cid _checker-info] @registered-checkers]
     (log/info "notifying checker with id:" cid)
     (wsp/push websockets cid event data)))
