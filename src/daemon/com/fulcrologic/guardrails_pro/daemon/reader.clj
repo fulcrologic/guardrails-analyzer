@@ -2,7 +2,7 @@
   (:require
     [clojure.tools.reader :as reader]
     [clojure.tools.reader.reader-types :as readers]
-    [com.rpl.specter :as sp]
+    [com.rpl.specter :as $]
     [taoensso.timbre :as log])
   (:import
     (java.io FileReader PushbackReader)))
@@ -21,7 +21,7 @@
 
 (defn parse-ns-aliases [ns-form]
   (->> ns-form
-    (sp/select [(sp/walker #(and (vector? %) (some #{:as} %)))])
+    ($/select [($/walker #(and (vector? %) (some #{:as} %)))])
     (map (fn [[ns-sym & args]]
            {(:as (apply hash-map args)) ns-sym}))
     (reduce merge)))

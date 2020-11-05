@@ -4,22 +4,30 @@
                [goog.string.format]])
     [clojure.string :as str]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
-    [com.rpl.specter :as sp]
+    [com.rpl.specter :as $]
     [taoensso.timbre :as log]))
+
+(defn html-escape [s]
+  (-> s
+    (str/replace "&" "&amp;")
+    (str/replace "<" "&lt;")
+    (str/replace ">" "&gt;")))
 
 (defmulti format-problem-mm (fn [problem params] (::grp.art/problem-type problem)))
 
 (defn format-problem [problem]
-  (assoc problem ::grp.art/message
-    (or (try (format-problem-mm problem (::grp.art/message-params problem))
-          (catch #?(:clj Throwable :cljs :default) e
-            (log/error e "Failed to create message for problem:" problem)
-            nil))
-      (format "Failed to create message for problem-type %s!"
-        (::grp.art/problem-type problem)))))
+  (let [message (or (try (format-problem-mm problem (::grp.art/message-params problem))
+                      (catch #?(:clj Throwable :cljs :default) e
+                        (log/error e "Failed to create message for problem:" problem)
+                        nil))
+                  (format "Failed to create message for problem-type: <%s>!"
+                    (::grp.art/problem-type problem)))]
+    (-> problem
+      (assoc ::grp.art/message message)
+      (assoc ::grp.art/tooltip (html-escape message)))))
 
 (defn format-problems [problems]
-  (sp/transform (sp/walker ::grp.art/problem-type)
+  ($/transform ($/walker ::grp.art/problem-type)
     format-problem problems))
 
 (defmethod format-problem-mm :default [problem params]

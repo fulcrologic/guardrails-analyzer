@@ -3,7 +3,7 @@
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.rpl.specter :as $]))
 
-(defonce problems (atom {}))
+(defonce problems (atom nil))
 
 (defn get! [] @problems)
 
@@ -23,13 +23,8 @@
   (reduce (fn [acc {:as problem ::grp.art/keys [file line-start column-start]}]
             (update-in acc [file line-start column-start]
               (fnil conj [])
-              {"message"      (::grp.art/message problem)
-               "severity"     (namespace (::grp.art/problem-type problem))
-               "expression"   (::grp.art/expression problem)
-               "line-start"   (::grp.art/line-start problem)
-               "line-end"     (::grp.art/line-end problem)
-               "column-start" (::grp.art/column-start problem)
-               "column-end"   (::grp.art/column-end problem)}))
+              (-> ($/transform [($/walker keyword?)] name problem)
+                (assoc "severity" (namespace (::grp.art/problem-type problem))))))
     {} ($/select [($/walker ::grp.art/problem-type)] problems)))
 
 (defn encode-for [{:keys [viewer-type]} problems]

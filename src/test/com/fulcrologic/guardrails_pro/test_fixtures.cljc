@@ -62,3 +62,11 @@
                                  nil)]
       (apply f args)
       @warnings)))
+
+(defn capture-bindings [f & args]
+  (let [bindings (atom [])]
+    (with-redefs
+      [grp.art/record-binding! (fn [env sym td]
+                                 (swap! bindings conj td))]
+      (apply f args)
+      @bindings)))

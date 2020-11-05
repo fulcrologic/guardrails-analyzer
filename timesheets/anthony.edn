@@ -95,5 +95,8 @@
  {:date "2020-10-28" :description "guardrails-demo" :timespans [[1230 1400] [1720 1945]]}
  {:date "2020-10-29" :description "clojure websocket lib" :timespans [[1300 1500] [1550 1900]]}
  {:date "2020-10-30" :description "cursive-annotator" :timespans [[1040 1430] [1540 2110]]}
- {:date "2020-10-31" :description "IDEA intgration" :timespans [[1100 1400]]}
+ {:date "2020-10-31" :description "IDEA integration" :timespans [[1100 1400]]}
+ {:date "2020-11-02" :description "IDEA integration" :timespans [[1100 1230] [1530 1900] [2025 2355]]}
+ {:date "2020-11-03" :description "IDEA integration" :timespans [[1020 1230] [1405 1755]]}
+ {:date "2020-11-04" :description "IDEA integration" :timespans [[1111 1205] [1400 1525]]}
  ]

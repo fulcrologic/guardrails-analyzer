@@ -9,20 +9,20 @@
 
 (defn analyze-literal! [env sexpr]
   (log/spy :debug :analyze/literal
-    (let [spec (cond
-                 (number? sexpr) number?
-                 (string? sexpr) string?
-                 (keyword? sexpr) (do (when (and (qualified-keyword? sexpr)
-                                              (not (grp.spec/lookup env sexpr)))
-                                        (grp.art/record-warning! env sexpr
-                                          :warning/qualified-keyword-missing-spec))
-                                    keyword?)
-                 (nil? sexpr) nil?
-                 (char? sexpr) char?
-                 (grp.ana.disp/regex? sexpr) grp.ana.disp/regex?)]
-      {::grp.art/spec                spec
-       ::grp.art/samples             #{sexpr}
-       ::grp.art/original-expression sexpr})))
+    (let [[spec type-]
+          (cond
+            (number? sexpr) [number? "number?"]
+            (string? sexpr) [string? "string?"]
+            (keyword? sexpr) (do (when (and (qualified-keyword? sexpr)
+                                         (not (grp.spec/lookup env sexpr)))
+                                   (grp.art/record-warning! env sexpr
+                                     :warning/qualified-keyword-missing-spec))
+                               [keyword? "keyword?"])
+            (nil? sexpr) [nil? "nil?"]
+            (char? sexpr) [char? "char?"]
+            (grp.ana.disp/regex? sexpr) [grp.ana.disp/regex? "regex?"])]
+      #::grp.art{:spec spec :type type- :samples #{sexpr}
+                 :original-expression sexpr})))
 
 (defmethod grp.ana.disp/analyze-mm :literal/char [env sexpr] (analyze-literal! env sexpr))
 (defmethod grp.ana.disp/analyze-mm :literal/number [env sexpr] (analyze-literal! env sexpr))

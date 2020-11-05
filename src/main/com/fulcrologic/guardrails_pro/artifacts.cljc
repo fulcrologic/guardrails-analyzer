@@ -4,7 +4,7 @@
     [clojure.spec.alpha :as s]
     [clojure.test.check.generators :as gen]
     [com.fulcrologic.guardrails-pro.analysis.spec :as grp.spec]
-    [com.fulcrologic.guardrails.core :refer [>defn >defn- => | ?]]
+    [com.fulcrologic.guardrails.core :refer [>defn => ?]]
     [com.fulcrologic.guardrails.registry :as gr.reg]
     [com.fulcrologic.guardrails.impl.externs :as gr.externs]
     [com.rpl.specter :as $]
@@ -265,27 +265,27 @@
 
 ;; ========== BINDINGS ==========
 
-(defonce binding-annotations (atom {}))
+(defonce bindings (atom []))
+
+(defn- clear-bindings-by-file [binds file]
+  ($/setval [$/ALL ($/pred (comp (partial = file) ::file))]
+    $/NONE binds))
 
 (defn clear-bindings!
-  "Clear all of the binding information for symbols in the given the symbolic name of a fully-qualified function."
-  [] (reset! binding-annotations {}))
+  ([] (reset! bindings []))
+  ([file] (swap! bindings clear-bindings-by-file file)))
 
 (>defn record-binding!
-  "Report a type description for the given symbol, which must have file/line/column metadata in order to be recorded."
-  [env sym type-description]
-  [::env simple-symbol? ::type-description => any?]
+  "Report a type description for the given simple symbol."
+  [env sym td]
+  [::env simple-symbol? ::type-description => nil?]
   (let [env (update-location env (meta sym))
-        {::keys [checking-file location]} env
-        {::keys [line-start column-start]} location]
-    (let [location-info (-> location
-                         (select-keys [::line-start ::column-start])
-                         (assoc ::file checking-file))]
-      (if (and checking-file line-start column-start)
-        (swap! binding-annotations assoc location-info
-          (assoc type-description ::original-expression sym))
-        (log/warn "Cannot record binding because we don't know enough location info"
-          location-info)))
+        bind (merge td (::location env)
+               {::file (::checking-file env)
+                ::problem-type :hint/binding-type-info
+                ::original-expression sym})]
+    (log/debug :record-binding! bind)
+    (swap! bindings conj bind)
     nil))
 
 ;; ========== PROBLEMS ==========
@@ -353,9 +353,9 @@
        {::file (::checking-file env)}))
    nil))
 
-(defn- clear-problems-by-file [problems file]
-  ($/setval [($/walker ::file) ($/pred (comp (partial = file) ::file))]
-    $/NONE problems))
+(defn- clear-problems-by-file [probs file]
+  ($/setval [$/ALL ($/pred (comp (partial = file) ::file))]
+    $/NONE probs))
 
 (defn clear-problems!
   ([] (reset! problems []))

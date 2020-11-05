@@ -1,15 +1,14 @@
 (ns com.fulcrologic.guardrails-pro.checker
   (:require
     com.fulcrologic.guardrails-pro.ftags.clojure-core
-    [clojure.pprint :refer [pprint]]
     [clojure.test.check.generators]
     [com.fulcrologic.guardrails-pro.analysis.analyzer :as grp.ana]
     [com.fulcrologic.guardrails-pro.analysis.spec :as grp.spec]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.forms :as grp.forms]
+    [com.fulcrologic.guardrails-pro.ui.binding-formatter :refer [format-bindings]]
     [com.fulcrologic.guardrails-pro.ui.problem-formatter :refer [format-problems]]
     [com.rpl.specter :as $]
-    [taoensso.encore :as enc]
     [taoensso.timbre :as log]
     [taoensso.tufte :as prof :refer [profile p]]))
 
@@ -27,6 +26,7 @@
                (assoc ::grp.art/checking-file file)
                (assoc ::grp.art/current-ns NS))]
      (grp.art/clear-problems! file)
+     (grp.art/clear-bindings! file)
      (grp.spec/with-cache {}
        #?(:cljs (fn check-forms! [[form & forms]]
                   (if-not form (cb)
@@ -51,21 +51,14 @@
   (reset! to-check nil))
 
 (defn- transit-safe-problems [problems]
-  ($/transform ($/walker ::grp.art/problem-type)
+  ($/transform [$/ALL]
     #(-> %
-       (dissoc ::grp.art/actual ::grp.art/expected ::grp.art/original-expression)
+       ;; TODO: recursive-description
+       (dissoc ::grp.art/actual ::grp.art/expected ::grp.art/spec
+         ::grp.art/literal-value ::grp.art/original-expression)
        (assoc ::grp.art/expression (str (::grp.art/original-expression %))))
     problems))
 
-(defn- formatted-bindings [bindings]
-  (enc/map-vals
-    (fn [{::grp.art/keys [type samples original-expression]}]
-      (let [pp-samples (mapv (fn [s] (with-out-str (pprint s))) samples)]
-        {:type       type
-         :expression (pr-str original-expression)
-         :samples    pp-samples}))
-    bindings))
-
 (defn gather-analysis! []
   {:problems (-> @grp.art/problems format-problems transit-safe-problems)
-   :bindings (formatted-bindings @grp.art/binding-annotations)})
+   :bindings (-> @grp.art/bindings format-bindings transit-safe-problems)})

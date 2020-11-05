@@ -1,10 +1,11 @@
 (ns com.fulcrologic.guardrails-pro.daemon.server.pathom
   (:require
     [com.fulcrologic.guardrails-pro.daemon.lsp.diagnostics :as lsp.diag]
-    [com.fulcrologic.guardrails-pro.daemon.server.config :refer [config]]
-    [com.fulcrologic.guardrails-pro.daemon.server.problems :as problems]
     [com.fulcrologic.guardrails-pro.daemon.server.bindings :as bindings]
+    [com.fulcrologic.guardrails-pro.daemon.server.checkers :as daemon.check]
+    [com.fulcrologic.guardrails-pro.daemon.server.config :refer [config]]
     [com.fulcrologic.guardrails-pro.daemon.server.connection-management :as cmgmt]
+    [com.fulcrologic.guardrails-pro.daemon.server.problems :as problems]
     [com.wsscode.pathom.connect :as pc]
     [com.wsscode.pathom.core :as p]
     [mount.core :refer [defstate]]
@@ -36,7 +37,19 @@
   (swap! cmgmt/registered-checkers assoc cid checker-info)
   {})
 
-(def all-resolvers [all-problems report-analysis subscribe register-checker])
+(pc/defmutation check-current-file [{:keys [websockets]} {:as params :keys [file]}]
+  {::pc/sym 'daemon/check-current-file}
+  (daemon.check/check-file! websockets file)
+  {})
+
+(pc/defmutation check-root-form [{:keys [websockets]} {:as params :keys [file line]}]
+  {::pc/sym 'daemon/check-root-form}
+  (daemon.check/check-root-form! websockets file line)
+  {})
+
+(def all-resolvers [all-problems report-analysis
+                    subscribe register-checker
+                    check-current-file check-root-form])
 
 (defn preprocess-parser-plugin [f]
   {::p/wrap-parser
