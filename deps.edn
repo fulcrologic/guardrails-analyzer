@@ -44,7 +44,8 @@
                                      thheller/shadow-cljs        {:mvn/version "2.11.4"}}
                        :jvm-opts    ["-Ddev"]}
 
-           :uberjar   {:extra-deps {seancorfield/depstar {:mvn/version "1.1.132"}}
-                       :exec-fn    hf.depstar.uberjar/run
-                       :exec-args  {:jar "GRPDaemon.jar" :aot true
-                                    :main-class com.fulcrologic.guardrails-pro.daemon.main}}}}
+           :uberjar   {:extra-deps  {seancorfield/depstar {:mvn/version "1.1.132"}}
+                       :extra-paths ["src/daemon_main"]
+                       :exec-fn     hf.depstar.uberjar/run
+                       :exec-args   {:jar "GRPDaemon.jar" :aot true
+                                     :main-class com.fulcrologic.guardrails-pro.daemon.main}}}}
