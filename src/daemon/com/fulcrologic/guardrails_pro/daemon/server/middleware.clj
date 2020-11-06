@@ -1,10 +1,11 @@
 (ns com.fulcrologic.guardrails-pro.daemon.server.middleware
   (:require
+    [com.fulcrologic.fulcro.networking.websockets :as f.ws]
     [com.fulcrologic.fulcro.server.api-middleware :as f.api]
     [com.fulcrologic.guardrails-pro.daemon.server.config :refer [config]]
     [com.fulcrologic.guardrails-pro.daemon.server.pathom :refer [parser]]
     [com.fulcrologic.guardrails-pro.daemon.server.websockets :refer [websockets]]
-    [com.fulcrologic.fulcro.networking.websockets :as fws]
+    [com.fulcrologic.guardrails-pro.transit-handlers :as grp.transit]
     [mount.core :refer [defstate]]
     [ring.middleware.defaults :refer [wrap-defaults]]
     [taoensso.timbre :as log]))
@@ -25,11 +26,12 @@
 
 (defstate middleware
   :start
-  (let [defaults-config (:ring.middleware/defaults-config config)]
+  (let [defaults-config     (:ring.middleware/defaults-config config)
+        transit-writer-opts {:opts {:default-handler grp.transit/default-write-handler}}]
     (log/info "Starting with ring defaults config" defaults-config)
     (-> not-found-handler
       (wrap-api "/api")
-      (fws/wrap-api websockets)
-      f.api/wrap-transit-params
-      f.api/wrap-transit-response
+      (f.ws/wrap-api websockets)
+      (f.api/wrap-transit-params)
+      (f.api/wrap-transit-response transit-writer-opts)
       (wrap-defaults defaults-config))))

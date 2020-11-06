@@ -125,3 +125,7 @@
   [problem params]
   (format "Could not check <%s>"
     (format-expr problem)))
+
+(defmethod format-problem-mm :info/failed-to-analyze-unknown-expression
+  [problem params]
+  "Failed to analyze expression!")

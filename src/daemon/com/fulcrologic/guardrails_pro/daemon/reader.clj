@@ -2,14 +2,22 @@
   (:require
     [clojure.tools.reader :as reader]
     [clojure.tools.reader.reader-types :as readers]
+    [com.fulcrologic.guardrails-pro.transit-handlers :as f.transit]
     [com.rpl.specter :as $]
     [taoensso.timbre :as log])
   (:import
     (java.io FileReader PushbackReader)))
 
+(defn default-data-reader [tag value]
+  (f.transit/->UnknownTaggedValue tag value))
+
+(defn read-impl [& args]
+  (binding [reader/*default-data-reader-fn* default-data-reader]
+    (apply reader/read args)))
+
 (defn read-ns-decl [file]
   (try
-    (let [ns-decl (reader/read
+    (let [ns-decl (read-impl
                     {:read-cond :allow}
                     (new PushbackReader
                       (new FileReader file)))]
@@ -34,7 +42,7 @@
         opts {:eof eof
               :read-cond :allow
               :features #{:cljs}}
-        ns-decl (reader/read opts reader)
+        ns-decl (read-impl opts reader)
         _ (assert (= 'ns (first ns-decl))
             (format "First form in file <%s> was not a ns declaration!"
               file))
@@ -42,7 +50,7 @@
         aliases (parse-ns-aliases ns-decl)
         forms (loop [forms []]
                 (let [form (binding [reader/*alias-map* aliases, *ns* NS]
-                             (reader/read opts reader))]
+                             (read-impl opts reader))]
                   (if (identical? form eof)
                     (do (.close reader) forms)
                     (recur (conj forms form)))))]
