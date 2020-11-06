@@ -99,4 +99,7 @@
  {:date "2020-11-02" :description "IDEA integration" :timespans [[1100 1230] [1530 1900] [2025 2355]]}
  {:date "2020-11-03" :description "IDEA integration" :timespans [[1020 1230] [1405 1755]]}
  {:date "2020-11-04" :description "IDEA integration" :timespans [[1111 1205] [1400 1525]]}
+ {:date "2020-11-04" :description "emacs research" :timespans [[1615 1715]]}
+ {:date "2020-11-05" :description "transit handlers" :timespans [[1100 1205] [1430 1800]]}
+ {:date "2020-11-06" :description "clojure checker" :timespans [[930 1210] [1345 1555]]}
  ]
