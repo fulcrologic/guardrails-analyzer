@@ -1,4 +1,5 @@
 (ns com.fulcrologic.guardrails-pro.artifacts
+  #?(:cljs (:require-macros clojure.test.check.generators))
   (:require
     [clojure.set :as set]
     [clojure.spec.alpha :as s]
@@ -304,6 +305,13 @@
 
 (defonce problems (atom []))
 
+(>defn env-location [env]
+  [::env => map?]
+  (merge (::location env)
+    {::file (::checking-file env)
+     ::sym  (::checking-sym env)
+     ::NS   (::current-ns env)}))
+
 (>defn record-error!
   ([env original-expression problem-type]
    [::env ::original-expression ::problem-type => nil?]
@@ -315,10 +323,9 @@
                        ::message-params message-params}))
   ([env error]
    [::env (s/keys :req [::problem-type ::original-expression]) => nil?]
-   (log/info :record-error! (::checking-sym env) "\n" (::location env) "\n" error)
+   (log/info :record-error! (env-location env) "\n" error)
    (swap! problems conj
-     (merge error (::location env)
-       {::file (::checking-file env)}))
+     (merge error (env-location env)))
    nil))
 
 (>defn record-warning!
@@ -333,8 +340,7 @@
   ([env warning]
    [::env (s/keys :req [::problem-type ::original-expression]) => nil?]
    (swap! problems conj
-     (merge warning (::location env)
-       {::file (::checking-file env)}))
+     (merge warning (env-location env)))
    nil))
 
 (>defn record-info!
@@ -349,8 +355,7 @@
   ([env info]
    [::env (s/keys :req [::problem-type ::original-expression]) => nil?]
    (swap! problems conj
-     (merge info (::location env)
-       {::file (::checking-file env)}))
+     (merge info (env-location env)))
    nil))
 
 (defn- clear-problems-by-file [probs file]

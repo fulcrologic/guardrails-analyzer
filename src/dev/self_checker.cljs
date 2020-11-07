@@ -1,12 +1,12 @@
 (ns self-checker
   (:require
-    [com.fulcrologic.guardrails-pro.ui.reporter :as reporter]
+    [com.fulcrologic.guardrails-pro.checkers.browser :as checker]
     [taoensso.tufte :as prof]))
 
 (prof/add-basic-println-handler! {})
 
 (defn init []
-  (reporter/start! {:checker? true}))
+  (checker/start! {}))
 
-(defn refresh []
-  (reporter/hot-reload!))
+(defn reload []
+  (checker/reload!))

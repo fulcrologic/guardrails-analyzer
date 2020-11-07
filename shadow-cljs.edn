@@ -1,19 +1,7 @@
 {:deps     {:aliases [:gr-dev :dev :daemon :test]}
  :nrepl    {:port 9000}
  :dev-http {9001 "resources/public"}
- :builds   {:guardrailspro {:target           :browser
-                            :output-dir       "resources/public/js/guardrails"
-                            :asset-path       "/js/guardrails"
-                            :dev              {:compiler-options {:external-config {:guardrails {}}}}
-                            :compiler-options {:optimizations :simple}
-                            :modules          {:main {:entries [com.fulcrologic.guardrails-pro.ui.main-ui
-                                                                com.fulcrologic.guardrails-pro.runtime.artifacts
-                                                                com.fulcrologic.guardrails-pro.static.checker
-                                                                com.fulcrologic.guardrails-pro.ui.main-ui]}}
-                            :devtools         {:preloads   [com.fulcrologic.fulcro.inspect.preload]
-                                               :after-load com.fulcrologic.guardrails-pro.ui.main-ui/reload}}
-
-            :daemon-ui     {:target     :browser
+ :builds   {:daemon-ui     {:target     :browser
                             :output-dir "resources/public/js/daemon-ui"
                             :asset-path "/js/daemon-ui"
                             :modules    {:main {:init-fn com.fulcrologic.guardrails-pro.daemon.ui.main-ui/init}}
@@ -26,7 +14,7 @@
                             :asset-path "js/self-checker"
                             :modules    {:main {:init-fn self-checker/init}}
                             :dev        {:compiler-options {:external-config {:guardrails {:throw? false :mode :pro}}}}
-                            :devtools   {:after-load self-checker/refresh
+                            :devtools   {:after-load self-checker/reload
                                          :preloads   [com.fulcrologic.fulcro.inspect.preload]}}
 
             :test          {:target           :browser-test
@@ -45,4 +33,3 @@
                             :js-options {:js-provider :shadow}
                             :output-to  "target/ci.js"
                             :ns-regexp  "-spec$"}}}
-

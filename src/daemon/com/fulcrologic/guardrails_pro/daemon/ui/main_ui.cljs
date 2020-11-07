@@ -1,9 +1,9 @@
 (ns com.fulcrologic.guardrails-pro.daemon.ui.main-ui
   (:require
-    [com.fulcrologic.fulcro.application :as f.app]
-    [com.fulcrologic.fulcro.data-fetch :as f.df]
-    [com.fulcrologic.guardrails-pro.ui.reporter :as reporter]))
+    [com.fulcrologic.guardrails-pro.ui.viewer :as viewer]))
 
-(defn ^:export refresh [] (reporter/hot-reload!))
+(defn ^:export init []
+  (viewer/start! {}))
 
-(defn ^:export init [] (reporter/start! {:checker? false}))
+(defn ^:export refresh []
+  (viewer/hot-reload!))

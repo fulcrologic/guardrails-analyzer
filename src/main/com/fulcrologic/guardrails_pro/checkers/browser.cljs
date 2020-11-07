@@ -1,9 +1,9 @@
 (ns com.fulcrologic.guardrails-pro.checkers.browser
   (:require
-    [com.fulcrologic.guardrails-pro.ui.reporter :as reporter]))
+    [com.fulcrologic.guardrails-pro.ui.checker :as checker]))
 
 (defn start! [opts]
-  (reporter/start! opts))
+  (checker/start! opts))
 
 (defn reload! []
-  (reporter/hot-reload!))
+  (checker/hot-reload!))

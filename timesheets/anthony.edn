@@ -102,4 +102,5 @@
  {:date "2020-11-04" :description "emacs research" :timespans [[1615 1715]]}
  {:date "2020-11-05" :description "transit handlers" :timespans [[1100 1205] [1430 1800]]}
  {:date "2020-11-06" :description "clojure checker" :timespans [[930 1210] [1345 1555]]}
+ {:date "2020-11-06" :description "fix checker/daemon ui" :timespans [[1655 1830]]}
  ]
