@@ -174,8 +174,12 @@
           (seq possible-values)))
       (first possible-values))))
 
-(defn random-samples-from [env & tds]
-  (->> tds
-    (map (comp gen/elements ::grp.art/samples))
-    (gen/one-of)
-    (grp.spec/sample env)))
+(>defn random-samples-from [env & tds]
+  [::grp.art/env (s/+ ::grp.art/type-description) => ::grp.art/samples]
+  (if-let [tds (seq (remove ::grp.art/unknown-expression tds))]
+    (->> tds
+      (map (comp gen/elements ::grp.art/samples))
+      (gen/one-of)
+      (grp.spec/sample env)
+      (into #{}))
+    #{}))

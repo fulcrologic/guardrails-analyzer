@@ -2,6 +2,7 @@
   (:require
     [clojure.test.check.generators :as gen]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
+    [com.fulcrologic.guardrails-pro.analysis.analyzer.dispatch :as grp.ana.disp]
     [com.fulcrologic.guardrails-pro.analysis.sampler :as grp.sampler]
     [com.fulcrologic.guardrails-pro.test-fixtures :as tf]
     [com.fulcrologic.guardrails-pro.test-checkers :as tc]
@@ -180,6 +181,14 @@
   (let [env (grp.art/build-env)]
     (assertions
       (grp.sampler/random-samples-from env
-        {::grp.art/samples [1 2 3]}
-        {::grp.art/samples [:a :b :c]})
-      =check=> (_/every?* (_/is?* #{1 2 3 :a :b :c})))))
+        {::grp.art/samples #{1 2 3}}
+        {::grp.art/samples #{:a :b :c}})
+      =check=> (_/every?* (_/is?* #{1 2 3 :a :b :c}))
+      "handles unknown expressions"
+      (grp.sampler/random-samples-from env
+        (grp.ana.disp/unknown-expr env ::UNK))
+      => #{}
+      (grp.sampler/random-samples-from env
+        {::grp.art/samples #{4 5 6}}
+        (grp.ana.disp/unknown-expr env ::UNK))
+      => #{4 5 6})))
