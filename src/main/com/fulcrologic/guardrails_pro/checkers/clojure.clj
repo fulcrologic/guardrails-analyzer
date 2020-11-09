@@ -3,6 +3,7 @@
     [clojure.tools.namespace.repl :refer [refresh set-refresh-dirs]]
     [com.fulcrologic.guardrails-pro.checker :as grp.checker]
     [com.fulcrologic.guardrails-pro.checkers.sente-client :as ws]
+    [com.fulcrologic.guardrails.config :as gr.cfg]
     [taoensso.timbre :as log])
   (:import
     (java.io FileNotFoundException)))
@@ -28,15 +29,22 @@
 (defn start!
   "Start the checker. Does not return.
 
-  :host The IP where the checker daemon is running. Defaults to localhost.
-  :port An integer. The daemon port. Usually found automatically using the .guardrails generated folder.
-  :src-dirs A vector of strings. The directories that contain source. If not supplied this assumes you will manually set-refresh-dirs from
+  :host - The IP where the checker daemon is running. Defaults to localhost.
+  :port - An integer. The daemon port. Usually found automatically using the .guardrails generated folder.
+  :src-dirs - A vector of strings. The directories that contain source. If not supplied this assumes you will manually set-refresh-dirs from
             tools ns repl before starting the checker.
-  :main-ns A symbol. The main ns of the software being checked. This ensures the tree of deps are required into the env at startup.
+  :main-ns - A symbol. The main ns of the software being checked. This ensures the tree of deps are required into the env at startup.
   "
   [{:keys [host port src-dirs main-ns]
-    :or   {host "localhost"}}]
-  (prn ::start! host port)
+    :or   {host "localhost"}
+    :as   opts}]
+  (when-not (#{:pro :all} (:mode (gr.cfg/get-env-config)))
+    (throw
+      (new AssertionError
+        (str "JVM property `guardrails.mode` should be set to `:pro`!"
+          "\nFor clj: add `-J-Dguardrails.mode=:pro`"
+          "\nFor deps.edn: add `:jvm-opts [\"-Dguardrails.mode=:pro\"]"))))
+  (prn ::start! opts)
   (when-let [ns-sym (some-> main-ns symbol)]
     (require ns-sym))
   (when (seq src-dirs)
