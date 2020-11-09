@@ -34,14 +34,14 @@
            {(:as (apply hash-map args)) ns-sym}))
     (reduce merge)))
 
-(defn read-file [file]
+(defn read-file [file reader-cond-branch]
   (let [eof (new Object)
         reader (readers/indexing-push-back-reader
                  (new PushbackReader
                    (new FileReader file)))
         opts {:eof eof
               :read-cond :allow
-              :features #{:cljs}}
+              :features #{reader-cond-branch}}
         ns-decl (read-impl opts reader)
         _ (assert (= 'ns (first ns-decl))
             (format "First form in file <%s> was not a ns declaration!"

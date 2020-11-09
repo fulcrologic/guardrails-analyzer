@@ -77,4 +77,4 @@
                :check! (check! msg)
                (log/error "invalid websocket message of type:" topic)))})}}))
   (hot-reload!)
-  (comp/transact! @app [(register-checker {:checker-type :browser})]))
+  (comp/transact! @app [(register-checker {:checker-type :cljs})]))

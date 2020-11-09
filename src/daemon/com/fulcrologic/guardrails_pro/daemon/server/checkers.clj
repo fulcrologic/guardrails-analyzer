@@ -6,28 +6,31 @@
     [com.fulcrologic.guardrails-pro.forms :as grp.forms]
     [taoensso.timbre :as log]))
 
-(defn notify-checkers! [ws event data]
+(defn notify-checkers! [ws event checker-info->data]
   (log/info "notifiying checkers of event:" event)
-  (doseq [[cid _checker-info] @registered-checkers]
+  (doseq [[cid checker-info] @registered-checkers]
     (log/info "notifying checker with id:" cid)
-    (wsp/push ws cid event data)))
+    (wsp/push ws cid event
+      (checker-info->data checker-info))))
 
 (defn check-file! [ws path]
-  (let [{:keys [NS forms]} (reader/read-file path)]
-    (notify-checkers! ws :check!
-      {:forms (grp.forms/form-expression forms)
-       :file  path
-       :NS    NS})))
+  (notify-checkers! ws :check!
+    (fn [{:keys [checker-type]}]
+      (let [{:keys [NS forms]} (reader/read-file path checker-type)]
+        {:forms (grp.forms/form-expression forms)
+         :file  path
+         :NS    NS}))))
 
 (defn root-form-at? [cursor-line ?form]
   (let [{:keys [line end-line]} (meta ?form)]
     (<= line cursor-line end-line)))
 
 (defn check-root-form! [ws path line]
-  (let [{:keys [NS forms]} (reader/read-file path)]
-    (notify-checkers! ws :check!
-      {:forms (->> forms
-                (filter (partial root-form-at? line))
-                (grp.forms/form-expression))
-       :file path
-       :NS   NS})))
+  (notify-checkers! ws :check!
+    (fn [{:keys [checker-type]}]
+      (let [{:keys [NS forms]} (reader/read-file path checker-type)]
+        {:forms (->> forms
+                  (filter (partial root-form-at? line))
+                  (grp.forms/form-expression))
+         :file path
+         :NS   NS}))))
