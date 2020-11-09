@@ -55,5 +55,18 @@
  {:date "2020-10-05" :description "check-in" :timespans [[845 1010]]}
  {:date "2020-10-09" :description "check-in" :timespans [[1100 1200]]}
  {:date "2020-10-11" :description "check-in" :timespans [[1011 1300]]}
+ {:date "2020-10-21" :description "check-in" :timespans [[1330 1400]]}
+ {:date "2020-10-22" :description "check-in" :timespans [[900 930]]}
+ {:date "2020-10-27" :description "check-in" :timespans [[1200 1300]]}
+ {:date "2020-10-28" :description "check-in" :timespans [[1300 1400]]}
+ {:date "2020-10-29" :description "check-in" :timespans [[1200 1230]]}
+ {:date "2020-10-30" :description "check-in" :timespans [[1200 1230]]}
+ {:date "2020-11-02" :description "check-in" :timespans [[1200 1230]]}
+ {:date "2020-11-03" :description "check-in" :timespans [[1200 1230]]}
+ {:date "2020-11-04" :description "check-in" :timespans [[1200 1230]]}
+ {:date "2020-11-05" :description "check-in" :timespans [[1200 1230]]}
+ {:date "2020-11-06" :description "check-in" :timespans [[1200 1230]]}
+ {:date "2020-11-08" :description "setup, build plugin, test a bit, start on user guide" :timespans [[915 1105]
+                                                                                                     [1600 1730]]}
  ]
 

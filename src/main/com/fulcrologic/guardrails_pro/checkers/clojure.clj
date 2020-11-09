@@ -1,6 +1,6 @@
 (ns com.fulcrologic.guardrails-pro.checkers.clojure
   (:require
-    [clojure.tools.namespace.repl :refer [refresh]]
+    [clojure.tools.namespace.repl :refer [refresh set-refresh-dirs]]
     [com.fulcrologic.guardrails-pro.checker :as grp.checker]
     [com.fulcrologic.guardrails-pro.checkers.sente-client :as ws]
     [taoensso.timbre :as log])
@@ -23,11 +23,24 @@
 
 (defn ?find-port []
   (try (Integer/parseInt (slurp ".guardrails-pro/daemon.port"))
-    (catch FileNotFoundException _ nil)))
+       (catch FileNotFoundException _ nil)))
 
-(defn start! [{:keys [host port]
-               :or   {host "localhost"}}]
+(defn start!
+  "Start the checker. Does not return.
+
+  :host The IP where the checker daemon is running. Defaults to localhost.
+  :port An integer. The daemon port. Usually found automatically using the .guardrails generated folder.
+  :src-dirs A vector of strings. The directories that contain source. If not supplied this assumes you will manually set-refresh-dirs from
+            tools ns repl before starting the checker.
+  :main-ns A symbol. The main ns of the software being checked. This ensures the tree of deps are required into the env at startup.
+  "
+  [{:keys [host port src-dirs main-ns]
+    :or   {host "localhost"}}]
   (prn ::start! host port)
+  (when (symbol main-ns)
+    (require main-ns))
+  (when (seq src-dirs)
+    (apply set-refresh-dirs src-dirs))
   (let [root-ns *ns*]
     (ws/connect! host
       {:?port-fn   (if port (constantly port) ?find-port)
