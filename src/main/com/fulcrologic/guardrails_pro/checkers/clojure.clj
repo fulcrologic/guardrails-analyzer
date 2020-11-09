@@ -37,8 +37,8 @@
   [{:keys [host port src-dirs main-ns]
     :or   {host "localhost"}}]
   (prn ::start! host port)
-  (when (symbol main-ns)
-    (require main-ns))
+  (when-let [ns-sym (some-> main-ns symbol)]
+    (require ns-sym))
   (when (seq src-dirs)
     (apply set-refresh-dirs src-dirs))
   (let [root-ns *ns*]
