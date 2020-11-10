@@ -31,7 +31,7 @@
   (cmgmt/update-viewers! websockets [cid viewer-info])
   {})
 
-(pc/defmutation register-checker [{:keys [cid] :as _env} checker-info]
+(pc/defmutation register-checker [{:keys [cid]} checker-info]
   {::pc/sym 'daemon/register-checker}
   (log/info "Checker registered: " cid)
   (swap! cmgmt/registered-checkers assoc cid checker-info)
@@ -64,6 +64,10 @@
   (log/debug "Pathom transaction:" (pr-str (:tx req)))
   req)
 
+(defn log-error [env e]
+  (log/error e "Error handling pathom request:")
+  (p/error-str e))
+
 (defn build-parser []
   (let [real-parser (p/parser
                       {::p/mutate  pc/mutate
@@ -71,11 +75,10 @@
                                                               pc/reader2
                                                               pc/open-ident-reader
                                                               p/env-placeholder-reader]
-                                    ::p/placeholder-prefixes #{">"}}
+                                    ::p/placeholder-prefixes #{">"}
+                                    ::p/process-error        log-error
+                                    :config                  config}
                        ::p/plugins [(pc/connect-plugin {::pc/register all-resolvers})
-                                    (p/env-wrap-plugin (fn [env]
-                                                         (assoc env
-                                                           :config config)))
                                     (preprocess-parser-plugin log-requests)
                                     p/error-handler-plugin
                                     p/request-cache-plugin
