@@ -191,4 +191,4 @@
       (grp.sampler/random-samples-from env
         {::grp.art/samples #{4 5 6}}
         (grp.ana.disp/unknown-expr env ::UNK))
-      => #{4 5 6})))
+      =check=> (tc/subset?* #{4 5 6}))))
