@@ -103,4 +103,8 @@
  {:date "2020-11-05" :description "transit handlers" :timespans [[1100 1205] [1430 1800]]}
  {:date "2020-11-06" :description "clojure checker" :timespans [[930 1210] [1345 1555]]}
  {:date "2020-11-06" :description "fix checker/daemon ui" :timespans [[1655 1830]]}
+ {:date "2020-11-08" :description "pair w/ tony" :timespans [[915 1100]]}
+ {:date "2020-11-09" :description "bug fixes" :timespans [[1000 1200]]}
+ {:date "2020-11-09" :description "idea plugin" :timespans [[1500 1820]]}
+ {:date "2020-11-10" :description "pro fixes & improvements" :timespans [[1000 1135]]}
  ]
