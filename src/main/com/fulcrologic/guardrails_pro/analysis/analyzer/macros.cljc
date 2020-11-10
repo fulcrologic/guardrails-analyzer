@@ -200,8 +200,7 @@
   (reduce (fn [env [bind-sexpr sexpr]]
             (case bind-sexpr
               :let (analyze-let-bindings! env sexpr)
-              :when env
-              :while env
+              (:when :while) env
               (reduce-kv grp.art/remember-local
                 env (grp.fnt/destructure! env bind-sexpr
                       (let [td (grp.ana.disp/-analyze! env sexpr)]
@@ -213,25 +212,26 @@
                             (comp set (partial mapcat identity)))))))))
     env (partition 2 bindings)))
 
+(defn analyze-for-loop! [env bindings body]
+  (-> env
+    (analyze-for-bindings! bindings)
+    (grp.ana.disp/analyze-statements! body)
+    (update ::grp.art/samples (comp hash-set vec))))
+
 (defmethod grp.ana.disp/analyze-mm 'for [env [_ bindings & body]]
-  (grp.ana.disp/analyze-statements! (analyze-for-bindings! env bindings) body))
+  (analyze-for-loop! env bindings body))
 (defmethod grp.ana.disp/analyze-mm 'clojure.core/for [env [_ bindings & body]]
-  (grp.ana.disp/analyze-statements! (analyze-for-bindings! env bindings) body))
+  (analyze-for-loop! env bindings body))
 
 (defmethod grp.ana.disp/analyze-mm 'doseq [env [_ bindings & body]]
-  (grp.ana.disp/analyze-statements! (analyze-for-bindings! env bindings) body)
+  (analyze-for-loop! env bindings body)
   {::grp.art/samples #{nil}})
-(defmethod grp.ana.disp/analyze-mm 'clojure.core/doseq   [env [_ bindings & body]]
-  (grp.ana.disp/analyze-statements! (analyze-for-bindings! env bindings) body)
+(defmethod grp.ana.disp/analyze-mm 'clojure.core/doseq [env [_ bindings & body]]
+  (analyze-for-loop! env bindings body)
   {::grp.art/samples #{nil}})
 
-(comment
-  for
-  loop
-  recur)
+;; TODO
+(comment loop recur)
 
-(comment
-  try
-  catch
-  finally
-  throw)
+;; TODO
+(comment try catch finally throw)

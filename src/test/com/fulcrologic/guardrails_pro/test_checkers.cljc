@@ -45,9 +45,15 @@
 (defn subset?* [expected]
   {:pre [(set? expected)]}
   (_/all*
-    (_/is?* set?)
+    (_/is?* seqable?)
     (checker [actual]
-      (when-not (set/subset? actual expected)
-        {:actual {:extra-values (set/difference actual expected)}
+      (when-not (set/subset? (set actual) expected)
+        {:actual {:extra-values (set/difference (set actual) expected)}
          :expected `(~'subset?* ~expected)
          :message "Found extra values in set"}))))
+
+(defn fmap*
+  "NOTE: should be removed once in a fulcro-spec release"
+  [f c] {:pre [(fn? f) (_/checker? c)]}
+  (_/checker [actual]
+    (c (f actual))))

@@ -14,14 +14,17 @@
     (assertions
       (grp.ana/analyze! env
         `(for [x# (range 5)] x#))
-      ;; TODO: should be #{[0 1 2 3 4]}
-      =check=> (_/embeds?* {::grp.art/samples #{0 1 2 3 4}})
+      =check=> (_/in* [::grp.art/samples]
+                 (tc/fmap* first
+                   (tc/subset?* #{0 1 2 3 4})))
       "can bind values using `:let [...]`"
       (grp.ana/analyze! env
         `(for [x# (range 3)
                :let [y# "x="]]
            (str y# x#)))
-      =check=> (_/embeds?* {::grp.art/samples (tc/subset?* #{"x=0" "x=1" "x=2"})})
+      =check=> (_/in* [::grp.art/samples]
+                 (tc/fmap* first
+                   (tc/subset?* #{"x=0" "x=1" "x=2"})))
       "errors if given non seqable values"
       (tf/capture-errors grp.ana/analyze! env
         `(for [x# :kw] x#))
@@ -32,18 +35,8 @@
         `(for [x# [:a :b]
                y# (range 2)]
            (vector x# y#)))
-      =check=> (_/embeds?*
-                 {::grp.art/samples (tc/subset?*
-                                      #{[:a 0] [:a 1]
-                                        [:b 0] [:b 1]})})
-      ; TODO: WIP
-      ;(grp.ana/analyze! env
-      ;  `(for [x# (range 5)
-      ;         :when (< x# 3)
-      ;         y# [:a :b]]
-      ;     (vector y# x#)))
-      ;=check=> (_/embeds?*
-      ;           {::grp.art/samples (tc/subset?*
-      ;                                #{[:a 0] [:a 1] [:a 2]
-      ;                                  [:b 0] [:b 1] [:b 2]})})
-      )))
+      =check=> (_/in* [::grp.art/samples]
+                 (tc/fmap* first
+                   (_/all*
+                     (_/is?* vector?)
+                     (tc/subset?* #{[:a 0] [:a 1] [:b 0] [:b 1]})))))))
