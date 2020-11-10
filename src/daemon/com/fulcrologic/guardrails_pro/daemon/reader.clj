@@ -44,9 +44,8 @@
               :features #{reader-cond-branch}}
         ns-decl (read-impl opts reader)
         _ (assert (= 'ns (first ns-decl))
-            (format "First form in file <%s> was not a ns declaration!"
-              file))
-        NS (second ns-decl)
+            (format "First form in file <%s> was not a ns declaration!" file))
+        NS (create-ns (second ns-decl))
         aliases (parse-ns-aliases ns-decl)
         forms (loop [forms []]
                 (let [form (binding [reader/*alias-map* aliases, *ns* NS]

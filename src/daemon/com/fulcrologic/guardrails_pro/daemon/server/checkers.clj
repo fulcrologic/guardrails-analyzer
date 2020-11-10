@@ -10,6 +10,7 @@
   (log/info "notifiying checkers of event:" event)
   (doseq [[cid checker-info] @registered-checkers]
     (log/info "notifying checker with id:" cid)
+    (log/debug "notifying checker with info:" checker-info)
     (wsp/push ws cid event
       (checker-info->data checker-info))))
 
