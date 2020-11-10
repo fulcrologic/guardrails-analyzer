@@ -93,7 +93,7 @@
    => (s/map-of symbol? ::grp.art/type-description)]
   (let [typ (assoc value-type-desc ::grp.art/original-expression bind-sexpr)]
     (cond
-      ;; TASK: if unknown type-desc: ???
+      (::grp.art/unknown-expression value-type-desc) {}
       (symbol? bind-sexpr) {bind-sexpr typ}
       (vector? bind-sexpr) (destr-vector! env bind-sexpr typ)
       (map? bind-sexpr)
