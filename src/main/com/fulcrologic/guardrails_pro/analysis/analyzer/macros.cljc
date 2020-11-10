@@ -66,7 +66,7 @@
         T (grp.ana.disp/-analyze! env then)
         E (if else
             (grp.ana.disp/-analyze! env else)
-            {::grp.art/samples (grp.spec/sample env nil?)})]
+            {::grp.art/samples (set (grp.spec/sample env (grp.spec/generator env nil?)))})]
     (log/debug "IF:" C "THEN:" T)
     (when (not (some identity (::grp.art/samples C)))
       (grp.art/record-warning! env condition
@@ -123,7 +123,7 @@
     (letfn [(COND [clauses]
               (when-let [[tst expr & rst] (seq clauses)]
                 `(if ~tst ~expr ~(COND rst))))]
-    (grp.ana.disp/-analyze! env (COND clauses)))))
+      (grp.ana.disp/-analyze! env (COND clauses)))))
 
 ;; TODO: difficult
 (comment
