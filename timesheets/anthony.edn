@@ -107,4 +107,6 @@
  {:date "2020-11-09" :description "bug fixes" :timespans [[1000 1200]]}
  {:date "2020-11-09" :description "idea plugin" :timespans [[1500 1820]]}
  {:date "2020-11-10" :description "pro fixes & improvements" :timespans [[1000 1135]]}
+ {:date "2020-11-10" :description "pairing & talking" :timespans [[1440 1540]]}
+ {:date "2020-11-10" :description "refresh-and-check-*!" :timespans [[1540 1700]]}
  ]
