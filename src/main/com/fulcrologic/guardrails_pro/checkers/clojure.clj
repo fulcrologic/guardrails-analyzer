@@ -4,9 +4,12 @@
     [com.fulcrologic.guardrails-pro.checker :as grp.checker]
     [com.fulcrologic.guardrails-pro.checkers.sente-client :as ws]
     [com.fulcrologic.guardrails.config :as gr.cfg]
-    [taoensso.timbre :as log])
+    [taoensso.timbre :as log]
+    [taoensso.tufte :as prof])
   (:import
     (java.io FileNotFoundException)))
+
+(prof/add-basic-println-handler! {})
 
 (defn send-mutation! [env sym params]
   (ws/send! env
