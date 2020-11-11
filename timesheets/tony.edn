@@ -68,5 +68,6 @@
  {:date "2020-11-06" :description "check-in" :timespans [[1200 1230]]}
  {:date "2020-11-08" :description "setup, build plugin, test a bit, start on user guide" :timespans [[915 1105]
                                                                                                      [1600 1800]]}
+ {:date "2020-11-10" :description "check-in, next steps" :timespans [[1200 1215] [1445 1545]]}
  ]
 
