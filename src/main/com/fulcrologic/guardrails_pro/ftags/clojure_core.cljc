@@ -181,8 +181,8 @@
   ([map key not-found] [map? any? any? => any?]))
 
 (>fdef ^:pure clojure.core/get-in
-  ([m ks] [map? (s/coll-of any? :kind vector?) => any?])
-  ([m ks not-found] [map? (s/coll-of any? :kind vector?) any? => any?]))
+  ([m ks] [map? (s/coll-of any? :kind sequential?) => any?])
+  ([m ks not-found] [map? (s/coll-of any? :kind sequential?) any? => any?]))
 
 (>fdef ^:pure clojure.core/hash
   [x] [any? => int?])

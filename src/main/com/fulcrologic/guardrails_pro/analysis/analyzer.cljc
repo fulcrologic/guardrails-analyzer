@@ -2,6 +2,7 @@
   (:require
     [com.fulcrologic.guardrails-pro.analysis.analyzer.dispatch :as grp.disp]
     [com.fulcrologic.guardrails-pro.analysis.analyzer.literals]
+    [com.fulcrologic.guardrails-pro.analysis.analyzer.functions]
     [com.fulcrologic.guardrails-pro.analysis.analyzer.macros]
     [com.fulcrologic.guardrails-pro.analysis.analyzer.hofs]
     [com.fulcrologic.guardrails-pro.analysis.function-type :as grp.fnt]

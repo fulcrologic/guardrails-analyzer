@@ -116,6 +116,11 @@
   (format "Fully qualified keyword <%s> has no spec. Possible typo?"
     (format-expr problem)))
 
+(defmethod format-problem-mm :warning/get-in-might-never-succeed
+  [problem params]
+  (format "Call to get-in might fail to get <%s>. Try checking your specs & generators."
+    (format-expr problem)))
+
 (defmethod format-problem-mm :warning/missing-samples
   [problem params]
   (format "Could not generate values for <%s>"
