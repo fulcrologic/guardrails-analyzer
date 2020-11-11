@@ -37,14 +37,14 @@
   (swap! cmgmt/registered-checkers assoc cid checker-info)
   {})
 
-(pc/defmutation check-current-file [{:keys [websockets]} {:as params :keys [file]}]
+(pc/defmutation check-current-file [{:keys [websockets]} {:keys [file opts]}]
   {::pc/sym 'daemon/check-current-file}
-  (daemon.check/check-file! websockets file)
+  (daemon.check/check-file! websockets file opts)
   {})
 
-(pc/defmutation check-root-form [{:keys [websockets]} {:as params :keys [file line]}]
+(pc/defmutation check-root-form [{:keys [websockets]} {:keys [file line opts]}]
   {::pc/sym 'daemon/check-root-form}
-  (daemon.check/check-root-form! websockets file line)
+  (daemon.check/check-root-form! websockets file line opts)
   {})
 
 (def all-resolvers [all-problems report-analysis

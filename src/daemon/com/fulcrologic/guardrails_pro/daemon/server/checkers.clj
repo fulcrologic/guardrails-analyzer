@@ -14,8 +14,11 @@
     (wsp/push ws cid event
       (checker-info->data checker-info))))
 
-(defn check-file! [ws path]
-  (notify-checkers! ws :check!
+(defn opts->check-type [{:keys [refresh?]}]
+  (if refresh? :refresh-and-check! :check!))
+
+(defn check-file! [ws path opts]
+  (notify-checkers! ws (opts->check-type opts)
     (fn [{:keys [checker-type]}]
       (let [{:keys [NS forms]} (reader/read-file path checker-type)]
         {:forms (grp.forms/form-expression forms)
@@ -26,8 +29,8 @@
   (let [{:keys [line end-line]} (meta ?form)]
     (<= line cursor-line end-line)))
 
-(defn check-root-form! [ws path line]
-  (notify-checkers! ws :check!
+(defn check-root-form! [ws path line opts]
+  (notify-checkers! ws (opts->check-type opts)
     (fn [{:keys [checker-type]}]
       (let [{:keys [NS forms]} (reader/read-file path checker-type)]
         {:forms (->> forms

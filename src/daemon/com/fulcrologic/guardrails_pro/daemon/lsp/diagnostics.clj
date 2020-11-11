@@ -35,11 +35,11 @@
         (mapv problem->diagnostic problems)))))
 
 (defn update-problems! [problems]
-  (let [uri @currently-open-uri
-        file (.getPath (new URI uri))]
-    (publish-problems-for uri
-      (log/spy :debug :update-problems!
-        ($/select
-          [($/walker ::grp.art/problem-type)
-           ($/pred (comp (partial = file) ::grp.art/file))]
-          problems)))))
+  (when-let [uri @currently-open-uri]
+    (let [file (.getPath (new URI uri))]
+      (publish-problems-for uri
+        (log/spy :debug :update-problems!
+          ($/select
+            [($/walker ::grp.art/problem-type)
+             ($/pred (comp (partial = file) ::grp.art/file))]
+            problems))))))

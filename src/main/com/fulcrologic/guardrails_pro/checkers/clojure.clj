@@ -18,13 +18,17 @@
   (let [analysis (grp.checker/gather-analysis!)]
     (send-mutation! env 'daemon/report-analysis analysis)))
 
+(defn check! [env {:as msg :keys [NS]}]
+  (require (symbol NS) :reload)
+  (grp.checker/check! msg (partial report-analysis! env)))
+
 (defn refresh-and-check! [env msg]
   (grp.checker/prepare-check! msg (partial report-analysis! env))
   (refresh :after 'com.fulcrologic.guardrails-pro.checker/run-prepared-check!))
 
 (defn ?find-port []
   (try (Integer/parseInt (slurp ".guardrails-pro/daemon.port"))
-       (catch FileNotFoundException _ nil)))
+    (catch FileNotFoundException _ nil)))
 
 (defn start!
   "Start the checker. Does not return.
@@ -60,7 +64,8 @@
                        (case dispatch
                          :api/server-push
                          (case (:topic msg)
-                           :check! (refresh-and-check! env (:msg msg))
+                           :check! (check! env (:msg msg))
+                           :refresh-and-check! (refresh-and-check! env (:msg msg))
                            nil)
                          nil)))})
     @(promise)))
