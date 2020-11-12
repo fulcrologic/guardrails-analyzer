@@ -127,10 +127,29 @@
           {:return-sample-fn (constantly ::test-sample)})
         => ::test-sample))
     (component "pure"
-      (assertions
-        (grp.sampler/propagate-samples! env ::grp.sampler/pure
-          {:fn-ref str :args ["pure" \: "test"]})
-        => "pure:test"))
+      (let [test-fn-type {::grp.art/fn-ref +
+                          ::grp.art/arities
+                          {:n {::grp.art/arglist '[& nums]
+                               ::grp.art/gspec
+                               {::grp.art/return-spec number?
+                                ::grp.art/return-type "number?"}}}}]
+        (assertions
+          (grp.sampler/propagate-samples! env ::grp.sampler/pure
+            {:fn-ref str :args ["pure" \: "test"]
+             :argtypes [{} {} {}]})
+          => "pure:test"
+          (grp.sampler/propagate-samples! env ::grp.sampler/pure
+            {:fn-ref apply :args [+ [1/3 1/5 1/7]]
+             :argtypes [test-fn-type {}]})
+          =check=> (_/all* (_/is?* number?)
+                     (_/is?* #(not= 71/105 %)))
+          (grp.sampler/propagate-samples! env ::grp.sampler/pure
+            {:fn-ref apply :args [+ [1/3 1/5 1/7]]
+             :argtypes [(assoc-in test-fn-type
+                          [::grp.art/arities :n ::grp.art/gspec ::grp.art/sampler]
+                          ::grp.sampler/pure)
+                        {}]})
+          => 71/105)))
     (component "merge-arg"
       (assertions
         (grp.sampler/propagate-samples! env [::grp.sampler/merge-arg 1]

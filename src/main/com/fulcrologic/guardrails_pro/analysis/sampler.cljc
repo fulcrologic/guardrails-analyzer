@@ -25,20 +25,15 @@
   [env x {:keys [return-sample-fn]}]
   (return-sample-fn))
 
-(defmethod propagate-samples-mm! ::pure
-  [env x {:keys [fn-ref args]}]
-  ;; TODO: assert all function argtypes are also pure
-  (apply fn-ref args))
-
 (defmethod propagate-samples-mm! ::merge-arg
   [env _ {:keys [args return-sample-fn] N :params}]
   (merge (return-sample-fn) (nth args (or N 0) {})))
 
 (defn ->samples [x] (with-meta x {::samples? true}))
+
 (defn flatten-samples [x]
   (letfn [(samples? [x] (and (set? x) (some-> x meta ::samples?)))]
     (set (mapcat #(if (samples? %) % [%]) x))))
-
 (>defn try-sampling!
   ([env gen] [::grp.art/env (? ::grp.art/generator) => ::grp.art/samples]
    (try-sampling! env gen {}))
@@ -63,7 +58,7 @@
   (or fn-ref (env->fn env)))
 
 (>defn get-gspec [fd argtypes]
-  [(s/keys :req [::grp.art/arities]) (s/coll-of ::grp.art/type-description) => ::grp.art/gspec]
+  [(s/keys :req [::grp.art/arities]) (s/coll-of any?) => ::grp.art/gspec]
   (let [gspec (-> fd ::grp.art/arities (grp.art/get-arity argtypes) ::grp.art/gspec)
         sampler (some-> gspec ::grp.art/metadata convert-shorthand-metadata derive-sampler-type)]
     (cond-> gspec
@@ -121,6 +116,22 @@
     (try-sampling! env generator
       {::grp.art/original-expression
        ((some-fn ::grp.art/fn-name ::grp.art/var-name ::grp.art/lambda-name) fd)})))
+
+(defmethod propagate-samples-mm! ::pure
+  [env x {:keys [fn-ref args argtypes]}]
+  (apply fn-ref
+    (map (fn [arg td]
+           (if-not (::grp.art/arities td)
+             arg
+             (fn [& args]
+               (let [function arg
+                     gspec (get-gspec td args)]
+                 (if (= ::pure (::grp.art/sampler gspec))
+                   (apply function args)
+                   (->> gspec
+                     (return-sample-gen env)
+                     (grp.spec/generate env)))))))
+      args argtypes)))
 
 (defn map-like-args [env colls]
   (let [coll-args (map (partial get-args env) colls)]
