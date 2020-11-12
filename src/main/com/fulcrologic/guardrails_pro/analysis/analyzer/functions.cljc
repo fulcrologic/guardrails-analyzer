@@ -1,7 +1,6 @@
 (ns com.fulcrologic.guardrails-pro.analysis.analyzer.functions
   (:require
     [com.fulcrologic.guardrails-pro.analysis.analyzer.dispatch :as grp.ana.disp]
-    [com.fulcrologic.guardrails-pro.analysis.analyzer.literals]
     [com.fulcrologic.guardrails-pro.analysis.function-type :as grp.fnt]
     [com.fulcrologic.guardrails-pro.analysis.sampler :as grp.sampler]
     [com.fulcrologic.guardrails-pro.analysis.spec :as grp.spec]

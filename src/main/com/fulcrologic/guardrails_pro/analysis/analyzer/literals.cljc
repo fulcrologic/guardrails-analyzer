@@ -2,34 +2,51 @@
   (:require
     [com.fulcrologic.guardrails.core :as gr :refer [>defn => ?]]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
-    [com.fulcrologic.guardrails-pro.analysis.analyzer.dispatch :as grp.ana.disp]
+    [com.fulcrologic.guardrails-pro.analysis.analyzer.dispatch :as grp.ana.disp :refer [regex?]]
     [com.fulcrologic.guardrails-pro.analysis.spec :as grp.spec]
     [taoensso.timbre :as log]
     [taoensso.encore :as enc]))
 
-(defn analyze-literal! [env sexpr]
-  (log/spy :debug :analyze/literal
-    (let [[spec type-]
-          (cond
-            (number? sexpr) [number? "number?"]
-            (string? sexpr) [string? "string?"]
-            (keyword? sexpr) (do (when (and (qualified-keyword? sexpr)
-                                         (not (grp.spec/lookup env sexpr)))
-                                   (grp.art/record-warning! env sexpr
-                                     :warning/qualified-keyword-missing-spec))
-                               [keyword? "keyword?"])
-            (nil? sexpr) [nil? "nil?"]
-            (char? sexpr) [char? "char?"]
-            (grp.ana.disp/regex? sexpr) [grp.ana.disp/regex? "regex?"])]
-      #::grp.art{:spec spec :type type- :samples #{sexpr}
-                 :original-expression sexpr})))
+(def kind->td
+  {::nil           #::grp.art{:spec nil?     :type "literal-nil"}
+   ::char          #::grp.art{:spec char?    :type "literal-char"}
+   ::string        #::grp.art{:spec string?  :type "literal-string"}
+   ::regex         #::grp.art{:spec regex?   :type "literal-regex"}
+   ::number        #::grp.art{:spec number?  :type "literal-number"}
+   ::keyword       #::grp.art{:spec keyword? :type "literal-keyword"}
+   ::map           #::grp.art{:spec map?     :type "literal-map"}
+   ::vector        #::grp.art{:spec vector?  :type "literal-vector"}
+   ::set           #::grp.art{:spec set?     :type "literal-set"}
+   ::quoted-symbol #::grp.art{:type "quoted-symbol"}
+   ::quoted-expr   #::grp.art{:type "quoted-expression"}})
 
-(defmethod grp.ana.disp/analyze-mm :literal/char [env sexpr] (analyze-literal! env sexpr))
-(defmethod grp.ana.disp/analyze-mm :literal/number [env sexpr] (analyze-literal! env sexpr))
-(defmethod grp.ana.disp/analyze-mm :literal/string [env sexpr] (analyze-literal! env sexpr))
-(defmethod grp.ana.disp/analyze-mm :literal/keyword [env sexpr] (analyze-literal! env sexpr))
-(defmethod grp.ana.disp/analyze-mm :literal/regex [env sexpr] (analyze-literal! env sexpr))
-(defmethod grp.ana.disp/analyze-mm :literal/nil [env sexpr] (analyze-literal! env sexpr))
+(defn literal-td [env kind sexpr]
+  (assoc (kind->td kind)
+    ::kind kind
+    ::grp.art/samples #{sexpr}
+    ::grp.art/original-expression sexpr))
+
+(defmethod grp.ana.disp/analyze-mm :literal/nil [env sexpr] (literal-td env ::nil sexpr))
+(defmethod grp.ana.disp/analyze-mm :literal/char [env sexpr] (literal-td env ::char sexpr))
+(defmethod grp.ana.disp/analyze-mm :literal/string [env sexpr] (literal-td env ::string sexpr))
+(defmethod grp.ana.disp/analyze-mm :literal/regex [env sexpr] (literal-td env ::regex sexpr))
+(defmethod grp.ana.disp/analyze-mm :literal/number [env sexpr] (literal-td env ::number sexpr))
+(defmethod grp.ana.disp/analyze-mm :literal/keyword [env sexpr]
+  (when (and (qualified-keyword? sexpr)
+          (not (grp.spec/lookup env sexpr)))
+    (grp.art/record-warning! env sexpr :warning/qualified-keyword-missing-spec))
+  (literal-td env ::keyword sexpr))
+
+(defmethod grp.ana.disp/analyze-mm 'quote [env [_ sexpr]]
+  (if (symbol? sexpr)
+    (literal-td env ::quoted-symbol sexpr)
+   (literal-td env ::quoted-expr sexpr)))
+
+(defn coll-td [env kind sexpr samples]
+  (assoc (kind->td kind)
+    ::kind kind
+    ::grp.art/samples samples
+    ::grp.art/original-expression sexpr))
 
 (>defn validate-samples! [env k v samples]
   [::grp.art/env any? any? ::grp.art/samples => (? ::grp.art/samples)]
@@ -64,9 +81,7 @@
 (>defn analyze-hashmap! [env hashmap]
   [::grp.art/env map? => ::grp.art/type-description]
   (let [sample-map (reduce-kv (partial analyze-hashmap-entry env) {} hashmap)]
-    {::grp.art/samples             #{sample-map}
-     ::grp.art/original-expression hashmap
-     ::grp.art/type                "literal-hashmap"}))
+    (coll-td env ::map hashmap #{sample-map})))
 
 (defmethod grp.ana.disp/analyze-mm :collection/map [env coll] (analyze-hashmap! env coll))
 
@@ -81,9 +96,7 @@
 (>defn analyze-vector! [env v]
   [::grp.art/env vector? => ::grp.art/type-description]
   (let [sample-vector (reduce (partial analyze-vector-entry env) [] v)]
-    {::grp.art/samples             #{sample-vector}
-     ::grp.art/original-expression v
-     ::grp.art/type                "literal-vector"}))
+    (coll-td env ::vector v #{sample-vector})))
 
 (defmethod grp.ana.disp/analyze-mm :collection/vector [env coll] (analyze-vector! env coll))
 
@@ -113,8 +126,6 @@
                   (apply cartesian-product)
                   (map set)
                   set)]
-    {::grp.art/samples             samples
-     ::grp.art/original-expression s
-     ::grp.art/type                "literal-set"}))
+    (coll-td env ::set s samples)))
 
 (defmethod grp.ana.disp/analyze-mm :collection/set [env coll] (analyze-set! env coll))

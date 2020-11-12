@@ -12,6 +12,11 @@
   #?(:clj  (= (type x) Pattern)
      :cljs (regexp? x)))
 
+(defn quoted-symbol? [x]
+  (and (seq? x) (seq x)
+    (= 'quote (first x))
+    (symbol? (second x))))
+
 (defn list-dispatch [env [head :as _sexpr]]
   (letfn [(symbol-dispatch [sym]
             (cond
@@ -27,8 +32,9 @@
               #_=> :function.external/call
               :else :ifn/call))]
     (cond
-      (seq? head) :function.expression/call
       (symbol? head) (symbol-dispatch head)
+      (quoted-symbol? head) :ifn/call
+      (seq? head) :function.expression/call
       (ifn? head) :ifn/call
       :else :unknown)))
 
@@ -37,12 +43,12 @@
     (seq? sexpr) (p ::list-dispatch (list-dispatch env sexpr))
     (symbol? sexpr) :symbol/lookup
 
-    (char? sexpr) :literal/char
-    (number? sexpr) :literal/number
-    (string? sexpr) :literal/string
-    (keyword? sexpr) :literal/keyword
-    (regex? sexpr) :literal/regex
     (nil? sexpr) :literal/nil
+    (char? sexpr) :literal/char
+    (string? sexpr) :literal/string
+    (regex? sexpr) :literal/regex
+    (number? sexpr) :literal/number
+    (keyword? sexpr) :literal/keyword
 
     (vector? sexpr) :collection/vector
     (set? sexpr) :collection/set
@@ -74,5 +80,6 @@
     (-analyze! env expr))
   (-analyze! env (last body)))
 
-(defn unknown-expr [env expr]
-  {::grp.art/unknown-expression expr})
+(defn unknown-expr [env sexpr]
+  (grp.art/record-info! env sexpr :info/failed-to-analyze-unknown-expression)
+  {::grp.art/unknown-expression sexpr})

@@ -17,7 +17,6 @@
 
 (defmethod grp.disp/analyze-mm :unknown [env sexpr]
   (log/error "Unknown expression:" (pr-str sexpr))
-  (grp.art/record-info! env sexpr :info/failed-to-analyze-unknown-expression)
   (grp.disp/unknown-expr env sexpr))
 
 (defmethod grp.disp/analyze-mm :symbol/lookup [env sym]
