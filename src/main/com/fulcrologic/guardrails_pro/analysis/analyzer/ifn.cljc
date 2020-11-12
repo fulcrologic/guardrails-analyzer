@@ -14,16 +14,10 @@
       (grp.spec/sample env)
       set)))
 
-(defn analyze:ifn:literal-call!
+(defn analyze:ifn-call!
   [env {ifn ::grp.art/original-expression} args-td]
   {::grp.art/samples (set (map (partial apply ifn)
                             (random-samples env args-td)))})
-
-(defn analyze:ifn-call! [env ifn-td args-td]
-  ;; TASK: non-literals & objects that implement ifn?
-  ;; TASK: must implement ifn protocol
-  (grp.ana.disp/unknown-expr env
-    (::grp.art/original-expression ifn-td)))
 
 (defmethod grp.ana.disp/analyze-mm :ifn/call [env [ifn & args :as sexpr]]
   (let [ifn-td (grp.ana.disp/-analyze! env ifn)
@@ -31,7 +25,11 @@
     (if-let [ifn-kind (::lit/kind ifn-td)]
       (case ifn-kind
         (::lit/quoted-symbol ::lit/keyword ::lit/map ::lit/set)
-        (analyze:ifn:literal-call! env ifn-td args-td)
+        (analyze:ifn-call! env ifn-td args-td)
         #_:else
         (grp.ana.disp/unknown-expr env sexpr))
       (analyze:ifn-call! env ifn-td args-td))))
+
+(defmethod grp.ana.disp/analyze-mm :ifn/literal [env sexpr]
+  {::grp.art/original-expression sexpr
+   ::grp.art/samples #{sexpr}})

@@ -1,7 +1,6 @@
 (ns com.fulcrologic.guardrails-pro.analysis.analyzer.ifn-spec
   (:require
     com.fulcrologic.guardrails-pro.ftags.clojure-core ;; NOTE: required
-    [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails-pro.analysis.analyzer :as grp.ana]
     [com.fulcrologic.guardrails-pro.analysis.analyzer.ifn :as grp.ana.ifn]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
@@ -23,7 +22,6 @@
                    [(_/is?* number?)
                     (_/is?* keyword?)])))))
 
-;; TASK: non literals
 (specification "analyze ifn"
   (let [env (tf/test-env)]
     (component "not ifn?"
@@ -52,7 +50,12 @@
       (assertions
         (grp.ana/analyze! env '(#{:x} :x))
         => {::grp.art/samples #{:x}}))
-    #_(component "ifn?"
-        (assertions
-          ; defrecord
-          (grp.ana/analyze! env '((reify) {:r 6}))))))
+    (component "ifn?"
+      (assertions
+        (grp.ana/analyze! env
+          ;; NOTE: bit hacky, but works
+          `(~(reify clojure.lang.IFn
+               (invoke [this x] "INVOKED")
+               (applyTo [this xs] "APPLIED"))
+             {:r 6}))
+        => {::grp.art/samples #{"APPLIED"}}))))

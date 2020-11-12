@@ -54,6 +54,8 @@
     (set? sexpr) :collection/set
     (map? sexpr) :collection/map
 
+    (ifn? sexpr) :ifn/literal
+
     :else :unknown))
 
 (defmulti analyze-mm

@@ -113,4 +113,5 @@
  {:date "2020-11-11" :description "analyze get-in" :timespans [[950 1105]]}
  {:date "2020-11-11" :description "lsp fix commands" :timespans [[1105 1200]]}
  {:date "2020-11-11" :description "pure hofs" :timespans [[1700 1740]]}
+ {:date "2020-11-12" :description "ifn" :timespans [[830 1055] [1420 1435]]}
  ]
