@@ -1,10 +1,10 @@
 (ns com.fulcrologic.guardrails-pro.daemon.lsp.server
   (:require
     [clojure.core.async :as async]
+    [clojure.data.json :as json]
     [clojure.java.io :as io]
     [com.fulcrologic.guardrails-pro.daemon.lsp.commands :as lsp.cmds]
     [com.fulcrologic.guardrails-pro.daemon.lsp.diagnostics :as lsp.diag]
-    [com.fulcrologic.guardrails-pro.daemon.lsp.interop :as lsp.interop]
     [taoensso.timbre :as log])
   (:import
     (org.eclipse.lsp4j
@@ -27,6 +27,9 @@
     (java.util UUID)
     (java.util.concurrent CompletableFuture)))
 
+(defn read-json [x]
+  (json/read-str (str x) :key-fn keyword))
+
 (deftype LSPWorkspaceService []
   WorkspaceService
   (^CompletableFuture executeCommand [_ ^ExecuteCommandParams params]
@@ -34,7 +37,7 @@
           args (.getArguments params)]
       (log/info "executeCommand" cmd "&" args)
       (if-let [f (get lsp.cmds/commands cmd)]
-        (apply f (map lsp.interop/json->clj args))
+        (apply f (map read-json args))
         (log/warn "Unrecognized command:" cmd)))
     (CompletableFuture/completedFuture 0))
   (^void didChangeConfiguration [_ ^DidChangeConfigurationParams params]
