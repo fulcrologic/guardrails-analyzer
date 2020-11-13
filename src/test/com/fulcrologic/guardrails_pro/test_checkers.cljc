@@ -54,6 +54,6 @@
 
 (defn fmap*
   "NOTE: should be removed once in a fulcro-spec release"
-  [f c] {:pre [(fn? f) (_/checker? c)]}
+  [f c] {:pre [(ifn? f) (_/checker? c)]}
   (_/checker [actual]
     (c (f actual))))

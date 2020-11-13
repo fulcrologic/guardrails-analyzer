@@ -120,13 +120,14 @@
 (defmethod propagate-samples-mm! ::pure
   [env x {:keys [fn-ref args argtypes]}]
   (apply fn-ref
-    (map (fn [arg td]
-           (if-not (::grp.art/arities td)
+    (map (fn [arg ?fn-td]
+           (if-not (::grp.art/arities ?fn-td)
              arg
              (fn [& args]
                (let [function arg
-                     gspec (get-gspec td args)]
+                     gspec (get-gspec ?fn-td args)]
                  (if (= ::pure (::grp.art/sampler gspec))
+                   ;; TODO: what if throws?
                    (apply function args)
                    (->> gspec
                      (return-sample-gen env)
@@ -194,3 +195,11 @@
       (grp.spec/sample env)
       (into #{}))
     #{}))
+
+(defn random-samples-from-each [env tds]
+  (if (some ::grp.art/unknown-expression tds) #{}
+    (->> tds
+      (map (comp gen/elements ::grp.art/samples))
+      (apply gen/tuple)
+      (grp.spec/sample env)
+      set)))

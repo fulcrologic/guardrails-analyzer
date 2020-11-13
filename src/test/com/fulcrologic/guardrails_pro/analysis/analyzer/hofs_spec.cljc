@@ -248,3 +248,18 @@
         `(swap! (atom nil) + :kw))
       =check=> (_/seq-matches?*
                  [(_/embeds?* {::grp.art/problem-type :error/function-argument-failed-spec})]))))
+
+(specification "analyze-update!" :integration :wip
+  (let [env (tf/test-env)]
+    (assertions
+      (grp.ana/analyze! env
+        `(update {:a 0} :a inc))
+      =check=> (_/embeds?* {::grp.art/samples #{{:a 1}}})
+      (grp.ana/analyze! env
+        `(update {:a 1} :a + :kw))
+      =check=> (_/embeds?* {::grp.art/samples
+                            (_/every?* (tc/fmap* :a (_/is?* number?)))})
+      (tf/capture-errors grp.ana/analyze! env
+        `(update {:a 1} :a + :kw))
+      =check=> (_/seq-matches?*
+                 [(_/embeds?* {::grp.art/problem-type :error/function-argument-failed-spec})]))))

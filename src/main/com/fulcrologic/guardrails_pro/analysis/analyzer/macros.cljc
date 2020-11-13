@@ -2,6 +2,7 @@
   (:require
     [com.fulcrologic.guardrails-pro.analysis.analyzer.dispatch :as grp.ana.disp]
     [com.fulcrologic.guardrails-pro.analysis.analyzer.literals]
+    [com.fulcrologic.guardrails-pro.analysis.destructuring :as grp.destr]
     [com.fulcrologic.guardrails-pro.analysis.function-type :as grp.fnt]
     [com.fulcrologic.guardrails-pro.analysis.sampler :as grp.sampler]
     [com.fulcrologic.guardrails-pro.analysis.spec :as grp.spec]
@@ -34,7 +35,7 @@
 (defn analyze-let-bindings! [env bindings]
   (reduce (fn [env [bind-sexpr sexpr]]
             (reduce-kv grp.art/remember-local
-              env (grp.fnt/destructure! env bind-sexpr
+              env (grp.destr/destructure! env bind-sexpr
                     (grp.ana.disp/-analyze! env sexpr))))
     env (partition 2 bindings)))
 
@@ -125,11 +126,6 @@
                 `(if ~tst ~expr ~(COND rst))))]
       (grp.ana.disp/-analyze! env (COND clauses)))))
 
-;; TODO: difficult
-(comment
-  case
-  condp)
-
 (defmethod grp.ana.disp/analyze-mm '-> [env [_ subject & args]]
   (grp.ana.disp/-analyze! env
     (reduce (fn [subject step]
@@ -202,7 +198,7 @@
               :let (analyze-let-bindings! env sexpr)
               (:when :while) env
               (reduce-kv grp.art/remember-local
-                env (grp.fnt/destructure! env bind-sexpr
+                env (grp.destr/destructure! env bind-sexpr
                       (let [td (grp.ana.disp/-analyze! env sexpr)]
                         (if-not (every? seqable? (::grp.art/samples td))
                           (do (grp.art/record-error! env sexpr
@@ -229,9 +225,3 @@
 (defmethod grp.ana.disp/analyze-mm 'clojure.core/doseq [env [_ bindings & body]]
   (analyze-for-loop! env bindings body)
   {::grp.art/samples #{nil}})
-
-;; TODO
-(comment loop recur)
-
-;; TODO
-(comment try catch finally throw)

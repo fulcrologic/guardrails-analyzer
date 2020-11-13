@@ -211,3 +211,14 @@
         {::grp.art/samples #{4 5 6}}
         (grp.ana.disp/unknown-expr env ::UNK))
       =check=> (tc/subset?* #{4 5 6}))))
+
+(specification "random-samples-from-each"
+  (let [env (tf/test-env)]
+    (assertions
+      (grp.sampler/random-samples-from-each env
+        [{::grp.art/samples #{1 2 3}}
+         {::grp.art/samples #{:a :b :c}}])
+      =check=> (_/every?*
+                 (_/seq-matches?*
+                   [(_/is?* number?)
+                    (_/is?* keyword?)])))))

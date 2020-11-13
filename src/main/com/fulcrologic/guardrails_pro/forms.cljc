@@ -20,10 +20,6 @@
       (list 'with-meta x m)
       x)))
 
-(comment
-  do
-  #?(:clj (in-ns 'foo)))
-
 (defn interpret [x]
   (cond
     (and (seq? x) (= 'with-meta (first x)))

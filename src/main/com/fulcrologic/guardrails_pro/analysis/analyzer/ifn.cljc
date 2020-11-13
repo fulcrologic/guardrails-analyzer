@@ -1,23 +1,14 @@
 (ns com.fulcrologic.guardrails-pro.analysis.analyzer.ifn
   (:require
-    [clojure.test.check.generators :as gen]
     [com.fulcrologic.guardrails-pro.analysis.analyzer.dispatch :as grp.ana.disp]
     [com.fulcrologic.guardrails-pro.analysis.analyzer.literals :as lit]
-    [com.fulcrologic.guardrails-pro.analysis.spec :as grp.spec]
+    [com.fulcrologic.guardrails-pro.analysis.sampler :as grp.sampler]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]))
-
-(defn random-samples [env tds]
-  (if (some ::grp.art/unknown-expression tds) #{}
-    (->> tds
-      (map (comp gen/elements ::grp.art/samples))
-      (apply gen/tuple)
-      (grp.spec/sample env)
-      set)))
 
 (defn analyze:ifn-call!
   [env {ifn ::grp.art/original-expression} args-td]
   {::grp.art/samples (set (map (partial apply ifn)
-                            (random-samples env args-td)))})
+                            (grp.sampler/random-samples-from-each env args-td)))})
 
 (defmethod grp.ana.disp/analyze-mm :ifn/call [env [ifn & args :as sexpr]]
   (let [ifn-td (grp.ana.disp/-analyze! env ifn)

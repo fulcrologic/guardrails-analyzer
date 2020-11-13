@@ -363,6 +363,9 @@
 (>fdef ^:pure clojure.core/take-nth
   [n coll] [number? coll? => coll?])
 
+(>fdef ^:pure clojure.core/update
+  [m k f & args] [map? any? ifn? (s/* any?) => map?])
+
 (>fdef ^:pure clojure.core/val
   [e] [map-entry? => any?])
 

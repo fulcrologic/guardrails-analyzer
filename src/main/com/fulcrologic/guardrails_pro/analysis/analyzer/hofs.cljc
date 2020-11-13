@@ -60,17 +60,6 @@
 
 ;; CONTEXT: ============ fn * -> val ============
 
-;; TODO
-(comment
-  filter
-  update
-  sort-by
-  group-by
-  partition-by
-  repeatedly
-  iterate
-  )
-
 (defn analyze-apply! [env [this-sym f & args]]
   (let [apply-td (grp.art/external-function-detail env this-sym)
         function (grp.ana.disp/-analyze! env f)
@@ -181,6 +170,37 @@
 
 (defmethod grp.ana.disp/analyze-mm 'swap! [env sexpr] (analyze-swap! env sexpr))
 (defmethod grp.ana.disp/analyze-mm 'clojure.core/swap! [env sexpr] (analyze-swap! env sexpr))
+
+(defn analyze-update! [env [this-sym m k f & args]]
+  (let [update-td (grp.art/external-function-detail env this-sym)
+        map-td (grp.ana.disp/-analyze! env m)
+        key-td (grp.ana.disp/-analyze! env k)
+        map-entry-td {::grp.art/samples
+                      (set (map (fn [[k m]] (k m))
+                             (grp.sampler/random-samples-from-each
+                               env [key-td map-td])))}
+        func-td (grp.ana.disp/-analyze! env f)
+        args-td (map (partial grp.ana.disp/-analyze! env) args)
+        func-args-td (concat [map-entry-td] args-td)
+        update-args-td (concat [map-td key-td func-td] args-td)]
+    (if-not (grp.fnt/validate-argtypes!? env
+              (grp.art/get-arity (::grp.art/arities func-td) func-args-td)
+               func-args-td)
+      (let [samples (grp.sampler/try-sampling! env
+                      (grp.spec/generator env
+                        (get-in (grp.art/get-arity
+                                  (::grp.art/arities func-td)
+                                  func-args-td)
+                          [::grp.art/gspec ::grp.art/return-spec])))]
+        (update map-td ::grp.art/samples
+          (partial (comp set map)
+            (fn [m]
+              (let [k (rand-nth (vec (::grp.art/samples key-td)))]
+                (assoc m k (rand-nth (vec samples))))))))
+      (grp.fnt/analyze-function-call! env update-td update-args-td))))
+
+(defmethod grp.ana.disp/analyze-mm 'update [env sexpr] (analyze-update! env sexpr))
+(defmethod grp.ana.disp/analyze-mm 'clojure.core/update [env sexpr] (analyze-update! env sexpr))
 
 ;; CONTEXT: ============ * -> fn ============
 
@@ -349,31 +369,3 @@
 
 (defmethod grp.ana.disp/analyze-mm 'partial [env sexpr] (analyze-partial! env sexpr))
 (defmethod grp.ana.disp/analyze-mm 'clojure.core/partial [env sexpr] (analyze-partial! env sexpr))
-
-;; TODO transducers
-(comment
-  into
-  sequence
-  transduce
-  eduction
-  map
-  cat
-  mapcat
-  filter
-  remove
-  take
-  take-while
-  take-nth
-  drop
-  drop-while
-  replace
-  partition-by
-  partition-all
-  keep
-  keep-indexed
-  map-indexed
-  distinct
-  interpose
-  dedupe
-  random-sample
-  )
