@@ -25,9 +25,9 @@
   </scm>
   <distributionManagement>
     <repository>
-      <id>clojars</id>
-      <name>Clojars repository</name>
-      <url>https://clojars.org/repo</url>
+      <id>fulcrologic</id>
+      <name>Fulcrologic repository</name>
+      <url>https://mvn.fulcrologic.com/mvn</url>
     </repository>
   </distributionManagement>
   <build>
