@@ -73,4 +73,5 @@
  {:date "2020-11-12" :description "check-in" :timespans [[1200 1215]]}
  {:date "2020-11-13" :description "check-in" :timespans [[1200 1215]]}
  {:date "2020-11-14" :description "MVN repo, SSL, basic auth, mvn publish" :timespans [[1500 1915]]}
+ {:date "2020-11-16" :description "user portal, planning" :timespans [[1100 1730] [1800 2000]]}
  ]
