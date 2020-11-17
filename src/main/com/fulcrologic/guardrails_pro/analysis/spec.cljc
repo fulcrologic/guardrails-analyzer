@@ -6,8 +6,7 @@
     [clojure.test.check.generators :as tc.gen]
     [clojure.test.check.random :as tc.random]
     [clojure.test.check.rose-tree :as tc.rose]
-    [taoensso.timbre :as log]
-    [taoensso.tufte :refer [p]]))
+    [com.fulcrologic.guardrails-pro.logging :as log]))
 
 (defn make-size-range-seq [max-size]
   (cycle (mapcat #(repeat 5 %) (range 0 max-size))))
@@ -15,7 +14,7 @@
 (defn sample-seq
   ([gen] (sample-seq gen 10))
   ([gen max-size]
-   (let [r (tc.random/make-random)
+   (let [r        (tc.random/make-random)
          size-seq (make-size-range-seq max-size)]
      (map #(tc.rose/root (tc.gen/call-gen gen %1 %2))
        (tc.gen/lazy-random-states r)
@@ -52,16 +51,16 @@
 (defn with-spec-impl
   ([env impl-type] (with-spec-impl env impl-type {}))
   ([env impl-type opts]
-   (let [opts (merge {:num-samples 10
+   (let [opts (merge {:num-samples    10
                       :cache-samples? true}
                 opts)]
      (assoc env ::impl
-       (case impl-type
-         :clojure.spec.alpha (->ClojureSpecAlpha opts)
-         (->ClojureSpecAlpha opts))))))
+                (case impl-type
+                  :clojure.spec.alpha (->ClojureSpecAlpha opts)
+                  (->ClojureSpecAlpha opts))))))
 
 (defn lookup [env value] (-lookup (::impl env) value))
-(defn valid? [env spec value] (p [::-valid? spec] (-valid? (::impl env) spec value)))
+(defn valid? [env spec value] (-valid? (::impl env) spec value))
 (defn explain [env spec value] (-explain (::impl env) spec value))
 (defn generator [env spec] (-generator (::impl env) spec))
 (defn generate [env spec] (-generate (::impl env) spec))
@@ -74,8 +73,8 @@
     (let [spec (::spec gen gen)]
       (if-let [samples (get @cache spec)]
         (do (log/debug "Using cached samples for" spec)
-          samples)
-        (let [samples (p [::-sample spec] (-sample (::impl env) gen))]
+            samples)
+        (let [samples (-sample (::impl env) gen)]
           (log/debug "Caching new samples for:" spec)
           (swap! cache assoc spec samples)
           samples)))))

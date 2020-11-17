@@ -4,8 +4,8 @@
                [goog.string.format]])
     [clojure.string :as str]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
-    [com.rpl.specter :as $]
-    [taoensso.timbre :as log]))
+    [com.fulcrologic-pro.com.rpl.specter :as $]
+    [com.fulcrologic.guardrails-pro.logging :as log]))
 
 (defn html-escape [s]
   (-> s

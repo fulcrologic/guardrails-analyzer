@@ -4,12 +4,9 @@
     [com.fulcrologic.guardrails-pro.checker :as grp.checker]
     [com.fulcrologic.guardrails-pro.checkers.sente-client :as ws]
     [com.fulcrologic.guardrails.config :as gr.cfg]
-    [taoensso.timbre :as log]
-    [taoensso.tufte :as prof])
+    [com.fulcrologic.guardrails-pro.logging :as log])
   (:import
     (java.io FileNotFoundException)))
-
-(prof/add-basic-println-handler! {})
 
 (defn send-mutation! [env sym params]
   (ws/send! env
@@ -31,7 +28,7 @@
 
 (defn ?find-port []
   (try (Integer/parseInt (slurp ".guardrails-pro/daemon.port"))
-    (catch FileNotFoundException _ nil)))
+       (catch FileNotFoundException _ nil)))
 
 (defn start!
   "Start the checker. Does not return.

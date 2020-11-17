@@ -7,7 +7,7 @@
     [com.fulcrologic.fulcro.networking.websockets :as fws]
     [com.fulcrologic.fulcro.routing.dynamic-routing :as dr :refer [defrouter]]
     [com.fulcrologic.guardrails-pro.ui.shared :as ui.shared]
-    [taoensso.timbre :as log]))
+    [com.fulcrologic.guardrails-pro.logging :as log]))
 
 (f.m/defmutation subscribe [_]
   (remote [env]

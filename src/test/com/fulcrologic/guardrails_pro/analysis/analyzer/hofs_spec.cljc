@@ -8,7 +8,7 @@
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.test-fixtures :as tf]
     [com.fulcrologic.guardrails-pro.test-checkers :as tc]
-    [com.rpl.specter :as $]
+    [com.fulcrologic-pro.com.rpl.specter :as $]
     [fulcro-spec.check :as _]
     [fulcro-spec.core :refer [specification assertions behavior component]]
     [taoensso.encore :as enc]))

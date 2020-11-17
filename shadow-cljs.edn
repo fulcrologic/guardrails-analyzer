@@ -1,4 +1,4 @@
-{:deps     {:aliases [:dev :daemon :test]}
+{:deps     {:aliases [:dev :daemon :test :cljs]}
  :nrepl    {:port 9000}
  :dev-http {9001 "resources/public"}
  :builds   {:daemon-ui    {:target     :browser

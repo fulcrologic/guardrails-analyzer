@@ -3,20 +3,18 @@
     [com.fulcrologic.guardrails.core :as gr :refer [>defn => ?]]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.analysis.analyzer.dispatch :as grp.ana.disp :refer [regex?]]
-    [com.fulcrologic.guardrails-pro.analysis.spec :as grp.spec]
-    [taoensso.timbre :as log]
-    [taoensso.encore :as enc]))
+    [com.fulcrologic.guardrails-pro.analysis.spec :as grp.spec]))
 
 (def kind->td
-  {::nil           #::grp.art{:spec nil?     :type "literal-nil"}
-   ::char          #::grp.art{:spec char?    :type "literal-char"}
-   ::string        #::grp.art{:spec string?  :type "literal-string"}
-   ::regex         #::grp.art{:spec regex?   :type "literal-regex"}
-   ::number        #::grp.art{:spec number?  :type "literal-number"}
+  {::nil           #::grp.art{:spec nil? :type "literal-nil"}
+   ::char          #::grp.art{:spec char? :type "literal-char"}
+   ::string        #::grp.art{:spec string? :type "literal-string"}
+   ::regex         #::grp.art{:spec regex? :type "literal-regex"}
+   ::number        #::grp.art{:spec number? :type "literal-number"}
    ::keyword       #::grp.art{:spec keyword? :type "literal-keyword"}
-   ::map           #::grp.art{:spec map?     :type "literal-map"}
-   ::vector        #::grp.art{:spec vector?  :type "literal-vector"}
-   ::set           #::grp.art{:spec set?     :type "literal-set"}
+   ::map           #::grp.art{:spec map? :type "literal-map"}
+   ::vector        #::grp.art{:spec vector? :type "literal-vector"}
+   ::set           #::grp.art{:spec set? :type "literal-set"}
    ::quoted-symbol #::grp.art{:type "quoted-symbol"}
    ::quoted-expr   #::grp.art{:type "quoted-expression"}})
 
@@ -40,7 +38,7 @@
 (defmethod grp.ana.disp/analyze-mm 'quote [env [_ sexpr]]
   (if (symbol? sexpr)
     (literal-td env ::quoted-symbol sexpr)
-   (literal-td env ::quoted-expr sexpr)))
+    (literal-td env ::quoted-expr sexpr)))
 
 (defn coll-td [env kind sexpr samples]
   (assoc (kind->td kind)
@@ -51,10 +49,10 @@
 (>defn validate-samples! [env k v samples]
   [::grp.art/env any? any? ::grp.art/samples => (? ::grp.art/samples)]
   (let [spec (grp.spec/lookup env k)]
-    (enc/if-let [spec           spec
-                 failing-sample (some (fn _invalid-sample [sample]
-                                        (when-not (grp.spec/valid? env spec sample) sample))
-                                  samples)]
+    (if-let [failing-sample (and spec
+                              (some (fn _invalid-sample [sample]
+                                      (when-not (grp.spec/valid? env spec sample) sample))
+                                samples))]
       (do
         (grp.art/record-error! env
           {::grp.art/original-expression v
@@ -105,17 +103,17 @@
    All the ways to take one item from each sequence"
   [& seqs]
   (let [v-original-seqs (vec seqs)
-        step (fn step [v-seqs]
-               (let [increment
-                     (fn [v-seqs]
-                       (loop [i (dec (count v-seqs)), v-seqs v-seqs]
-                         (if (= i -1) nil
-                           (if-let [rst (next (v-seqs i))]
-                             (assoc v-seqs i rst)
-                             (recur (dec i) (assoc v-seqs i (v-original-seqs i)))))))]
-                 (when v-seqs
-                   (cons (map first v-seqs)
-                     (lazy-seq (step (increment v-seqs)))))))]
+        step            (fn step [v-seqs]
+                          (let [increment
+                                (fn [v-seqs]
+                                  (loop [i (dec (count v-seqs)), v-seqs v-seqs]
+                                    (if (= i -1) nil
+                                                 (if-let [rst (next (v-seqs i))]
+                                                   (assoc v-seqs i rst)
+                                                   (recur (dec i) (assoc v-seqs i (v-original-seqs i)))))))]
+                            (when v-seqs
+                              (cons (map first v-seqs)
+                                (lazy-seq (step (increment v-seqs)))))))]
     (when (every? seq seqs)
       (lazy-seq (step v-original-seqs)))))
 

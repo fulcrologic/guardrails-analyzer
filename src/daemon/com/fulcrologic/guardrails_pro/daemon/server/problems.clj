@@ -1,7 +1,7 @@
 (ns com.fulcrologic.guardrails-pro.daemon.server.problems
   (:require
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
-    [com.rpl.specter :as $]))
+    [com.fulcrologic-pro.com.rpl.specter :as $]))
 
 (defonce problems (atom nil))
 

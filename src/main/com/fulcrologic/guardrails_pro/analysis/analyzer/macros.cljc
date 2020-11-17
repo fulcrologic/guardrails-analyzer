@@ -8,7 +8,7 @@
     [com.fulcrologic.guardrails-pro.analysis.spec :as grp.spec]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails.core :as gr]
-    [taoensso.timbre :as log]))
+    [com.fulcrologic.guardrails-pro.logging :as log]))
 
 (defn analyze-single-arity! [env [arglist gspec & body]]
   (let [gspec  (grp.fnt/interpret-gspec env arglist gspec)

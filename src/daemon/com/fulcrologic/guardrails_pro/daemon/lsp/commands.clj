@@ -2,7 +2,7 @@
   (:require
     [com.fulcrologic.guardrails-pro.daemon.server.checkers :as daemon.check]
     [com.fulcrologic.guardrails-pro.daemon.server.websockets :refer [websockets]]
-    [taoensso.timbre :as log]))
+    [com.fulcrologic.guardrails-pro.logging :as log]))
 
 (defn check-file! [path opts]
   (log/debug "lsp.commands/check-file!" path opts)

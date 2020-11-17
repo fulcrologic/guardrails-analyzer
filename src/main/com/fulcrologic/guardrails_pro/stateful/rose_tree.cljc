@@ -1,6 +1,5 @@
 (ns com.fulcrologic.guardrails-pro.stateful.rose-tree
-  (:require [clojure.test.check.rose-tree :as rose])
-  (:import (clojure.test.check.rose_tree RoseTree)))
+  (:require [clojure.test.check.rose-tree :as rose]))
 
 (defn- make-bound-head []
   (bound-fn [sq]
@@ -9,7 +8,7 @@
       ::empty)))
 
 (defn- bound-lazy-seq [sq]
-  (let [head-of (make-bound-head)
+  (let [head-of   (make-bound-head)
         bound-seq (fn bound-seq [sq]
                     (lazy-seq
                       (let [head (head-of sq)]
@@ -20,7 +19,7 @@
 (defn bound-tree
   "Ensure that all Rose tree children have access to the dynamic variables
    currently defined."
-  [^RoseTree tree]
+  [^rose/RoseTree tree]
   (rose/make-rose (rose/root tree)
     (bound-lazy-seq
       (map bound-tree (rose/children tree)))))

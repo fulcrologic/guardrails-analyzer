@@ -8,16 +8,14 @@
     [com.fulcrologic.guardrails-pro.forms :as grp.forms]
     [com.fulcrologic.guardrails-pro.ui.binding-formatter :refer [format-bindings]]
     [com.fulcrologic.guardrails-pro.ui.problem-formatter :refer [format-problems]]
-    [com.rpl.specter :as $]
-    [taoensso.timbre :as log]
-    [taoensso.tufte :as prof :refer [profile p]]))
+    [com.fulcrologic-pro.com.rpl.specter :as $]
+    [com.fulcrologic.guardrails-pro.logging :as log]))
 
 (defn check-form! [env form]
-  (profile {}
-    (try (p ::check-form! (grp.ana/analyze! env form))
-      (catch #?(:clj Throwable :cljs :default) t
-        (grp.art/record-error! env form :error/failed-to-analyze-form)
-        (log/error t "Failed to analyze form:" form)))))
+  (try (grp.ana/analyze! env form)
+       (catch #?(:clj Throwable :cljs :default) t
+         (grp.art/record-error! env form :error/failed-to-analyze-form)
+         (log/error t "Failed to analyze form:" form))))
 
 (defn check!
   ([msg cb] (check! (grp.art/build-env) msg cb))
@@ -35,10 +33,10 @@
                         (check-form! env form)
                         (check-forms! forms))
                       100)))
-          :clj (fn [forms]
-                 (doseq [form forms]
-                   (check-form! env form))
-                 (cb)))
+          :clj  (fn [forms]
+                  (doseq [form forms]
+                    (check-form! env form))
+                  (cb)))
        (grp.forms/interpret forms)))))
 
 (defonce to-check (atom nil))

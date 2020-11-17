@@ -5,7 +5,7 @@
     [clojure.java.io :as io]
     [com.fulcrologic.guardrails-pro.daemon.lsp.commands :as lsp.cmds]
     [com.fulcrologic.guardrails-pro.daemon.lsp.diagnostics :as lsp.diag]
-    [taoensso.timbre :as log])
+    [com.fulcrologic.guardrails-pro.logging :as log])
   (:import
     (org.eclipse.lsp4j
       DidChangeConfigurationParams

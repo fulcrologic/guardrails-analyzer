@@ -1,13 +1,13 @@
 (ns com.fulcrologic.guardrails-pro.checkers.sente-client
   (:require
     [com.fulcrologic.guardrails-pro.transit-handlers :as grp.transit]
-    [taoensso.timbre :as log])
+    [com.fulcrologic.guardrails-pro.logging :as log])
   (:import
     (java.net URI)
     (java.util UUID)
-    (org.java_websocket.client WebSocketClient)
-    (org.java_websocket.enums ReadyState)
-    (org.java_websocket.exceptions WebsocketNotConnectedException)))
+    (com.fulcrologic_pro.org.java_websocket.client WebSocketClient)
+    (com.fulcrologic_pro.org.java_websocket.enums ReadyState)
+    (com.fulcrologic_pro.org.java_websocket.exceptions WebsocketNotConnectedException)))
 
 (defn- send-edn! [^WebSocketClient client edn]
   (.send client (str "+" (grp.transit/write-edn edn))))

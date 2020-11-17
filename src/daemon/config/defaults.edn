@@ -15,4 +15,4 @@
                                                :frame-options  :sameorigin
                                                :xss-protection false}}
 
- :taoensso.timbre/logging-config  {:level :info}}
+ :com.fulcrologic.guardrails-pro.logging/logging-config  {:level :info}}

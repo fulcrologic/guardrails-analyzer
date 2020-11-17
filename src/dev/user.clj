@@ -1,7 +1,7 @@
 (ns user
   (:require
     [clojure.tools.namespace.repl :as tools-ns]
-    [taoensso.timbre :as log]))
+    [com.fulcrologic.guardrails-pro.logging :as log]))
 
 (tools-ns/disable-reload!)
 

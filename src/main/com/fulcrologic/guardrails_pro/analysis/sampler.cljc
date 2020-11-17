@@ -7,7 +7,7 @@
     [com.fulcrologic.guardrails.core :refer [>defn => ?]]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.analysis.spec :as grp.spec]
-    [taoensso.timbre :as log]))
+    [com.fulcrologic.guardrails-pro.logging :as log]))
 
 (defmulti propagate-samples-mm!
   (fn [env x params]

@@ -3,8 +3,8 @@
     [clojure.tools.reader :as reader]
     [clojure.tools.reader.reader-types :as readers]
     [com.fulcrologic.guardrails-pro.transit-handlers :as f.transit]
-    [com.rpl.specter :as $]
-    [taoensso.timbre :as log])
+    [com.fulcrologic-pro.com.rpl.specter :as $]
+    [com.fulcrologic.guardrails-pro.logging :as log])
   (:import
     (java.io FileReader PushbackReader)))
 

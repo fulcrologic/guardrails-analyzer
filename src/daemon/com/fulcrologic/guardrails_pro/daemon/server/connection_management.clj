@@ -6,7 +6,7 @@
     [com.fulcrologic.guardrails-pro.daemon.server.bindings :as bindings]
     [com.fulcrologic.guardrails-pro.daemon.server.problems :as problems]
     [mount.core :refer [defstate]]
-    [taoensso.timbre :as log]))
+    [com.fulcrologic.guardrails-pro.logging :as log]))
 
 (defstate connected-clients :start (atom #{}))
 (defstate registered-checkers :start (atom {}))

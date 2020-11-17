@@ -1,1 +1,1 @@
-{:taoensso.timbre/logging-config {:level :debug}}
+{:com.fulcrologic.guardrails-pro.logging/logging-config {:level :debug}}

@@ -9,7 +9,7 @@
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.checker :as grp.checker]
     [com.fulcrologic.guardrails-pro.ui.shared :as ui.shared]
-    [taoensso.timbre :as log]))
+    [com.fulcrologic.guardrails-pro.logging :as log]))
 
 (f.m/defmutation register-checker [_]
   (remote [env]

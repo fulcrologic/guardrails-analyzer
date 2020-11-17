@@ -8,7 +8,7 @@
     [com.fulcrologic.guardrails-pro.transit-handlers :as grp.transit]
     [mount.core :refer [defstate]]
     [ring.middleware.defaults :refer [wrap-defaults]]
-    [taoensso.timbre :as log]))
+    [com.fulcrologic.guardrails-pro.logging :as log]))
 
 (def ^:private not-found-handler
   (fn [_req]

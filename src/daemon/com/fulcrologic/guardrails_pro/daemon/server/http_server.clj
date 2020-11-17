@@ -5,7 +5,7 @@
     [com.fulcrologic.guardrails-pro.daemon.server.middleware :refer [middleware]]
     [mount.core :refer [defstate]]
     [org.httpkit.server :as http-kit]
-    [taoensso.timbre :as log]))
+    [com.fulcrologic.guardrails-pro.logging :as log]))
 
 (defn upsearch-file
   [^java.io.File start-dir port-file-name]

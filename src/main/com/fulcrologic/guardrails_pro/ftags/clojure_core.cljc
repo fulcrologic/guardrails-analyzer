@@ -3,7 +3,7 @@
     clojure.test.check.generators
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [>fdef >fspec => | ?]]
-    [taoensso.encore :as enc]))
+    [com.fulcrologic.guardrails.utils :as utils]))
 
 ;; CONTEXT: Higher Order FunctionS
 
@@ -45,7 +45,7 @@
   [pred coll] [ifn? seqable? => (s/tuple sequential? sequential?)])
 
 (>fdef clojure.core/swap!
-  [a f & args] [enc/atom? ifn? (s/* any?) => any?])
+  [a f & args] [utils/atom? ifn? (s/* any?) => any?])
 
 ;; CONTEXT: future design work
 
@@ -131,7 +131,7 @@
   [m ks v] [map? (s/+ any?) any? => map?])
 
 (>fdef ^:pure clojure.core/atom
-  [value] [any? => enc/atom?])
+  [value] [any? => utils/atom?])
 
 (>fdef ^:pure clojure.core/butlast
   [coll] [coll? => coll?])

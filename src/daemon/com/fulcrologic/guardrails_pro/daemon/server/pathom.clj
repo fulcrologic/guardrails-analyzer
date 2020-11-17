@@ -9,7 +9,7 @@
     [com.wsscode.pathom.connect :as pc]
     [com.wsscode.pathom.core :as p]
     [mount.core :refer [defstate]]
-    [taoensso.timbre :as log]))
+    [com.fulcrologic.guardrails-pro.logging :as log]))
 
 (pc/defresolver all-problems [_env _params]
   {::pc/output [:all-problems]}

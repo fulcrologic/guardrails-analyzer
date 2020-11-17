@@ -3,8 +3,7 @@
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.analysis.spec :as grp.spec]
-    [com.fulcrologic.guardrails.core :as gr :refer [>defn >defn- =>]]
-    [taoensso.tufte :refer [p]]))
+    [com.fulcrologic.guardrails.core :as gr :refer [>defn >defn- =>]]))
 
 (s/def ::destructurable
   (s/or
@@ -25,9 +24,9 @@
       (when-let [failing-case (some #(when-not (grp.spec/valid? env spec %) %)
                                 (map kw samples))]
         (grp.art/record-error! env
-          #::grp.art{:problem-type :error/value-failed-spec
-                     :expected #::grp.art{:spec spec :type (pr-str kw)}
-                     :actual {::grp.art/failing-samples #{failing-case}}
+          #::grp.art{:problem-type        :error/value-failed-spec
+                     :expected            #::grp.art{:spec spec :type (pr-str kw)}
+                     :actual              {::grp.art/failing-samples #{failing-case}}
                      :original-expression (or orig-expr kw)})))
     (grp.art/record-warning! env kw
       :warning/qualified-keyword-missing-spec)))
@@ -42,22 +41,22 @@
                  (let [spec-kw (keyword (namespace k) (str sym))]
                    (?validate-samples! env spec-kw (::grp.art/samples td) sym)
                    [sym {::grp.art/original-expression sym
-                         ::grp.art/samples (set (map spec-kw (::grp.art/samples td)))
-                         ::grp.art/spec spec-kw
-                         ::grp.art/type (pr-str spec-kw)}]))
+                         ::grp.art/samples             (set (map spec-kw (::grp.art/samples td)))
+                         ::grp.art/spec                spec-kw
+                         ::grp.art/type                (pr-str spec-kw)}]))
            v)
     (qualified-keyword? v)
     #_=> (do
            (?validate-samples! env v (::grp.art/samples td))
            (-destructure! env k
              {::grp.art/original-expression k
-              ::grp.art/samples (set (map v (::grp.art/samples td)))
-              ::grp.art/spec v
-              ::grp.art/type (pr-str v)}))
+              ::grp.art/samples             (set (map v (::grp.art/samples td)))
+              ::grp.art/spec                v
+              ::grp.art/type                (pr-str v)}))
     (keyword? v)
     #_=> (-destructure! env k
            #::grp.art{:original-expression k
-                      :samples (set (map v (::grp.art/samples td)))})
+                      :samples             (set (map v (::grp.art/samples td)))})
     (= :as k)
     #_=> [[v (assoc td ::grp.art/original-expression v)]]
     :else []))
@@ -66,15 +65,15 @@
   [::grp.art/env vector? ::grp.art/type-description
    => (s/coll-of (s/tuple symbol? ::grp.art/type-description))]
   (let [[symbols specials] (split-with (complement #{'& :as}) vect)
-        sym-count (count symbols)
+        sym-count     (count symbols)
         coll-bindings (into {}
                         (map (fn [[expr bind]]
                                [bind
                                 (case expr
                                   :as td
-                                  '&  {::grp.art/samples
-                                       (set (map (partial drop sym-count)
-                                              (::grp.art/samples td)))})]))
+                                  '& {::grp.art/samples
+                                      (set (map (partial drop sym-count)
+                                             (::grp.art/samples td)))})]))
                         (partition 2 specials))]
     (into coll-bindings
       (mapcat
@@ -102,7 +101,7 @@
 (>defn destructure! [env bind-sexpr value-type-desc]
   [::grp.art/env ::destructurable ::grp.art/type-description
    => (s/map-of symbol? ::grp.art/type-description)]
-  (let [bindings (p ::-destructure! (-destructure! env bind-sexpr value-type-desc)) ]
+  (let [bindings (-destructure! env bind-sexpr value-type-desc)]
     (doseq [[sym td] bindings]
       (grp.art/record-binding! env sym td))
     bindings))

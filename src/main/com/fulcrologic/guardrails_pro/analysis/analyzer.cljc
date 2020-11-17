@@ -8,7 +8,7 @@
     [com.fulcrologic.guardrails-pro.analysis.function-type :as grp.fnt]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails.core :as gr :refer [>defn =>]]
-    [taoensso.timbre :as log]))
+    [com.fulcrologic.guardrails-pro.logging :as log]))
 
 (>defn analyze!
   [env sexpr]
