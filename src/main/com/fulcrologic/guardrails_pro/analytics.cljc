@@ -58,11 +58,23 @@
      :profiling-info info
      :analyze-stats stats}))
 
+(defonce last-report-time (atom nil))
+
+(defn now-in-seconds []
+  (/ #?(:cljs (js/Date.now)
+        :clj  (System/currentTimeMillis))
+    1000))
+
 (defn report-analytics! []
-  (let [analytics (gather-analytics!)]
-    (reset! profiling-info {})
-    (reset! analyze-stats [])
-    ;; TODO FIXME should send to endpoint & on ack clear stats
-    (#?(:clj #(spit "/tmp/grp-analytics.txt" (pr-str %) :append true)
-        :cljs tap>)
-      analytics)))
+  (let [now-s (now-in-seconds)
+        last-s @last-report-time]
+    (when (or (nil? last-s)
+            (< (* 5 60) (- now-s last-s) ))
+      (let [analytics (gather-analytics!)]
+        (reset! last-report-time now-s)
+        (reset! profiling-info {})
+        (reset! analyze-stats [])
+        ;; TODO FIXME should send to endpoint & on ack clear stats
+        (#?(:clj #(spit "/tmp/grp-analytics.txt" (pr-str %) :append true)
+            :cljs tap>)
+          analytics)))))
