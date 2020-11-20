@@ -5,7 +5,7 @@
     [com.fulcrologic.guardrails-pro.analysis.destructuring :as grp.destr]
     [com.fulcrologic.guardrails-pro.analysis.sampler :as grp.sampler]
     [com.fulcrologic.guardrails-pro.analysis.spec :as grp.spec]
-    [com.fulcrologic.guardrails.core :as gr :refer [>defn =>]]))
+    [com.fulcrologic.guardrails.core :as gr :refer [>defn => ?]]))
 
 (>defn interpret-gspec [env arglist gspec]
   [::grp.art/env ::grp.art/arglist (s/coll-of ::grp.art/form :kind vector?) => ::grp.art/gspec]
@@ -43,14 +43,14 @@
       (map vector arglist argument-types argument-specs))))
 
 (>defn check-return-type!
-  [env {::grp.art/keys [return-type return-spec]} {::grp.art/keys [samples]} expr]
-  [::grp.art/env ::grp.art/gspec ::grp.art/type-description ::grp.art/original-expression => any?]
+  [env {::grp.art/keys [return-type return-spec]} {::grp.art/keys [samples]} expr loc]
+  [::grp.art/env ::grp.art/gspec ::grp.art/type-description ::grp.art/original-expression (? map?) => any?]
   (let [sample-failure (some #(when-not (grp.spec/valid? env return-spec %)
                                 {:failing-case %})
                          samples)]
     (when (contains? sample-failure :failing-case)
       (let [sample-failure (:failing-case sample-failure)]
-        (grp.art/record-error! (grp.art/update-location env (meta expr))
+        (grp.art/record-error! (grp.art/update-location env loc)
           {::grp.art/original-expression expr
            ::grp.art/actual              {::grp.art/failing-samples #{sample-failure}}
            ::grp.art/expected            #::grp.art{:spec return-spec :type return-type}

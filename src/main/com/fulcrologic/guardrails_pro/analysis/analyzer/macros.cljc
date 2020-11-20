@@ -10,19 +10,20 @@
     [com.fulcrologic.guardrails.core :as gr]
     [com.fulcrologic.guardrails-pro.logging :as log]))
 
-(defn analyze-single-arity! [env [arglist gspec & body]]
+(defn analyze-single-arity! [env defn-sym [arglist gspec & body]]
   (let [gspec  (grp.fnt/interpret-gspec env arglist gspec)
         env    (grp.fnt/bind-argument-types env arglist gspec)
         result (grp.ana.disp/analyze-statements! env body)]
-    (grp.fnt/check-return-type! env gspec result (last body))))
+    (grp.fnt/check-return-type! env gspec result
+      (last body) (meta defn-sym))))
 
 (defn analyze:>defn! [env [_ defn-sym & defn-forms :as sexpr]]
   (let [env (assoc env ::grp.art/checking-sym defn-sym)
         arities (drop-while (some-fn string? map?) defn-forms)]
     (if (vector? (first arities))
-      (analyze-single-arity! env arities)
+      (analyze-single-arity! env defn-sym arities)
       (doseq [arity arities]
-        (analyze-single-arity! env arity))))
+        (analyze-single-arity! env defn-sym arity))))
   {})
 
 (defmethod grp.ana.disp/analyze-mm '>defn  [env sexpr] (analyze:>defn! env sexpr))
