@@ -115,4 +115,10 @@
  {:date "2020-11-11" :description "pure hofs" :timespans [[1700 1740]]}
  {:date "2020-11-12" :description "ifn" :timespans [[830 1055] [1420 1435]]}
  {:date "2020-11-13" :description "analyze update" :timespans [[830 945]]}
+ {:date "2020-11-16" :description "chat with tony" :timespans [[1111 1245]]}
+ {:date "2020-11-17" :description "chat with tony" :timespans [[1100 1200]]}
+ {:date "2020-11-17" :description "analytics" :timespans [[1340 1605]]}
+ {:date "2020-11-18" :description "chat with tony" :timespans [[1200 1230]]}
+ {:date "2020-11-18" :description "update to develop" :timespans [[1430 1720]]}
+ {:date "2020-11-19" :description "resolve all symbols" :timespans [[1400 1710]]}
  ]
