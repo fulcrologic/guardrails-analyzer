@@ -3,15 +3,11 @@
     com.fulcrologic.guardrails-pro.ftags.clojure-core ;; NOTE: required
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails-pro.analysis.analyzer :as grp.ana]
-    [com.fulcrologic.guardrails-pro.analysis.function-type :as grp.fnt]
-    [com.fulcrologic.guardrails-pro.analysis.sampler :as grp.sampler]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails-pro.test-fixtures :as tf]
     [com.fulcrologic.guardrails-pro.test-checkers :as tc]
-    [com.fulcrologic-pro.com.rpl.specter :as $]
     [fulcro-spec.check :as _]
-    [fulcro-spec.core :refer [specification assertions behavior component]]
-    [taoensso.encore :as enc]))
+    [fulcro-spec.core :refer [specification assertions behavior]]))
 
 (tf/use-fixtures :once tf/with-default-test-logging-config)
 

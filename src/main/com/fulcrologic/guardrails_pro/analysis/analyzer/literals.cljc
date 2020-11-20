@@ -35,7 +35,7 @@
     (grp.art/record-warning! env sexpr :warning/qualified-keyword-missing-spec))
   (literal-td env ::keyword sexpr))
 
-(defmethod grp.ana.disp/analyze-mm 'quote [env [_ sexpr]]
+(defmethod grp.ana.disp/analyze-mm 'clojure.core/quote [env [_ sexpr]]
   (if (symbol? sexpr)
     (literal-td env ::quoted-symbol sexpr)
     (literal-td env ::quoted-expr sexpr)))

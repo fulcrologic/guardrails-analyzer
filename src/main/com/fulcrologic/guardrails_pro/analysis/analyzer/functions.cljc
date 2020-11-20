@@ -30,5 +30,4 @@
                  :samples (grp.sampler/try-sampling! env (grp.spec/generator env (last path)))}
       pure-return)))
 
-(defmethod grp.ana.disp/analyze-mm 'get-in [env sexpr] (analyze:get-in env sexpr))
 (defmethod grp.ana.disp/analyze-mm 'clojure.core/get-in [env sexpr] (analyze:get-in env sexpr))

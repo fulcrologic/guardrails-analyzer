@@ -9,7 +9,8 @@
     [com.fulcrologic.guardrails-pro.ui.binding-formatter :refer [format-bindings]]
     [com.fulcrologic.guardrails-pro.ui.problem-formatter :refer [format-problems]]
     [com.fulcrologic-pro.com.rpl.specter :as $]
-    [com.fulcrologic.guardrails-pro.logging :as log]))
+    [com.fulcrologic.guardrails-pro.logging :as log]
+    [com.fulcrologic.guardrails-pro.analytics :as grp.analytics]))
 
 (defn check-form! [env form]
   (try (grp.ana/analyze! env form)
@@ -20,14 +21,17 @@
 (defn check!
   ([msg cb] (check! (grp.art/build-env) msg cb))
   ([env {:as msg :keys [forms file NS]} cb]
-   (let [env (-> env
+   (let [on-done (fn []
+                   (grp.analytics/report-analytics!)
+                   (cb))
+         env (-> env
                (assoc ::grp.art/checking-file file)
                (assoc ::grp.art/current-ns NS))]
      (grp.art/clear-problems! file)
      (grp.art/clear-bindings! file)
      (grp.spec/with-cache {}
        #?(:cljs (fn check-forms! [[form & forms]]
-                  (if-not form (cb)
+                  (if-not form (on-done)
                     (js/setTimeout
                       (fn []
                         (check-form! env form)
@@ -36,7 +40,7 @@
           :clj  (fn [forms]
                   (doseq [form forms]
                     (check-form! env form))
-                  (cb)))
+                  (on-done)))
        (grp.forms/interpret forms)))))
 
 (defonce to-check (atom nil))

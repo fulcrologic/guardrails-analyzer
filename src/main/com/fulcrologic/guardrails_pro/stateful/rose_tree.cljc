@@ -19,7 +19,7 @@
 (defn bound-tree
   "Ensure that all Rose tree children have access to the dynamic variables
    currently defined."
-  [^rose/RoseTree tree]
+  [tree]
   (rose/make-rose (rose/root tree)
     (bound-lazy-seq
       (map bound-tree (rose/children tree)))))

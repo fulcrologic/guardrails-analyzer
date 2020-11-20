@@ -6,7 +6,7 @@
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]))
 
 (defn analyze:ifn-call!
-  [env {ifn ::grp.art/original-expression} args-td]
+  [env {:as td ifn ::grp.art/original-expression} args-td]
   {::grp.art/samples (set (map (partial apply ifn)
                             (grp.sampler/random-samples-from-each env args-td)))})
 

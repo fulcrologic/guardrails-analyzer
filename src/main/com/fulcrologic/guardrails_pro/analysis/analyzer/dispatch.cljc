@@ -1,8 +1,8 @@
 (ns com.fulcrologic.guardrails-pro.analysis.analyzer.dispatch
   (:require
     [com.fulcrologic.guardrails.core :as gr :refer [>defn =>]]
-    [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
-    [com.fulcrologic.guardrails-pro.logging :as log])
+    [com.fulcrologic.guardrails-pro.analytics :as grp.analytics]
+    [com.fulcrologic.guardrails-pro.artifacts :as grp.art])
   #?(:clj (:import (java.util.regex Pattern))))
 
 (declare analyze-mm)
@@ -16,20 +16,28 @@
     (= 'quote (first x))
     (symbol? (second x))))
 
+(defn qualify-symbol [env sym]
+  (if (special-symbol? sym)
+    (symbol "clojure.core" (name sym))
+    (grp.art/qualify-extern env sym)))
+
 (defn list-dispatch [env [head :as _sexpr]]
   (letfn [(symbol-dispatch [sym]
-            (cond
-              (grp.art/function-detail env sym)
-              #_=> :function/call
-              (grp.art/symbol-detail env sym)
-              #_=> :symbol.local/lookup
-              (and (namespace sym) (get (methods analyze-mm) (grp.art/cljc-rewrite-sym-ns sym)))
-              #_=> (grp.art/cljc-rewrite-sym-ns sym)
-              (get (methods analyze-mm) sym)
-              #_=> sym
-              (grp.art/external-function-detail env sym)
-              #_=> :function.external/call
-              :else :ifn/call))]
+            (let [cljc-symbol (qualify-symbol env sym)]
+              (cond
+                ;; NOTE: a local symbol resolves first
+                (grp.art/symbol-detail env sym)
+                #_=> :symbol.local/lookup
+                ;; NOTE: analyze methods resolve before any >defn / >ftag definitions
+                (get (methods analyze-mm) cljc-symbol)
+                #_=> cljc-symbol
+                ;; NOTE: >defn resolves before >ftag
+                (grp.art/function-detail env sym)
+                #_=> :function/call
+                (grp.art/external-function-detail env sym)
+                #_=> :function.external/call
+                (quoted-symbol? sym) :ifn/call
+                :else :unknown)))]
     (cond
       (symbol? head) (symbol-dispatch head)
       (quoted-symbol? head) :ifn/call
@@ -57,21 +65,20 @@
 
     :else :unknown))
 
-(defmulti analyze-mm
-  (fn [env sexpr]
-    (analyze-dispatch env sexpr))
-  :default :unknown)
+(defmulti analyze-mm (fn [env _] (::dispatch env)) :default :unknown)
 
 (>defn -analyze!
   [env sexpr]
   [::grp.art/env any? => ::grp.art/type-description]
-  (log/info "analyzing:" (pr-str sexpr) ", meta:" (meta sexpr))
-  (log/spy :debug (str "analyze! " (pr-str sexpr)
-                    " dispatched to: " (analyze-dispatch env sexpr)
-                    " returned:")
-    (-> env
-      (grp.art/update-location (meta sexpr))
-      (analyze-mm sexpr))))
+  (let [dispatch (analyze-dispatch env sexpr)]
+    (grp.analytics/with-analytics env sexpr
+      (and (qualified-symbol? dispatch)
+        (#{"clojure.core"} (namespace dispatch)))
+      #(as-> % env
+         (assoc env ::dispatch dispatch)
+         (grp.art/update-location env (meta sexpr))
+         (grp.analytics/profile ::analyze-mm
+           (analyze-mm env sexpr))))))
 
 (defn analyze-statements! [env body]
   (doseq [expr (butlast body)]

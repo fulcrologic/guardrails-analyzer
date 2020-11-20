@@ -31,7 +31,6 @@
         (analyze-single-arity! env arity)))
     lambda-td))
 
-(defmethod grp.ana.disp/analyze-mm '>fn [env sexpr] (analyze-lambda! env sexpr))
 (defmethod grp.ana.disp/analyze-mm `gr/>fn [env sexpr] (analyze-lambda! env sexpr))
 
 (defn update-fn-ref [{:as function ::grp.art/keys [fn-ref env->fn]} env f]
@@ -83,7 +82,6 @@
           (apply map #(hash-map ::grp.art/samples #{%})
             (::grp.art/samples args-coll-td)))))))
 
-(defmethod grp.ana.disp/analyze-mm 'apply [env sexpr] (analyze-apply! env sexpr))
 (defmethod grp.ana.disp/analyze-mm 'clojure.core/apply [env sexpr] (analyze-apply! env sexpr))
 
 (defn analyze-map-like! [env [this-sym f & colls]]
@@ -92,7 +90,6 @@
         colls-td (map (partial grp.ana.disp/-analyze! env) colls)]
     (grp.fnt/analyze-function-call! env map-td (cons func-td colls-td))))
 
-(defmethod grp.ana.disp/analyze-mm 'map [env sexpr] (analyze-map-like! env sexpr))
 (defmethod grp.ana.disp/analyze-mm 'clojure.core/map [env sexpr] (analyze-map-like! env sexpr))
 
 (defn analyze-reduce-like! [env [this-sym f init coll]]
@@ -102,7 +99,6 @@
         coll-td   (grp.ana.disp/-analyze! env coll)]
     (grp.fnt/analyze-function-call! env reduce-td [func-td init-td coll-td])))
 
-(defmethod grp.ana.disp/analyze-mm 'reduce [env sexpr] (analyze-reduce-like! env sexpr))
 (defmethod grp.ana.disp/analyze-mm 'clojure.core/reduce [env sexpr] (analyze-reduce-like! env sexpr))
 
 (defn analyze-some! [env [this-sym pred coll]]
@@ -121,7 +117,6 @@
       ;; TODO: validate that pred accepts coll elements
       (grp.fnt/analyze-function-call! env some-td [pred-td coll-td]))))
 
-(defmethod grp.ana.disp/analyze-mm 'some [env sexpr] (analyze-some! env sexpr))
 (defmethod grp.ana.disp/analyze-mm 'clojure.core/some [env sexpr] (analyze-some! env sexpr))
 
 (defn analyze-split-with! [env [this-sym pred coll]]
@@ -140,7 +135,6 @@
       ;; TODO: validate that pred accepts coll elements
       (grp.fnt/analyze-function-call! env split-with-td [pred-td coll-td]))))
 
-(defmethod grp.ana.disp/analyze-mm 'split-with [env sexpr] (analyze-split-with! env sexpr))
 (defmethod grp.ana.disp/analyze-mm 'clojure.core/split-with [env sexpr] (analyze-split-with! env sexpr))
 
 (defn analyze-swap! [env [this-sym a f & args]]
@@ -167,7 +161,6 @@
                                [::grp.art/gspec ::grp.art/argument-specs 0])))}]
         (grp.fnt/analyze-function-call! env func-td (cons func-arg-td args-td))))))
 
-(defmethod grp.ana.disp/analyze-mm 'swap! [env sexpr] (analyze-swap! env sexpr))
 (defmethod grp.ana.disp/analyze-mm 'clojure.core/swap! [env sexpr] (analyze-swap! env sexpr))
 
 (defn analyze-update! [env [this-sym m k f & args]]
@@ -198,7 +191,6 @@
                 (assoc m k (rand-nth (vec samples))))))))
       (grp.fnt/analyze-function-call! env update-td update-args-td))))
 
-(defmethod grp.ana.disp/analyze-mm 'update [env sexpr] (analyze-update! env sexpr))
 (defmethod grp.ana.disp/analyze-mm 'clojure.core/update [env sexpr] (analyze-update! env sexpr))
 
 ;; CONTEXT: ============ * -> fn ============
@@ -212,7 +204,6 @@
       (assoc-in [::grp.art/arities :n ::grp.art/gspec ::grp.art/sampler]
         ::grp.sampler/pure))))
 
-(defmethod grp.ana.disp/analyze-mm 'constantly [env sexpr] (analyze-constantly! env sexpr))
 (defmethod grp.ana.disp/analyze-mm 'clojure.core/constantly [env sexpr] (analyze-constantly! env sexpr))
 
 (defn >compose!? [env f g]                                  ;; ~> (comp f g)
@@ -261,7 +252,6 @@
                                   (assoc-in [::grp.art/gspec ::grp.art/metadata ::grp.sampler/sampler] :default))))
                             (get (last fns-td) ::grp.art/arities))})))
 
-(defmethod grp.ana.disp/analyze-mm 'comp [env sexpr] (analyze-comp! env sexpr))
 (defmethod grp.ana.disp/analyze-mm 'clojure.core/comp [env sexpr] (analyze-comp! env sexpr))
 
 (defn analyze-complement! [env [this-sym f]]
@@ -272,7 +262,6 @@
         #(merge % #::grp.art{:return-spec boolean?
                              :return-type (pr-str boolean?)})))))
 
-(defmethod grp.ana.disp/analyze-mm 'complement [env sexpr] (analyze-complement! env sexpr))
 (defmethod grp.ana.disp/analyze-mm 'clojure.core/complement [env sexpr] (analyze-complement! env sexpr))
 
 (defn analyze-fnil! [env [this-sym f & nil-patches :as this-expr]]
@@ -322,7 +311,6 @@
                                  (repeat nil)))))
                     (partial grp.fnt/validate-arguments-predicate!? env arity)))))))))))
 
-(defmethod grp.ana.disp/analyze-mm 'fnil [env sexpr] (analyze-fnil! env sexpr))
 (defmethod grp.ana.disp/analyze-mm 'clojure.core/fnil [env sexpr] (analyze-fnil! env sexpr))
 
 (defn analyze-juxt! [env [this-sym & fns]]
@@ -334,7 +322,6 @@
                     (apply args)))]
     {}))
 
-(defmethod grp.ana.disp/analyze-mm 'juxt [env sexpr] (analyze-juxt! env sexpr))
 (defmethod grp.ana.disp/analyze-mm 'clojure.core/juxt [env sexpr] (analyze-juxt! env sexpr))
 
 (defn >partial! [env [_ f & args] function args-td]
@@ -358,5 +345,4 @@
       (>partial! env sexpr function values-td)
       {})))
 
-(defmethod grp.ana.disp/analyze-mm 'partial [env sexpr] (analyze-partial! env sexpr))
 (defmethod grp.ana.disp/analyze-mm 'clojure.core/partial [env sexpr] (analyze-partial! env sexpr))

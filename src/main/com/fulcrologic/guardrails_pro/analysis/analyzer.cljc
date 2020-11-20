@@ -6,6 +6,7 @@
     [com.fulcrologic.guardrails-pro.analysis.analyzer.macros]
     [com.fulcrologic.guardrails-pro.analysis.analyzer.hofs]
     [com.fulcrologic.guardrails-pro.analysis.function-type :as grp.fnt]
+    [com.fulcrologic.guardrails-pro.analytics :as grp.analytics]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails.core :as gr :refer [>defn =>]]
     [com.fulcrologic.guardrails-pro.logging :as log]))
@@ -26,10 +27,12 @@
     (grp.art/external-function-detail env sym)
     (grp.disp/unknown-expr env sym)))
 
-(defmethod grp.disp/analyze-mm :function.external/call [env [f & args]]
-  (let [function (grp.art/external-function-detail env f)
-        argtypes (mapv (partial grp.disp/-analyze! env) args)]
-    (grp.fnt/analyze-function-call! env function argtypes)))
+(defmethod grp.disp/analyze-mm :function.external/call [env [f & args :as sexpr]]
+  (grp.analytics/with-analytics env sexpr true
+    (fn [env]
+      (let [function (grp.art/external-function-detail env f)
+            argtypes (mapv (partial grp.disp/-analyze! env) args)]
+        (grp.fnt/analyze-function-call! env function argtypes)))))
 
 (defmethod grp.disp/analyze-mm :function/call [env [f & arguments]]
   (let [function (grp.art/function-detail env f)

@@ -112,9 +112,9 @@
 (s/def ::var-name qualified-symbol?)
 (s/def ::function (s/keys :req [(or ::fn-name ::var-name) ::fn-ref ::arities]))
 (s/def ::value any?)
-(s/def ::class? boolean?)
+(s/def ::macro? boolean?)
 (s/def ::extern-name symbol?)
-(s/def ::extern (s/keys :req [::extern-name] :opt [::class? ::value]))
+(s/def ::extern (s/keys :req [::extern-name] :opt [::macro? ::value]))
 (s/def ::location (s/keys
                     :req [::line-start ::column-start]
                     :opt [::line-end ::column-end]))
@@ -312,6 +312,13 @@
      ::sym  (::checking-sym env)
      ::NS   (::current-ns env)}))
 
+(defn with-problem-observer [env f]
+  (update env ::problem-observers (fnil conj []) f))
+
+(defn notify-problem-observers! [env problem]
+  (doseq [obs (::problem-observers env)]
+    (obs problem)))
+
 (>defn record-error!
   ([env original-expression problem-type]
    [::env ::original-expression ::problem-type => nil?]
@@ -324,6 +331,7 @@
   ([env error]
    [::env (s/keys :req [::problem-type ::original-expression]) => nil?]
    (log/info :record-error! (env-location env) "\n" error)
+   (notify-problem-observers! env error)
    (swap! problems conj
      (merge error (env-location env)))
    nil))
@@ -339,6 +347,7 @@
                          ::message-params message-params}))
   ([env warning]
    [::env (s/keys :req [::problem-type ::original-expression]) => nil?]
+   (notify-problem-observers! env warning)
    (swap! problems conj
      (merge warning (env-location env)))
    nil))
@@ -354,6 +363,7 @@
                       ::message-params message-params}))
   ([env info]
    [::env (s/keys :req [::problem-type ::original-expression]) => nil?]
+   (notify-problem-observers! env info)
    (swap! problems conj
      (merge info (env-location env)))
    nil))
