@@ -5,9 +5,9 @@
   (:import
     (java.net URI)
     (java.util UUID)
-    (com.fulcrologic_pro.org.java_websocket.client WebSocketClient)
-    (com.fulcrologic_pro.org.java_websocket.enums ReadyState)
-    (com.fulcrologic_pro.org.java_websocket.exceptions WebsocketNotConnectedException)))
+    (com.fulcrologicpro.org.java_websocket.client WebSocketClient)
+    (com.fulcrologicpro.org.java_websocket.enums ReadyState)
+    (com.fulcrologicpro.org.java_websocket.exceptions WebsocketNotConnectedException)))
 
 (defn- send-edn! [^WebSocketClient client edn]
   (.send client (str "+" (grp.transit/write-edn edn))))

@@ -9,7 +9,7 @@
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
     [com.fulcrologic.guardrails.core :as gr]
     [com.fulcrologic.guardrails.utils :as utils]
-    [com.fulcrologic-pro.com.rpl.specter :as $]))
+    [com.fulcrologicpro.com.rpl.specter :as $]))
 
 ;; TODO potential duplication with >defn
 (defn analyze-single-arity! [env [arglist gspec & body]]

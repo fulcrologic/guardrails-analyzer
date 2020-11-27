@@ -5,7 +5,7 @@
     [clojure.pprint :refer [pprint]]
     [clojure.string :as str]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
-    [com.fulcrologic-pro.com.rpl.specter :as $]))
+    [com.fulcrologicpro.com.rpl.specter :as $]))
 
 (defn html-escape [s]
   (-> s

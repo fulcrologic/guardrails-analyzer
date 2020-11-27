@@ -1,7 +1,7 @@
 (ns com.fulcrologic.guardrails-pro.daemon.server.middleware
   (:require
-    [com.fulcrologic.fulcro.networking.websockets :as f.ws]
-    [com.fulcrologic.fulcro.server.api-middleware :as f.api]
+    [com.fulcrologicpro.fulcro.networking.websockets :as f.ws]
+    [com.fulcrologicpro.fulcro.server.api-middleware :as f.api]
     [com.fulcrologic.guardrails-pro.daemon.server.config :refer [config]]
     [com.fulcrologic.guardrails-pro.daemon.server.pathom :refer [parser]]
     [com.fulcrologic.guardrails-pro.daemon.server.websockets :refer [websockets]]

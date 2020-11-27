@@ -8,7 +8,7 @@
     [com.fulcrologic.guardrails.core :refer [>defn => ?]]
     [com.fulcrologic.guardrails.registry :as gr.reg]
     [com.fulcrologic.guardrails.impl.externs :as gr.externs]
-    [com.fulcrologic-pro.com.rpl.specter :as $]
+    [com.fulcrologicpro.com.rpl.specter :as $]
     [com.fulcrologic.guardrails-pro.logging :as log]))
 
 ;; ========== CLJC SYM REWRITE ==========

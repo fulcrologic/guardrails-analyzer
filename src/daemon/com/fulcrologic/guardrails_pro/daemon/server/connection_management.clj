@@ -2,7 +2,7 @@
   (:require
     com.wsscode.pathom.connect
     com.wsscode.pathom.core
-    [com.fulcrologic.fulcro.networking.websocket-protocols :as wsp]
+    [com.fulcrologicpro.fulcro.networking.websocket-protocols :as wsp]
     [com.fulcrologic.guardrails-pro.daemon.server.bindings :as bindings]
     [com.fulcrologic.guardrails-pro.daemon.server.problems :as problems]
     [mount.core :refer [defstate]]

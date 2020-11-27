@@ -1,7 +1,7 @@
 (ns com.fulcrologic.guardrails-pro.daemon.server.bindings
   (:require
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
-    [com.fulcrologic-pro.com.rpl.specter :as $]))
+    [com.fulcrologicpro.com.rpl.specter :as $]))
 
 (defonce bindings (atom nil))
 

@@ -1,7 +1,7 @@
 (ns com.fulcrologic.guardrails-pro.daemon.lsp.diagnostics
   (:require
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
-    [com.fulcrologic-pro.com.rpl.specter :as $]
+    [com.fulcrologicpro.com.rpl.specter :as $]
     [com.fulcrologic.guardrails-pro.logging :as log])
   (:import
     (org.eclipse.lsp4j Diagnostic DiagnosticSeverity Position PublishDiagnosticsParams Range)

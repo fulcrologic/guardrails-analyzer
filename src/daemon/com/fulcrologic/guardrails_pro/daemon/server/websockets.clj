@@ -1,11 +1,11 @@
 (ns com.fulcrologic.guardrails-pro.daemon.server.websockets
   (:require
-    [com.fulcrologic.fulcro.networking.websocket-protocols :as wsp]
-    [com.fulcrologic.fulcro.networking.websockets :as fws]
+    [com.fulcrologicpro.fulcro.networking.websocket-protocols :as wsp]
+    [com.fulcrologicpro.fulcro.networking.websockets :as fws]
     [com.fulcrologic.guardrails-pro.daemon.server.connection-management :refer [listener]]
     [com.fulcrologic.guardrails-pro.daemon.server.pathom :refer [parser]]
     [mount.core :refer [defstate]]
-    [taoensso.sente.server-adapters.http-kit :refer [get-sch-adapter]]))
+    [com.fulcrologicpro.taoensso.sente.server-adapters.http-kit :refer [get-sch-adapter]]))
 
 (defstate websockets :start
   (let [ws (fws/start! (fws/make-websockets parser

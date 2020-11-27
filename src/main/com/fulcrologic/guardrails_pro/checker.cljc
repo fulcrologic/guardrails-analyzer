@@ -8,7 +8,7 @@
     [com.fulcrologic.guardrails-pro.forms :as grp.forms]
     [com.fulcrologic.guardrails-pro.ui.binding-formatter :refer [format-bindings]]
     [com.fulcrologic.guardrails-pro.ui.problem-formatter :refer [format-problems]]
-    [com.fulcrologic-pro.com.rpl.specter :as $]
+    [com.fulcrologicpro.com.rpl.specter :as $]
     [com.fulcrologic.guardrails-pro.logging :as log]
     [com.fulcrologic.guardrails-pro.analytics :as grp.analytics]))
 

@@ -1,8 +1,8 @@
 (ns com.fulcrologic.guardrails-pro.transit-handlers
   (:require
-    [cognitect.transit :as transit])
+    [com.fulcrologicpro.cognitect.transit :as transit])
   (:import
-    com.cognitect.transit.DefaultReadHandler
+    com.fulcrologicpro.com.cognitect.transit.DefaultReadHandler
     java.util.regex.Pattern
     (java.io ByteArrayOutputStream ByteArrayInputStream)))
 
@@ -47,14 +47,14 @@
   "Create a transit writer.
 
   - `out`: An acceptable output for transit writers.
-  - `opts`: (optional) options to pass to `cognitect.transit/writer` (such as data type handlers)."
+  - `opts`: (optional) options to pass to `com.fulcrologicpro.cognitect.transit/writer` (such as data type handlers)."
   ([out] (writer out {}))
   ([out opts] (transit/writer out :json (update opts :handlers merge (write-handlers)))))
 
 (defn reader
   "Create a transit reader.
 
-  - `opts`: (optional) options to pass to `cognitect.transit/reader` (such as data type handlers)."
+  - `opts`: (optional) options to pass to `com.fulcrologicpro.cognitect.transit/reader` (such as data type handlers)."
   ([in] (reader in {}))
   ([in opts] (transit/reader in :json (-> opts (update :handlers merge (read-handlers))))))
 

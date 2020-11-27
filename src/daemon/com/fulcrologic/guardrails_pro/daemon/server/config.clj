@@ -1,7 +1,7 @@
 (ns com.fulcrologic.guardrails-pro.daemon.server.config
   (:require
     [mount.core :refer [defstate args]]
-    [com.fulcrologic.fulcro.server.config :refer [load-config!]]
+    [com.fulcrologicpro.fulcro.server.config :refer [load-config!]]
     [com.fulcrologic.guardrails-pro.logging :as log]))
 
 (defstate config

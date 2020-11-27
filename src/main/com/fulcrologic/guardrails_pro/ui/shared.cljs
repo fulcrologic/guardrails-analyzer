@@ -1,9 +1,9 @@
 (ns com.fulcrologic.guardrails-pro.ui.shared
   (:require
-    [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
-    [com.fulcrologic.fulcro.dom :as dom :refer [div h3 h4 label input]]
-    [com.fulcrologic.fulcro.mutations :as f.m]
-    [com.fulcrologic.fulcro.routing.dynamic-routing :as dr]
+    [com.fulcrologicpro.fulcro.components :as comp :refer [defsc]]
+    [com.fulcrologicpro.fulcro.dom :as dom :refer [div h3 h4 label input]]
+    [com.fulcrologicpro.fulcro.mutations :as f.m]
+    [com.fulcrologicpro.fulcro.routing.dynamic-routing :as dr]
     [com.fulcrologic.guardrails-pro.artifacts :as grp.art]))
 
 (f.m/defmutation focus-ns [{:keys [ns]}]

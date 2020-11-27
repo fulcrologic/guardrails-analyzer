@@ -1,6 +1,6 @@
 (ns com.fulcrologic.guardrails-pro.daemon.server.checkers
   (:require
-    [com.fulcrologic.fulcro.networking.websocket-protocols :as wsp]
+    [com.fulcrologicpro.fulcro.networking.websocket-protocols :as wsp]
     [com.fulcrologic.guardrails-pro.daemon.reader :as reader]
     [com.fulcrologic.guardrails-pro.daemon.server.connection-management :refer [registered-checkers]]
     [com.fulcrologic.guardrails-pro.forms :as grp.forms]
