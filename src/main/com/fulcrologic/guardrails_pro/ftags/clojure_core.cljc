@@ -350,6 +350,10 @@
 (>fdef ^:pure clojure.core/string?
   [x] [any? => boolean?])
 
+(>fdef ^:pure clojure.core/subs
+  ([s start] [string? nat-int? => string?])
+  ([s start end] [string? nat-int? nat-int? > string?]))
+
 (>fdef ^:pure clojure.core/symbol
   ([name] [::named => symbol?])
   ([ns name] [string? string? => symbol?]))

@@ -1,6 +1,7 @@
 (ns com.fulcrologic.guardrails-pro.checker
   (:require
     com.fulcrologic.guardrails-pro.ftags.clojure-core
+    com.fulcrologic.guardrails-pro.ftags.clojure-string
     [clojure.test.check.generators]
     [com.fulcrologic.guardrails-pro.analysis.analyzer :as grp.ana]
     [com.fulcrologic.guardrails-pro.analysis.spec :as grp.spec]
@@ -24,19 +25,19 @@
    (let [on-done (fn []
                    (grp.analytics/report-analytics!)
                    (cb))
-         env (-> env
-               (assoc ::grp.art/checking-file file)
-               (assoc ::grp.art/current-ns NS))]
+         env     (-> env
+                   (assoc ::grp.art/checking-file file)
+                   (assoc ::grp.art/current-ns NS))]
      (grp.art/clear-problems! file)
      (grp.art/clear-bindings! file)
      (grp.spec/with-cache {}
        #?(:cljs (fn check-forms! [[form & forms]]
                   (if-not form (on-done)
-                    (js/setTimeout
-                      (fn []
-                        (check-form! env form)
-                        (check-forms! forms))
-                      100)))
+                               (js/setTimeout
+                                 (fn []
+                                   (check-form! env form)
+                                   (check-forms! forms))
+                                 100)))
           :clj  (fn [forms]
                   (doseq [form forms]
                     (check-form! env form))
