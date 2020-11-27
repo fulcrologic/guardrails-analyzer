@@ -1,7 +1,6 @@
 (ns com.fulcrologic.guardrails-pro.ftags.clojure-string
   (:require
     clojure.test.check.generators
-    clojure.string
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [>fdef >fspec => | ?]]
     [com.fulcrologic.guardrails.utils :as utils]))
