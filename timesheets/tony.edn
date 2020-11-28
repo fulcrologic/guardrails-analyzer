@@ -75,5 +75,5 @@
  {:date "2020-11-14" :description "MVN repo, SSL, basic auth, mvn publish" :timespans [[1500 1915]]}
  {:date "2020-11-16" :description "user portal, planning" :timespans [[1100 1730] [1800 2000]]}
  {:date "2020-11-17" :description "remove external dependencies" :timespans [[1300 1710]]}
- {:date "2020-11-27" :description "remove external dependencies" :timespans [[630 930]]}
+ {:date "2020-11-27" :description "pairing, added specs, etc" :timespans [[630 930] [1230 1500]]}
  ]
