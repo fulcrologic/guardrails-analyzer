@@ -47,7 +47,7 @@ see that `a` and `b` are constants, so the inference is now generalized to a wid
   (if (> (strlen c) 1) ... ...))
 -----
 
-One of the strengths of Guardrails Pro is that it runs in the full runtime of the actual application. It is not
+One of the strengths of Copilot is that it runs in the full runtime of the actual application. It is not
 a static analysis *before* compilation, but one that uses the source within the runtime environment to find problems.
 Therefore it can walk the expression and actually *run* the user's code.
 

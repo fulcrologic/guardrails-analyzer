@@ -5,7 +5,7 @@ endfunction
 
 function! s:FindProjectAddress(b)
   let root = s:FindProjectRoot(a:b)
-  let port_file = l:root . '/.guardrails-pro/lsp-server.port'
+  let port_file = l:root . '/.copilot/lsp-server.port'
   if filereadable(l:port_file)
     let l:port = readfile(l:port_file)[0]
     return 'localhost:'.l:port

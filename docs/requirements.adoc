@@ -1,18 +1,18 @@
 == General Requirements
 
-Guardrails (GR) is meant to be free OSS that is usable by any project/library, and Guardrails Pro
-(GRP) is meant to be a set of paid features for GR.
+Guardrails (GR) is a free OSS project that is usable by any project/library, and Copilot
+is a commercial utility that leverages GR annotations to provide dynamic code analysis.
 
 === Seamless General Use
 
 The library needs to satisfy the following constraints for general use:
 
 . Libraries can use it without hurting their community.
-. Free users of GR can upgrade to GRPro without making any source changes.
-. GR and GRP can be on classpath at the same time without ill effect. If you have
-a license, you get GRP features automatically.
+. Free users of GR can upgrade to Copilot without making any source changes.
+. GR and Copilot can be on classpath at the same time without ill effect. If you have
+a license, you get Copilot features automatically.
 
-Therefore: GRP *uses* GR as a dependency.  The central function and spec macros
+Therefore: Copilot *uses* GR as a dependency.  The central function and spec macros
 defined in GR will either have to be extensible, or they will have to capture everything
 we need even though GR itself does not use it.
 
@@ -21,8 +21,8 @@ zero overhead for GR users (it won't even be a documented option in GR).
 
 Actually, it might also be possible to simply have a `:pro true` option that causes
 GR `>defn` to simply re-emit a `grp/>defn` macro, which will only be available if they
-have GRP. This is probably the best option: The core `>defn` macro is in GR, but the option
-simply causes `>defn` to re-emit a GRP `>defn`.
+have Copilot. This is probably the best option: The core `>defn` macro is in GR, but the option
+simply causes `>defn` to re-emit a Copilot `>defn`.
 
 === Low Development Overhead
 
@@ -37,7 +37,7 @@ runtime checks in their normal REPL, and can run our static analysis on a separa
 
 === Optimized Checking
 
-GRP should be able to analyze the dependency graph and last change timestamps (combined with the hash
+Copilot should be able to analyze the dependency graph and last change timestamps (combined with the hash
 of the function content) to understand what work can be skipped.
 
 === Targeted Checking
@@ -48,7 +48,7 @@ the function being coded, with any warnings/errors.
 
 === Generative Testing
 
-It should be trivial to run generative tests on a function via the REPL or the GRP GUI and
+It should be trivial to run generative tests on a function via the REPL or the Copilot GUI and
 see results.
 
 Ideally there will be a generative testing section where generative tests on all known-pure functions

@@ -1,4 +1,4 @@
-= Guardrails Enlightenment User Guide
+= Guardrails Copilot User Guide
 
 == General Overview
 
