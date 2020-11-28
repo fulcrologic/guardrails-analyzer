@@ -6,7 +6,8 @@
     [com.fulcrologic.copilot.test-fixtures.logging :as tf.log]
     [com.fulcrologic.copilot.logging :as log]))
 
-(def use-fixtures t/use-fixtures)
+;; DOES NOT WORK IN CLJS
+;; (def use-fixtures t/use-fixtures)
 
 (defn with-logging-config [config]
   (fn [f] (f)))

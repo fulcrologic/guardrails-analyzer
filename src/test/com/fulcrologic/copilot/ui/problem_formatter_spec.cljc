@@ -6,7 +6,7 @@
     [com.fulcrologic.copilot.ui.problem-formatter :refer [format-problem]]
     [fulcro-spec.core :refer [specification assertions]]))
 
-(tf/use-fixtures :once tf/with-default-test-logging-config)
+;; (tf/use-fixtures :once tf/with-default-test-logging-config)
 
 (defn test:format-problem [env x]
   (mapv (comp ::grp.art/message format-problem)

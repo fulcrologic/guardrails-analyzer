@@ -2,14 +2,12 @@
   (:require
     clojure.test.check.generators
     [clojure.spec.alpha :as s]
-    [com.fulcrologic.guardrails.core :refer [>fdef >fspec => | ?]]
-    [com.fulcrologic.guardrails.utils :as utils]))
+    [com.fulcrologic.guardrails.core :refer [>fdef >fspec => | ?]]))
 
 ;; TODO: Technically in Java these types are not right, but it is how most ppl use them. Also missing
 ;; CLJC spec for patterns/matchers
 
 (>fdef ^:pure clojure.string/reverse [s] [string? => string?])
-(>fdef ^:pure clojure.string/re-quote-replacement [replacement] [string? => string?])
 (>fdef ^:pure clojure.string/replace [s match replacement] [string? any? string? => string?])
 (>fdef ^:pure clojure.string/replace-first [s match replacement] [string? any? string? => string?])
 (>fdef ^:pure clojure.string/join ([coll] [(s/coll-of any?) => string?])
@@ -27,11 +25,11 @@
 (>fdef ^:pure clojure.string/blank? [s] [string? => boolean?])
 (>fdef ^:pure clojure.string/escape [^CharSequence s cmap] [string? (s/map-of char? char?) => string?])
 (>fdef ^:pure clojure.string/index-of
-  ([s value] [string? (s/or :c char? :s string?) => (s/int-in -1 Integer/MAX_VALUE)])
-  ([s value from-index] [string? (s/or :c char? :s string?) nat-int? => (s/int-in -1 Integer/MAX_VALUE)]))
+  ([s value] [string? (s/or :c char? :s string?) => (s/int-in -1 #?(:cljs 1000000 :clj Integer/MAX_VALUE))])
+  ([s value from-index] [string? (s/or :c char? :s string?) nat-int? => (s/int-in -1 #?(:cljs 1000000 :clj Integer/MAX_VALUE))]))
 (>fdef ^:pure clojure.string/last-index-of
-  ([s value] [string? (s/or :c char? :s string?) => (s/int-in -1 Integer/MAX_VALUE)])
-  ([s value from-index] [string? (s/or :c char? :s string?) nat-int? => (s/int-in -1 Integer/MAX_VALUE)]))
+  ([s value] [string? (s/or :c char? :s string?) => (s/int-in -1 #?(:cljs 1000000 :clj Integer/MAX_VALUE))])
+  ([s value from-index] [string? (s/or :c char? :s string?) nat-int? => (s/int-in -1 #?(:cljs 1000000 :clj Integer/MAX_VALUE))]))
 (>fdef ^:pure clojure.string/starts-with? [s substr] [string? string? => boolean?])
 (>fdef ^:pure clojure.string/ends-with? [s substr] [string? string? => boolean?])
 (>fdef ^:pure clojure.string/includes? [s substr] [string? string? => boolean?])

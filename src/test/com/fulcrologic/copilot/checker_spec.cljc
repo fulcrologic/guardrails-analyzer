@@ -1,5 +1,6 @@
 (ns com.fulcrologic.copilot.checker-spec
   (:require
+    [clojure.test]
     [fulcro-spec.check :as _]
     [fulcro-spec.core :refer [specification assertions]]
     [com.fulcrologic.copilot.analysis.analyzer :as grp.ana]
@@ -7,7 +8,7 @@
     [com.fulcrologic.copilot.test-fixtures :as tf]
     [com.fulcrologic.copilot.artifacts :as grp.art]))
 
-(tf/use-fixtures :once tf/with-default-test-logging-config)
+;;; (tf/use-fixtures :once tf/with-default-test-logging-config)
 
 (defn test:gather-analysis! [env x]
   (grp.art/clear-bindings!)

@@ -5,6 +5,7 @@
     [com.fulcrologic.guardrails.registry :as gr.reg]
     [com.fulcrologic.copilot.artifacts :as grp.art]
     [com.fulcrologic.copilot.stateful.generators :as st.gen]
+    [clojure.test]
     [fulcro-spec.check :as _]
     [fulcro-spec.core :refer [specification assertions]]
     [com.fulcrologic.copilot.test-checkers :as tc]))

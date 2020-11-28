@@ -6,10 +6,11 @@
     [com.fulcrologic.copilot.analysis.sampler :as grp.sampler]
     [com.fulcrologic.copilot.test-fixtures :as tf]
     [com.fulcrologic.copilot.test-checkers :as tc]
+    [clojure.test]
     [fulcro-spec.check :as _ :refer [checker]]
     [fulcro-spec.core :refer [specification component assertions when-mocking]]))
 
-(tf/use-fixtures :once tf/with-default-test-logging-config)
+;; (tf/use-fixtures :once tf/with-default-test-logging-config)
 
 (specification "convert-shorthand-metadata"
   (assertions
@@ -41,7 +42,7 @@
   (assertions
     "returns the first valid sampler if there are multiple"
     (grp.sampler/derive-sampler-type
-      {::grp.sampler/pure true
+      {::grp.sampler/pure      true
        ::grp.sampler/merge-arg true})
     => ::grp.sampler/pure
     "returns nil if there are no valid samplers"
@@ -76,10 +77,10 @@
       (grp.sampler/get-args env {::grp.art/samples #{123}})
       => #{123}
       (grp.sampler/get-args env {::grp.art/samples #{}
-                                 ::grp.art/fn-ref identity})
+                                 ::grp.art/fn-ref  identity})
       => [identity]
       (grp.sampler/get-args env {::grp.art/samples #{123}
-                                 ::grp.art/fn-ref identity})
+                                 ::grp.art/fn-ref  identity})
       => #{123})))
 
 (specification "samples-gen"
@@ -106,17 +107,17 @@
                     (_/is?* #{:a :b :c})])))))
 
 (specification "params-gen" :WIP
-  (let [env (grp.art/build-env) ]
+  (let [env (grp.art/build-env)]
     (when-mocking
-      (grp.sampler/get-gspec _ _)  =>  {::grp.art/sampler ::grp.sampler/pure
-                                        ::grp.art/return-spec int?}
+      (grp.sampler/get-gspec _ _) => {::grp.art/sampler     ::grp.sampler/pure
+                                      ::grp.art/return-spec int?}
       (assertions
         (gen/sample (grp.sampler/params-gen env {::grp.art/fn-ref +} []))
         =check=> (_/every?*
                    (_/embeds?*
-                     {:fn-ref (_/equals?* +)
-                      :params nil
-                      :argtypes []
+                     {:fn-ref           (_/equals?* +)
+                      :params           nil
+                      :argtypes         []
                       :return-sample-fn (checker [f] ((_/is?* int?) (f)))}))))))
 
 (specification "propagate-samples!"
@@ -126,51 +127,51 @@
         (grp.sampler/propagate-samples! env nil
           {:return-sample-fn (constantly ::test-sample)})
         => ::test-sample))
-    (component "pure"
-      (let [test-fn-type {::grp.art/fn-ref +
-                          ::grp.art/arities
-                          {:n {::grp.art/arglist '[& nums]
-                               ::grp.art/gspec
-                               {::grp.art/return-spec number?
-                                ::grp.art/return-type "number?"}}}}]
-        (assertions
-          (grp.sampler/propagate-samples! env ::grp.sampler/pure
-            {:fn-ref str :args ["pure" \: "test"]
-             :argtypes [{} {} {}]})
-          => "pure:test"
-          (grp.sampler/propagate-samples! env ::grp.sampler/pure
-            {:fn-ref apply :args [+ [1/3 1/5 1/7]]
-             :argtypes [test-fn-type {}]})
-          =check=> (_/all* (_/is?* number?)
-                     (_/is?* #(not= 71/105 %)))
-          (grp.sampler/propagate-samples! env ::grp.sampler/pure
-            {:fn-ref apply :args [+ [1/3 1/5 1/7]]
-             :argtypes [(assoc-in test-fn-type
-                          [::grp.art/arities :n ::grp.art/gspec ::grp.art/sampler]
-                          ::grp.sampler/pure)
-                        {}]})
-          => 71/105)))
+    #?(:clj (component "pure"
+              (let [test-fn-type {::grp.art/fn-ref +
+                                  ::grp.art/arities
+                                                   {:n {::grp.art/arglist '[& nums]
+                                                        ::grp.art/gspec
+                                                                          {::grp.art/return-spec number?
+                                                                           ::grp.art/return-type "number?"}}}}]
+                (assertions
+                  (grp.sampler/propagate-samples! env ::grp.sampler/pure
+                    {:fn-ref   str :args ["pure" \: "test"]
+                     :argtypes [{} {} {}]})
+                  => "pure:test"
+                  (grp.sampler/propagate-samples! env ::grp.sampler/pure
+                    {:fn-ref   apply :args [+ [1/3 1/5 1/7]]
+                     :argtypes [test-fn-type {}]})
+                  =check=> (_/all* (_/is?* number?)
+                             (_/is?* #(not= 71/105 %)))
+                  (grp.sampler/propagate-samples! env ::grp.sampler/pure
+                    {:fn-ref   apply :args [+ [1/3 1/5 1/7]]
+                     :argtypes [(assoc-in test-fn-type
+                                  [::grp.art/arities :n ::grp.art/gspec ::grp.art/sampler]
+                                  ::grp.sampler/pure)
+                                {}]})
+                  => 71/105))))
     (component "merge-arg"
       (assertions
         (grp.sampler/propagate-samples! env [::grp.sampler/merge-arg 1]
-          {:args [:db {:person/name "john"}]
-           :params 1
+          {:args             [:db {:person/name "john"}]
+           :params           1
            :return-sample-fn (constantly {:person/full-name "john doe"})})
         => #:person{:name "john" :full-name "john doe"}))
     (component "map-like"
       (let [test-fn-type {::grp.art/fn-ref +
                           ::grp.art/arities
-                          {:n {::grp.art/arglist '[& nums]
-                               ::grp.art/gspec
-                               {::grp.art/return-spec number?
-                                ::grp.art/return-type "number?"}}}}]
+                                           {:n {::grp.art/arglist '[& nums]
+                                                ::grp.art/gspec
+                                                                  {::grp.art/return-spec number?
+                                                                   ::grp.art/return-type "number?"}}}}]
         (assertions
           (grp.sampler/map-like-args env
             [{::grp.art/samples #{[1 2 3]}}
              {::grp.art/samples #{[4 5 6]}}])
           => [[1 4] [2 5] [3 6]]
           (grp.sampler/map-like-args env
-            [{::grp.art/samples #{[1 2  ]}}
+            [{::grp.art/samples #{[1 2]}}
              {::grp.art/samples #{[4 5 6]}}])
           => [[1 4] [2 5]]
           (grp.sampler/map-like-args env
@@ -178,20 +179,20 @@
              {::grp.art/samples #{[3 4]}}])
           =throws=> #"expects all sequence arguments to be sequences"
           (grp.sampler/propagate-samples! env ::grp.sampler/map-like
-            {:args [+ [1 2 3] [4 5 6]]
-             :argtypes [(assoc-in test-fn-type
-                          [::grp.art/arities :n ::grp.art/gspec ::grp.art/metadata]
-                          {::grp.sampler/sampler :pure})
-                        {::grp.art/samples #{[1 2 3]}}
-                        {::grp.art/samples #{[4 5 6]}}]
-             :gspec {::grp.art/sampler ::grp.sampler/pure}
+            {:args             [+ [1 2 3] [4 5 6]]
+             :argtypes         [(assoc-in test-fn-type
+                                  [::grp.art/arities :n ::grp.art/gspec ::grp.art/metadata]
+                                  {::grp.sampler/sampler :pure})
+                                {::grp.art/samples #{[1 2 3]}}
+                                {::grp.art/samples #{[4 5 6]}}]
+             :gspec            {::grp.art/sampler ::grp.sampler/pure}
              :return-sample-fn (constantly [:error])})
           => #{[5 7 9]}
           "if there is no sampler, returns coll of function's return-spec"
-         (grp.sampler/propagate-samples! env ::grp.sampler/map-like
-            {:args [+ []]
-             :argtypes [test-fn-type {}]
-             :gspec {::grp.art/sampler ::grp.sampler/pure}
+          (grp.sampler/propagate-samples! env ::grp.sampler/map-like
+            {:args             [+ []]
+             :argtypes         [test-fn-type {}]
+             :gspec            {::grp.art/sampler ::grp.sampler/pure}
              :return-sample-fn (constantly [:error])})
           =check=> (_/all* (_/is?* seq)
                      (_/every?* (_/is?* number?))))))))

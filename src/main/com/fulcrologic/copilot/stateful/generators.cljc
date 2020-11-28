@@ -8,8 +8,8 @@
 (defn- assert-stateful! []
   (when (= *state* ::none)
     (throw
-      (IllegalStateException.
-        "A stateful generator was called within a non-stateful generator."))))
+      #?(:cljs (ex-info "A stateful generator was called within a non-stateful generator." {})
+         :clj (IllegalStateException. "A stateful generator was called within a non-stateful generator.")))))
 
 (defn stateful
   ([g] (stateful g {}))

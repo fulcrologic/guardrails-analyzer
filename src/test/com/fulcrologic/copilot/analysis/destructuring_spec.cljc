@@ -4,6 +4,7 @@
     [com.fulcrologic.copilot.artifacts :as grp.art]
     [com.fulcrologic.copilot.analysis.destructuring :as grp.destr]
     [com.fulcrologic.copilot.test-fixtures :as tf]
+    [clojure.test]
     [fulcro-spec.core :refer [specification component assertions]]
     [fulcro-spec.check :as _]))
 

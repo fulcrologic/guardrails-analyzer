@@ -2,10 +2,16 @@
   (:require [clojure.test.check.rose-tree :as rose]))
 
 (defn- make-bound-head []
-  (bound-fn [sq]
-    (if (seq sq)
-      (first sq)
-      ::empty)))
+  #?(:cljs
+     (fn [sq]
+       (if (seq sq)
+         (first sq)
+         ::empty))
+     :clj
+     (bound-fn [sq]
+       (if (seq sq)
+         (first sq)
+         ::empty))))
 
 (defn- bound-lazy-seq [sq]
   (let [head-of   (make-bound-head)

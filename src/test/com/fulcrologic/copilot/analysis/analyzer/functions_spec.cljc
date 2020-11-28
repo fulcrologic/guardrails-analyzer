@@ -8,10 +8,11 @@
     [com.fulcrologic.copilot.test-fixtures :as tf]
     [com.fulcrologic.copilot.test-checkers :as tc]
     [com.fulcrologic.guardrails.core :as gr :refer [>defn =>]]
+    [clojure.test]
     [fulcro-spec.check :as _]
     [fulcro-spec.core :refer [specification assertions ]]))
 
-(tf/use-fixtures :once tf/with-default-test-logging-config)
+;; (tf/use-fixtures :once tf/with-default-test-logging-config)
 
 (s/def ::num number?)
 (s/def ::str string?)
