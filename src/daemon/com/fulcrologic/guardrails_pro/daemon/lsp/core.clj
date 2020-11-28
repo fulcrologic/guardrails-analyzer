@@ -1,6 +1,6 @@
-(ns com.fulcrologic.guardrails-pro.daemon.lsp.core
+(ns com.fulcrologic.copilot.daemon.lsp.core
   (:require
-    [com.fulcrologic.guardrails-pro.daemon.lsp.server :as lsp.server]
+    [com.fulcrologic.copilot.daemon.lsp.server :as lsp.server]
     [mount.core :refer [defstate]]))
 
 (defstate lsp-server

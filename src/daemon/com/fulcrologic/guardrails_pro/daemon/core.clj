@@ -1,4 +1,4 @@
-(ns com.fulcrologic.guardrails-pro.daemon.core
+(ns com.fulcrologic.copilot.daemon.core
   (:require
-    [com.fulcrologic.guardrails-pro.daemon.server.http-server]
-    [com.fulcrologic.guardrails-pro.daemon.lsp.core]))
+    [com.fulcrologic.copilot.daemon.server.http-server]
+    [com.fulcrologic.copilot.daemon.lsp.core]))

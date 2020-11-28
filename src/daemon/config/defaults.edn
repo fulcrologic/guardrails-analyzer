@@ -15,4 +15,4 @@
                                                :frame-options  :sameorigin
                                                :xss-protection false}}
 
- :com.fulcrologic.guardrails-pro.logging/logging-config  {:level :info}}
+ :com.fulcrologic.copilot.logging/logging-config  {:level :info}}

@@ -1,8 +1,8 @@
-(ns com.fulcrologic.guardrails-pro.daemon.lsp.diagnostics
+(ns com.fulcrologic.copilot.daemon.lsp.diagnostics
   (:require
-    [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
+    [com.fulcrologic.copilot.artifacts :as grp.art]
     [com.fulcrologicpro.com.rpl.specter :as $]
-    [com.fulcrologic.guardrails-pro.logging :as log])
+    [com.fulcrologic.copilot.logging :as log])
   (:import
     (org.eclipse.lsp4j Diagnostic DiagnosticSeverity Position PublishDiagnosticsParams Range)
     (java.net URI)))
@@ -26,7 +26,7 @@
       "info"    DiagnosticSeverity/Information
       "hint"    DiagnosticSeverity/Hint
       DiagnosticSeverity/Error)
-    "guardrails-pro"))
+    "guardrails.copilot"))
 
 (defn publish-problems-for [uri problems]
   (doseq [[_ client] @clients]

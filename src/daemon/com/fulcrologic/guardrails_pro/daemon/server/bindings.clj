@@ -1,6 +1,6 @@
-(ns com.fulcrologic.guardrails-pro.daemon.server.bindings
+(ns com.fulcrologic.copilot.daemon.server.bindings
   (:require
-    [com.fulcrologic.guardrails-pro.artifacts :as grp.art]
+    [com.fulcrologic.copilot.artifacts :as grp.art]
     [com.fulcrologicpro.com.rpl.specter :as $]))
 
 (defonce bindings (atom nil))

@@ -1,15 +1,15 @@
-(ns com.fulcrologic.guardrails-pro.daemon.server.pathom
+(ns com.fulcrologic.copilot.daemon.server.pathom
   (:require
-    [com.fulcrologic.guardrails-pro.daemon.lsp.diagnostics :as lsp.diag]
-    [com.fulcrologic.guardrails-pro.daemon.server.bindings :as bindings]
-    [com.fulcrologic.guardrails-pro.daemon.server.checkers :as daemon.check]
-    [com.fulcrologic.guardrails-pro.daemon.server.config :refer [config]]
-    [com.fulcrologic.guardrails-pro.daemon.server.connection-management :as cmgmt]
-    [com.fulcrologic.guardrails-pro.daemon.server.problems :as problems]
+    [com.fulcrologic.copilot.daemon.lsp.diagnostics :as lsp.diag]
+    [com.fulcrologic.copilot.daemon.server.bindings :as bindings]
+    [com.fulcrologic.copilot.daemon.server.checkers :as daemon.check]
+    [com.fulcrologic.copilot.daemon.server.config :refer [config]]
+    [com.fulcrologic.copilot.daemon.server.connection-management :as cmgmt]
+    [com.fulcrologic.copilot.daemon.server.problems :as problems]
     [com.wsscode.pathom.connect :as pc]
     [com.wsscode.pathom.core :as p]
     [mount.core :refer [defstate]]
-    [com.fulcrologic.guardrails-pro.logging :as log]))
+    [com.fulcrologic.copilot.logging :as log]))
 
 (pc/defresolver all-problems [_env _params]
   {::pc/output [:all-problems]}

@@ -1,7 +1,7 @@
-(ns com.fulcrologic.guardrails-pro.daemon.main
+(ns com.fulcrologic.copilot.daemon.main
   (:require
-    [com.fulcrologic.guardrails-pro.daemon.server.http-server]
-    [com.fulcrologic.guardrails-pro.daemon.lsp.core]
+    [com.fulcrologic.copilot.daemon.server.http-server]
+    [com.fulcrologic.copilot.daemon.lsp.core]
     [mount.core :as mount])
   (:gen-class))
 

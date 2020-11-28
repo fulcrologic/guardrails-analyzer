@@ -1,4 +1,4 @@
-= Guardrails
+= Copilot for Guardrails
 
 == Copyright and License
 

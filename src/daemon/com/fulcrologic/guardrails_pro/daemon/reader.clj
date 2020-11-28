@@ -1,10 +1,10 @@
-(ns com.fulcrologic.guardrails-pro.daemon.reader
+(ns com.fulcrologic.copilot.daemon.reader
   (:require
     [clojure.tools.reader :as reader]
     [clojure.tools.reader.reader-types :as readers]
-    [com.fulcrologic.guardrails-pro.transit-handlers :as f.transit]
+    [com.fulcrologic.copilot.transit-handlers :as f.transit]
     [com.fulcrologicpro.com.rpl.specter :as $]
-    [com.fulcrologic.guardrails-pro.logging :as log])
+    [com.fulcrologic.copilot.logging :as log])
   (:import
     (java.io FileReader PushbackReader)))
 

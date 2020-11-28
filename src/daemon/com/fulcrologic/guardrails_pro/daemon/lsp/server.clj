@@ -1,11 +1,11 @@
-(ns com.fulcrologic.guardrails-pro.daemon.lsp.server
+(ns com.fulcrologic.copilot.daemon.lsp.server
   (:require
     [clojure.core.async :as async]
     [clojure.data.json :as json]
     [clojure.java.io :as io]
-    [com.fulcrologic.guardrails-pro.daemon.lsp.commands :as lsp.cmds]
-    [com.fulcrologic.guardrails-pro.daemon.lsp.diagnostics :as lsp.diag]
-    [com.fulcrologic.guardrails-pro.logging :as log])
+    [com.fulcrologic.copilot.daemon.lsp.commands :as lsp.cmds]
+    [com.fulcrologic.copilot.daemon.lsp.diagnostics :as lsp.diag]
+    [com.fulcrologic.copilot.logging :as log])
   (:import
     (org.eclipse.lsp4j
       DidChangeConfigurationParams
@@ -108,7 +108,7 @@
   (loop [dir start-dir]
     (let [config-file (io/file dir "guardrails.edn")]
       (if (.exists config-file)
-        (io/file dir ".guardrails-pro" "lsp-server.port")
+        (io/file dir ".copilot" "lsp-server.port")
         (if-let [parent (.getParentFile dir)]
           (recur parent)
           (throw (ex-info "Failed to find project configuration!"

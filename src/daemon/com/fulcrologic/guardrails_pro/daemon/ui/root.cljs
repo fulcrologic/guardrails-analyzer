@@ -1,8 +1,8 @@
-(ns com.fulcrologic.guardrails-pro.daemon.ui.root
+(ns com.fulcrologic.copilot.daemon.ui.root
   (:require
     [com.fulcrologicpro.fulcro.components :as f.c :refer [defsc]]
     [com.fulcrologicpro.fulcro.dom :as dom]
-    [com.fulcrologic.guardrails-pro.artifacts :as grp.art]))
+    [com.fulcrologic.copilot.artifacts :as grp.art]))
 
 (defn ui-error-part [[part-key part]]
   (dom/tr {:key (name part-key)}

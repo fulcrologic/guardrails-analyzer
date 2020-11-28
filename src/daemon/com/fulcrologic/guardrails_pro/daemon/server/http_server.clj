@@ -1,18 +1,18 @@
-(ns com.fulcrologic.guardrails-pro.daemon.server.http-server
+(ns com.fulcrologic.copilot.daemon.server.http-server
   (:require
     [clojure.java.io :as io]
-    [com.fulcrologic.guardrails-pro.daemon.server.config :refer [config]]
-    [com.fulcrologic.guardrails-pro.daemon.server.middleware :refer [middleware]]
+    [com.fulcrologic.copilot.daemon.server.config :refer [config]]
+    [com.fulcrologic.copilot.daemon.server.middleware :refer [middleware]]
     [mount.core :refer [defstate]]
     [org.httpkit.server :as http-kit]
-    [com.fulcrologic.guardrails-pro.logging :as log]))
+    [com.fulcrologic.copilot.logging :as log]))
 
 (defn upsearch-file
   [^java.io.File start-dir port-file-name]
   (loop [dir start-dir]
     (let [config-file (io/file dir "guardrails.edn")]
       (if (.exists config-file)
-        (io/file dir ".guardrails-pro" port-file-name)
+        (io/file dir ".copilot" port-file-name)
         (if-let [parent (.getParentFile dir)]
           (recur parent)
           (throw (ex-info "Failed to find project configuration!"

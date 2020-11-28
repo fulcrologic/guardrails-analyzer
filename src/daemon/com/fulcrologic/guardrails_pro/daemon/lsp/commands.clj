@@ -1,8 +1,8 @@
-(ns com.fulcrologic.guardrails-pro.daemon.lsp.commands
+(ns com.fulcrologic.copilot.daemon.lsp.commands
   (:require
-    [com.fulcrologic.guardrails-pro.daemon.server.checkers :as daemon.check]
-    [com.fulcrologic.guardrails-pro.daemon.server.websockets :refer [websockets]]
-    [com.fulcrologic.guardrails-pro.logging :as log]))
+    [com.fulcrologic.copilot.daemon.server.checkers :as daemon.check]
+    [com.fulcrologic.copilot.daemon.server.websockets :refer [websockets]]
+    [com.fulcrologic.copilot.logging :as log]))
 
 (defn check-file! [path opts]
   (log/debug "lsp.commands/check-file!" path opts)

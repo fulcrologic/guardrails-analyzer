@@ -1,8 +1,8 @@
-(ns com.fulcrologic.guardrails-pro.daemon.server.config
+(ns com.fulcrologic.copilot.daemon.server.config
   (:require
     [mount.core :refer [defstate args]]
     [com.fulcrologicpro.fulcro.server.config :refer [load-config!]]
-    [com.fulcrologic.guardrails-pro.logging :as log]))
+    [com.fulcrologic.copilot.logging :as log]))
 
 (defstate config
   :start (let [{:keys [config] :or {config "config/dev.edn"}} (args)

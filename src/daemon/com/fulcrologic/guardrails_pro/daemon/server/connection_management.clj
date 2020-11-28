@@ -1,12 +1,12 @@
-(ns com.fulcrologic.guardrails-pro.daemon.server.connection-management
+(ns com.fulcrologic.copilot.daemon.server.connection-management
   (:require
     com.wsscode.pathom.connect
     com.wsscode.pathom.core
     [com.fulcrologicpro.fulcro.networking.websocket-protocols :as wsp]
-    [com.fulcrologic.guardrails-pro.daemon.server.bindings :as bindings]
-    [com.fulcrologic.guardrails-pro.daemon.server.problems :as problems]
+    [com.fulcrologic.copilot.daemon.server.bindings :as bindings]
+    [com.fulcrologic.copilot.daemon.server.problems :as problems]
     [mount.core :refer [defstate]]
-    [com.fulcrologic.guardrails-pro.logging :as log]))
+    [com.fulcrologic.copilot.logging :as log]))
 
 (defstate connected-clients :start (atom #{}))
 (defstate registered-checkers :start (atom {}))

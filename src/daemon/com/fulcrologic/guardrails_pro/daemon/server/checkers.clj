@@ -1,10 +1,10 @@
-(ns com.fulcrologic.guardrails-pro.daemon.server.checkers
+(ns com.fulcrologic.copilot.daemon.server.checkers
   (:require
     [com.fulcrologicpro.fulcro.networking.websocket-protocols :as wsp]
-    [com.fulcrologic.guardrails-pro.daemon.reader :as reader]
-    [com.fulcrologic.guardrails-pro.daemon.server.connection-management :refer [registered-checkers]]
-    [com.fulcrologic.guardrails-pro.forms :as grp.forms]
-    [com.fulcrologic.guardrails-pro.logging :as log]))
+    [com.fulcrologic.copilot.daemon.reader :as reader]
+    [com.fulcrologic.copilot.daemon.server.connection-management :refer [registered-checkers]]
+    [com.fulcrologic.copilot.forms :as grp.forms]
+    [com.fulcrologic.copilot.logging :as log]))
 
 (defn notify-checkers! [ws event checker-info->data]
   (log/info "notifiying checkers of event:" event)

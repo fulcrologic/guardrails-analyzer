@@ -1,6 +1,6 @@
-(ns com.fulcrologic.guardrails-pro.daemon.ui.main-ui
+(ns com.fulcrologic.copilot.daemon.ui.main-ui
   (:require
-    [com.fulcrologic.guardrails-pro.ui.viewer :as viewer]))
+    [com.fulcrologic.copilot.ui.viewer :as viewer]))
 
 (defn ^:export init []
   (viewer/start! {}))
