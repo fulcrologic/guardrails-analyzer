@@ -1,4 +1,4 @@
-= Guardrails Copilot User Guide
+= Copilot User Guide
 
 == General Overview
 
