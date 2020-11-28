@@ -125,7 +125,7 @@
     (.shutdownOutput s)))
 
 (defn start-lsp []
-  (log/info "Starting guardrails LSP server!")
+  (log/info "Starting copilot LSP server!")
   (let [server-socket (doto (new ServerSocket 0)
                         (.setSoTimeout 1000))
         port-file (find-port-file ".")]
@@ -138,7 +138,7 @@
         (if (= ::STOP (async/alt!
                         stop-chan ([v] v)
                         (async/timeout 1000) nil))
-          (do (log/info "Received stop signal, shutting down guardrails LSP server!")
+          (do (log/info "Received stop signal, shutting down copilot LSP server!")
             (.close server-socket)
             (reset! lsp.diag/clients {})
             (doseq [s @sockets]
@@ -168,6 +168,6 @@
        ::stop-chan stop-chan})))
 
 (defn stop-lsp [{::keys [port-file stop-chan]} ]
-  (log/info "Stopping guardrails LSP server!")
+  (log/info "Stopping copilot LSP server!")
   (.delete port-file)
   (async/put! stop-chan ::STOP))

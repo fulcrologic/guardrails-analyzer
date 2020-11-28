@@ -34,7 +34,7 @@
   "Start the checker. Does not return.
 
   :host - The IP where the checker daemon is running. Defaults to localhost.
-  :port - An integer. The daemon port. Usually found automatically using the .guardrails generated folder.
+  :port - An integer. The daemon port. Usually found automatically using the .copilot generated folder.
   :src-dirs - A vector of strings. The directories that contain source. If not supplied this assumes you will manually set-refresh-dirs from
             tools ns repl before starting the checker.
   :main-ns - A symbol. The main ns of the software being checked. This ensures the tree of deps are required into the env at startup.
