@@ -76,4 +76,5 @@
  {:date "2020-11-16" :description "user portal, planning" :timespans [[1100 1730] [1800 2000]]}
  {:date "2020-11-17" :description "remove external dependencies" :timespans [[1300 1710]]}
  {:date "2020-11-27" :description "pairing, added specs, etc" :timespans [[630 930] [1230 1500]]}
+ {:date "2020-11-28" :description "project rename" :timespans [[1200 1330]]}
  ]
