@@ -114,6 +114,7 @@
   (stop!)
   (reset! ws/default-client-options {:host     "localhost"
                                      :port     3050
-                                     :src-dirs ["src/main"]
-                                     :main-ns  'com.fulcrologic.copilot.checkers.clojure})
+                                     :src-dirs ["src/main" "src/test"
+                                                "/Users/tonykay/fulcrologic/copilot/src/main"]
+                                     :main-ns  'dataico.server-components.middleware})
   (start))
