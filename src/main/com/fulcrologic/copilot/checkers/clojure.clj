@@ -7,8 +7,7 @@
     [com.fulcrologicpro.taoensso.timbre :as log]
     [clojure.tools.namespace.repl :as tools-ns])
   (:import
-    (java.io FileNotFoundException)
-    (com.fulcrologicpro.org.java_websocket.client WebSocketClient)))
+    (java.io FileNotFoundException)))
 
 (defn send-mutation! [env sym params]
   (ws/send! env
@@ -47,12 +46,12 @@
   ([{:keys [host port src-dirs main-ns]
      :or   {host "localhost"}
      :as   opts}]
-   (when-not (#{:pro :all} (:mode (gr.cfg/get-env-config)))
+   (when-not (#{:pro :copilot :all} (:mode (gr.cfg/get-env-config)))
      (throw
        (new AssertionError
-         (str "JVM property `guardrails.mode` should be set to `:pro`!"
-           "\nFor clj: add `-J-Dguardrails.mode=:pro`"
-           "\nFor deps.edn: add `:jvm-opts [\"-Dguardrails.mode=:pro\"]"))))
+         (str "JVM property `guardrails.mode` should be set to `:copilot`!"
+           "\nFor clj: add `-J-Dguardrails.mode=:copilot`"
+           "\nFor deps.edn: add `:jvm-opts [\"-Dguardrails.mode=:copilot\"]"))))
    (prn ::start! opts)
    (when-let [ns-sym (some-> main-ns symbol)]
      (require ns-sym))
@@ -112,9 +111,11 @@
 (comment
   (reload!)
   (stop!)
+  (System/getProperty "guardrails.mode")
   (reset! ws/default-client-options {:host     "localhost"
                                      :port     3050
                                      :src-dirs ["src/main" "src/test"
                                                 "/Users/tonykay/fulcrologic/copilot/src/main"]
-                                     :main-ns  'dataico.server-components.middleware})
+                                     :main-ns  `com.fulcrologic.fulcro.application
+                                     #_'dataico.server-components.middleware})
   (start))

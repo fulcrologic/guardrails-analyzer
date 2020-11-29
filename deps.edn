@@ -1,6 +1,6 @@
 {:paths   ["src/main"]
 
- :deps    {com.fulcrologic/guardrails     {:mvn/version "1.0.0-SNAPSHOT"}
+ :deps    {com.fulcrologic/guardrails     {:mvn/version "1.0.0"}
            com.fulcrologic/alternate-deps {:mvn/version "1.0.0"}
            org.clojure/test.check         {:mvn/version "1.1.0"}
            org.clojure/tools.namespace    {:mvn/version "1.0.0"}
@@ -23,10 +23,9 @@
                                      ring/ring-defaults                  {:mvn/version "0.3.2"}}
                        :jvm-opts    ["-Ddaemon"]}
 
-           :hours     {:extra-paths   ["src/timesheets"]
-                       :extra-deps    {org.clojure/tools.cli {:mvn/version "1.0.194"}}
-                       :override-deps {com.fulcrologic/guardrails {:mvn/version "0.0.12"}}
-                       :main-opts     ["-m" "timesheets"]}
+           :hours     {:extra-paths ["src/timesheets"]
+                       :extra-deps  {org.clojure/tools.cli {:mvn/version "1.0.194"}}
+                       :main-opts   ["-m" "timesheets"]}
 
            :clj-tests {:extra-paths ["src/test"]
                        :main-opts   ["-m" "kaocha.runner"]
