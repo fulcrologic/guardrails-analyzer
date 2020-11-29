@@ -4,7 +4,7 @@
     [clojure.tools.reader.reader-types :as readers]
     [com.fulcrologic.copilot.transit-handlers :as f.transit]
     [com.fulcrologicpro.com.rpl.specter :as $]
-    [com.fulcrologic.copilot.logging :as log])
+    [com.fulcrologicpro.taoensso.timbre :as log])
   (:import
     (java.io FileReader PushbackReader)))
 

@@ -8,7 +8,7 @@
     [com.fulcrologic.copilot.transit-handlers :as grp.transit]
     [mount.core :refer [defstate]]
     [ring.middleware.defaults :refer [wrap-defaults]]
-    [com.fulcrologic.copilot.logging :as log]))
+    [com.fulcrologicpro.taoensso.timbre :as log]))
 
 (def ^:private not-found-handler
   (fn [_req]

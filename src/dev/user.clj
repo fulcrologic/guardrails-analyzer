@@ -1,7 +1,7 @@
 (ns user
   (:require
     [clojure.tools.namespace.repl :as tools-ns]
-    [com.fulcrologic.copilot.logging :as log]))
+    [com.fulcrologicpro.taoensso.timbre :as log]))
 
 (tools-ns/disable-reload!)
 

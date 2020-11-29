@@ -1,1 +1,1 @@
-{:com.fulcrologic.copilot.logging/logging-config {:level :debug}}
+{:com.fulcrologicpro.taoensso.timbre/logging-config {:level :debug}}

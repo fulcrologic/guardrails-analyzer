@@ -9,7 +9,7 @@
     [com.fulcrologic.guardrails.registry :as gr.reg]
     [com.fulcrologic.guardrails.impl.externs :as gr.externs]
     [com.fulcrologicpro.com.rpl.specter :as $]
-    [com.fulcrologic.copilot.logging :as log]))
+    [com.fulcrologicpro.taoensso.timbre :as log]))
 
 ;; ========== CLJC SYM REWRITE ==========
 

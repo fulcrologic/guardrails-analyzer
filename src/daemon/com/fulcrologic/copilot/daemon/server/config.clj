@@ -2,7 +2,7 @@
   (:require
     [mount.core :refer [defstate args]]
     [com.fulcrologicpro.fulcro.server.config :refer [load-config!]]
-    [com.fulcrologic.copilot.logging :as log]))
+    [com.fulcrologicpro.taoensso.timbre :as log]))
 
 (defstate config
   :start (let [{:keys [config] :or {config "config/dev.edn"}} (args)

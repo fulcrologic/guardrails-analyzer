@@ -7,7 +7,7 @@
     [com.fulcrologicpro.fulcro.networking.websockets :as fws]
     [com.fulcrologicpro.fulcro.routing.dynamic-routing :as dr :refer [defrouter]]
     [com.fulcrologic.copilot.ui.shared :as ui.shared]
-    [com.fulcrologic.copilot.logging :as log]))
+    [com.fulcrologicpro.taoensso.timbre :as log]))
 
 (f.m/defmutation subscribe [_]
   (remote [env]

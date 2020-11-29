@@ -66,8 +66,8 @@
  {:date "2020-11-04" :description "check-in" :timespans [[1200 1230]]}
  {:date "2020-11-05" :description "check-in" :timespans [[1200 1230]]}
  {:date "2020-11-06" :description "check-in" :timespans [[1200 1230]]}
- {:date "2020-11-08" :description "setup, build plugin, test a bit, start on user guide" :timespans [[915 1105]
-                                                                                                     [1600 1800]]}
+ {:date      "2020-11-08" :description "setup, build plugin, test a bit, start on user guide"
+  :timespans [[915 1105] [1600 1800]]}
  {:date "2020-11-10" :description "check-in, next steps" :timespans [[1200 1215] [1445 1545]]}
  {:date "2020-11-11" :description "check-in" :timespans [[1200 1215]]}
  {:date "2020-11-12" :description "check-in" :timespans [[1200 1215]]}
@@ -76,5 +76,6 @@
  {:date "2020-11-16" :description "user portal, planning" :timespans [[1100 1730] [1800 2000]]}
  {:date "2020-11-17" :description "remove external dependencies" :timespans [[1300 1710]]}
  {:date "2020-11-27" :description "pairing, added specs, etc" :timespans [[630 930] [1230 1500]]}
- {:date "2020-11-28" :description "project rename" :timespans [[1200 1330]]}
+ {:date      "2020-11-28" :description "project rename, attempts to make it possible to work on checker while working on other project"
+  :timespans [[1100 1430] [1620]]}
  ]

@@ -9,7 +9,7 @@
     [com.fulcrologic.copilot.artifacts :as grp.art]
     [com.fulcrologic.copilot.checker :as grp.checker]
     [com.fulcrologic.copilot.ui.shared :as ui.shared]
-    [com.fulcrologic.copilot.logging :as log]))
+    [com.fulcrologicpro.taoensso.timbre :as log]))
 
 (f.m/defmutation register-checker [_]
   (remote [env]

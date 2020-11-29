@@ -1,7 +1,9 @@
 (ns com.fulcrologic.copilot.checkers.sente-client
+  {:clojure.tools.namespace.repl/load false}
+  (:refer-clojure :exclude [run!])
   (:require
     [com.fulcrologic.copilot.transit-handlers :as grp.transit]
-    [com.fulcrologic.copilot.logging :as log])
+    [com.fulcrologicpro.taoensso.timbre :as log])
   (:import
     (java.net URI)
     (java.util UUID)
@@ -9,10 +11,13 @@
     (com.fulcrologicpro.org.java_websocket.enums ReadyState)
     (com.fulcrologicpro.org.java_websocket.exceptions WebsocketNotConnectedException)))
 
+;; only one active client allowed to be started at a time
+(def default-client-options (atom {}))
+(def active-client (atom nil))
+(def msg-cbs (atom {}))
+
 (defn- send-edn! [^WebSocketClient client edn]
   (.send client (str "+" (grp.transit/write-edn edn))))
-
-(defonce msg-cbs (atom {}))
 
 (defn send! [{:as env ::keys [^WebSocketClient client]} edn & [cb]]
   (let [ready-state (.getReadyState client)]
@@ -53,66 +58,76 @@
 (defmethod on-ws-msg! :default [_ edn]
   (log/warn :on-ws-msg/default edn))
 
-(declare reconnect!)
+(defn connect! [^WebSocketClient client] (.connectBlocking client))
+(defn reconnect! [^WebSocketClient client] (.reconnectBlocking client))
 
-(defn with-client [env client]
-  (assoc env ::client client))
-
-(defn make-ws-client
-  [uri {:as env :keys [on-connect on-disconnect on-error]}]
-  (doto
+(defn websocket-client
+  "Returns a subclass of WebSocketClient that can call your handlers on given events."
+  [{:keys [host on-connect on-disconnect on-error ?port-fn] :as opts}]
+  (let [port (?port-fn)
+        uri  (new URI (str "ws://" host ":" port "/chsk?client-id=" (UUID/randomUUID)))
+        env  (merge
+               {:on-error      (constantly nil)
+                :on-connect    (constantly nil)
+                :on-disconnect (constantly nil)}
+               opts
+               {::host host
+                :uri   uri})]
     (proxy [WebSocketClient] [uri]
       (onOpen [_hs]
-        (log/debug "connected:" uri))
+        (log/info "Opened connection to " uri))
       (onError [e]
-        (log/error e "error:")
-        (on-error (with-client env this) e))
-      (onClose [code reason _]
-        (log/info "disconnected:" {:code code :reason reason})
-        (let [env (with-client env this)]
-          (on-disconnect env code reason)
-          (future (reconnect! env))))
+        ;(log/error e "error:")
+        (when on-error
+          (on-error (assoc env ::client this) e)))
+      (onClose [code reason remote-caused?]
+        (log/info "disconnected:" {:code code :reason reason :remote? remote-caused?})
+        (try
+          (when on-disconnect
+           (on-disconnect (assoc env ::client this) code reason remote-caused?))
+          (catch Exception e
+            (log/error e "onClose")))
+        (let [client this]
+          (future
+            (loop []
+              (if (= @active-client client)
+                (do
+                  (Thread/sleep 2000)
+                  (log/info "Attempting to reconnect...")
+                  (if (reconnect! client)
+                    (log/info "Reconnected.")
+                    (recur)))
+                (log/info "Client closed because it was shut down."))))))
       (onMessage [m]
-        (let [message (subs m 1)
-              env (with-client env this)]
+        (let [message (subs m 1)]
           (try
-            (on-ws-msg! env
-              (grp.transit/read-edn message))
+            (on-ws-msg! (assoc env ::client this) (grp.transit/read-edn message))
             (catch Throwable e
               (log/error e "Failed to process message because:")
-              (on-error env e))))))
-    (.connectBlocking)))
+              (on-error (assoc env ::client this) e))))))))
 
-(defn connect-impl! [{:as env ::keys [host] :keys [?port-fn]}]
-  (loop []
-    (if-let [port (?port-fn)]
-      (let [uri (new URI (str "ws://" host ":" port
-                           "/chsk?client-id=" (UUID/randomUUID)))]
-        (make-ws-client uri env)
-        nil)
-      (do
-        (Thread/sleep 3000)
-        (recur)))))
+(defn shutdown!
+  "Close the active client."
+  []
+  (when-let [c ^WebSocketClient @active-client]
+    (log/info "Shutting down prior (running) client.")
+    (reset! active-client nil)
+    (.close c)))
 
-(defn connect! [host {:as opts :keys [?port-fn]}]
-  {:pre [(fn? ?port-fn)
-         (fn? (:on-message opts))]}
-  (let [env (merge
-              {:on-error (constantly nil)
-               :on-connect (constantly nil)
-               :on-disconnect (constantly nil)}
-              opts
-              {::host host})]
-    (try (connect-impl! env)
-      (catch Throwable t
-        (log/error "error connecting:" t)
-        (throw t)))))
+(defn run!
+  "Creates a new active websocket client that will maintain a websocket connection with the given options.
+   This function will shut down any prior running websocket.
 
-(defn reconnect!
-  [{:as env ::keys [^WebSocketClient client]}]
-  (try
-    (log/info "trying to reconnect!")
-    (connect-impl! env)
-    (catch Throwable t
-      (log/error "error reconnecting:" t)
-      (throw t))))
+  Returns true if the client is started, and false if copilotd isn't found."
+  [{:keys [host on-connect on-disconnect on-error ?port-fn] :as opts}]
+  (shutdown!)
+  (if-let [port (?port-fn)]
+    (let [client (websocket-client opts)]
+      (log/info "Attempting to connect to" port)
+      (if (connect! client)
+        (do
+          (log/info "Connected!")
+          (reset! active-client client))
+        (log/error "Connection failed. Port was defined, but no copilotd responded.")))
+    (log/error "No copilot daemon found. Have you started copilotd? Are you running copilotd in the same directory as the project root?"))
+  (boolean @active-client))

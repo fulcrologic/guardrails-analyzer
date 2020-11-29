@@ -2,7 +2,7 @@
   (:require
     [com.fulcrologic.copilot.daemon.server.checkers :as daemon.check]
     [com.fulcrologic.copilot.daemon.server.websockets :refer [websockets]]
-    [com.fulcrologic.copilot.logging :as log]))
+    [com.fulcrologicpro.taoensso.timbre :as log]))
 
 (defn check-file! [path opts]
   (log/debug "lsp.commands/check-file!" path opts)

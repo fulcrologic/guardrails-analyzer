@@ -2,7 +2,7 @@
   (:require
     [com.fulcrologic.copilot.artifacts :as grp.art]
     [com.fulcrologicpro.com.rpl.specter :as $]
-    [com.fulcrologic.copilot.logging :as log])
+    [com.fulcrologicpro.taoensso.timbre :as log])
   (:import
     (org.eclipse.lsp4j Diagnostic DiagnosticSeverity Position PublishDiagnosticsParams Range)
     (java.net URI)))

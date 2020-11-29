@@ -5,7 +5,7 @@
     [com.fulcrologic.copilot.daemon.server.middleware :refer [middleware]]
     [mount.core :refer [defstate]]
     [org.httpkit.server :as http-kit]
-    [com.fulcrologic.copilot.logging :as log]))
+    [com.fulcrologicpro.taoensso.timbre :as log]))
 
 (defn upsearch-file
   [^java.io.File start-dir port-file-name]

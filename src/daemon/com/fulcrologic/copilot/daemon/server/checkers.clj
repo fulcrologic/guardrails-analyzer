@@ -4,7 +4,7 @@
     [com.fulcrologic.copilot.daemon.reader :as reader]
     [com.fulcrologic.copilot.daemon.server.connection-management :refer [registered-checkers]]
     [com.fulcrologic.copilot.forms :as grp.forms]
-    [com.fulcrologic.copilot.logging :as log]))
+    [com.fulcrologicpro.taoensso.timbre :as log]))
 
 (defn notify-checkers! [ws event checker-info->data]
   (log/info "notifiying checkers of event:" event)

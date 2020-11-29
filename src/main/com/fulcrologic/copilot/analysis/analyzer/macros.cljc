@@ -8,7 +8,7 @@
     [com.fulcrologic.copilot.analysis.spec :as grp.spec]
     [com.fulcrologic.copilot.artifacts :as grp.art]
     [com.fulcrologic.guardrails.core :as gr]
-    [com.fulcrologic.copilot.logging :as log]))
+    [com.fulcrologicpro.taoensso.timbre :as log]))
 
 (defn analyze-single-arity! [env defn-sym [arglist gspec & body]]
   (let [gspec  (grp.fnt/interpret-gspec env arglist gspec)

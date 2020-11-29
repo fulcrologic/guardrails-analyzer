@@ -5,7 +5,7 @@
     [clojure.string :as str]
     [com.fulcrologic.copilot.artifacts :as grp.art]
     [com.fulcrologicpro.com.rpl.specter :as $]
-    [com.fulcrologic.copilot.logging :as log]))
+    [com.fulcrologicpro.taoensso.timbre :as log]))
 
 (defn html-escape [s]
   (-> s

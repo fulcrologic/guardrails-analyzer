@@ -6,7 +6,7 @@
     [clojure.test.check.generators :as tc.gen]
     [clojure.test.check.random :as tc.random]
     [clojure.test.check.rose-tree :as tc.rose]
-    [com.fulcrologic.copilot.logging :as log]))
+    [com.fulcrologicpro.taoensso.timbre :as log]))
 
 (defn make-size-range-seq [max-size]
   (cycle (mapcat #(repeat 5 %) (range 0 max-size))))

@@ -6,7 +6,7 @@
     [com.fulcrologic.copilot.daemon.server.bindings :as bindings]
     [com.fulcrologic.copilot.daemon.server.problems :as problems]
     [mount.core :refer [defstate]]
-    [com.fulcrologic.copilot.logging :as log]))
+    [com.fulcrologicpro.taoensso.timbre :as log]))
 
 (defstate connected-clients :start (atom #{}))
 (defstate registered-checkers :start (atom {}))

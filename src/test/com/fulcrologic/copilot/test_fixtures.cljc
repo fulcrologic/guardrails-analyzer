@@ -4,7 +4,7 @@
     [com.fulcrologic.copilot.artifacts :as grp.art]
     [com.fulcrologic.copilot.analysis.spec :as grp.spec]
     [com.fulcrologic.copilot.test-fixtures.logging :as tf.log]
-    [com.fulcrologic.copilot.logging :as log]))
+    [com.fulcrologicpro.taoensso.timbre :as log]))
 
 ;; DOES NOT WORK IN CLJS
 ;; (def use-fixtures t/use-fixtures)
