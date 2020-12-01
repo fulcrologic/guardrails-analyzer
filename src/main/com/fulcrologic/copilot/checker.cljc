@@ -59,6 +59,7 @@
        ;; TODO: recursive-description
        (dissoc ::grp.art/actual ::grp.art/expected ::grp.art/spec
          ::grp.art/literal-value ::grp.art/original-expression)
+       (assoc ::grp.art/samples (set (map pr-str (::grp.art/samples %))))
        (assoc ::grp.art/expression (str (::grp.art/original-expression %))))
     problems))
 
