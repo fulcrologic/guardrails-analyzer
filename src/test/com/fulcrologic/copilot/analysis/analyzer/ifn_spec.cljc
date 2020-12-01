@@ -2,9 +2,9 @@
   (:require
     com.fulcrologic.copilot.ftags.clojure-core              ;; NOTE: required
     [com.fulcrologic.copilot.analysis.analyzer :as grp.ana]
+    [com.fulcrologic.copilot.analysis.analyzer.ifn]
     [com.fulcrologic.copilot.artifacts :as grp.art]
     [com.fulcrologic.copilot.test-fixtures :as tf]
-    [clojure.test]
     [fulcro-spec.core :refer [specification assertions component]]))
 
 ;; (tf/use-fixtures :once tf/with-default-test-logging-config)

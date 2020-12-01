@@ -1,14 +1,12 @@
 (ns com.fulcrologic.copilot.checkers.clojure
   (:require
-    [clojure.pprint :refer [pprint]]
-    [clojure.tools.namespace.repl :refer [refresh set-refresh-dirs refresh-dirs]]
+    [clojure.spec.alpha :as s]
+    [clojure.tools.namespace.repl :refer [refresh set-refresh-dirs]]
     [com.fulcrologic.copilot.checker :as grp.checker]
     [com.fulcrologic.copilot.checkers.sente-client :as ws]
-    [com.fulcrologic.guardrails.core :refer [>defn => | ?]]
+    [com.fulcrologic.guardrails.core :refer [>defn => |]]
     [com.fulcrologic.guardrails.config :as gr.cfg]
-    [com.fulcrologicpro.taoensso.timbre :as log]
-    [clojure.tools.namespace.repl :as tools-ns]
-    [clojure.spec.alpha :as s])
+    [com.fulcrologicpro.taoensso.timbre :as log])
   (:import
     (java.io FileNotFoundException)))
 
@@ -109,7 +107,7 @@
    namespace reload be set to reload the checker's code."
   []
   (stop!)
-  (tools-ns/refresh :after `start))
+  (refresh :after `start))
 
 (>defn f [x]
   [int? => string?]
@@ -156,5 +154,10 @@
                                      :main-ns
                                      ;`com.fulcrologic.fulcro.application
                                                `com.fulcrologic.copilot.checkers.clojure
+                                     #_'dataico.server-components.middleware})
+  (reset! ws/default-client-options {:host     "localhost"
+                                     :port     3001
+                                     :src-dirs ["src/main" "src/test"]
+                                     :main-ns  `com.fulcrologic.copilot.checkers.clojure
                                      #_'dataico.server-components.middleware})
   (start))
