@@ -20,7 +20,7 @@
     (assoc ::grp.art/tooltip
       (format
         "<b>Type:</b>%s<br><b>Sample Values:</b><br>%s"
-        (html-escape (::grp.art/type bind))
+        (some-> bind ::grp.art/type html-escape)
         (str/join
           (mapv (comp #(format "<pre>%s</pre>" (html-escape %))
                   #(str/trim (with-out-str (pprint %))))
