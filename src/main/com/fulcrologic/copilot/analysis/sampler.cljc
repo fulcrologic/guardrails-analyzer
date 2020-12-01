@@ -5,8 +5,8 @@
     [clojure.spec.alpha :as s]
     [clojure.test.check.generators :as gen]
     [com.fulcrologic.guardrails.core :refer [>defn => ?]]
-    [com.fulcrologic.copilot.artifacts :as grp.art]
-    [com.fulcrologic.copilot.analysis.spec :as grp.spec]
+    [com.fulcrologic.copilot.artifacts :as cp.art]
+    [com.fulcrologic.copilot.analysis.spec :as cp.spec]
     [com.fulcrologicpro.taoensso.timbre :as log]))
 
 (defmulti propagate-samples-mm!
@@ -35,103 +35,103 @@
   (letfn [(samples? [x] (and (set? x) (some-> x meta ::samples?)))]
     (set (mapcat #(if (samples? %) % [%]) x))))
 (>defn try-sampling!
-  ([env gen] [::grp.art/env (? ::grp.art/generator) => ::grp.art/samples]
+  ([env gen] [::cp.art/env (? ::cp.art/generator) => ::cp.art/samples]
    (try-sampling! env gen {}))
   ([env gen extra]
-   [::grp.art/env (? ::grp.art/generator) map? => ::grp.art/samples]
+   [::cp.art/env (? ::cp.art/generator) map? => ::cp.art/samples]
    (try
      (if-not gen (throw (ex-info "derp" {}))
-       (if-let [samples (seq (grp.spec/sample env gen))]
+       (if-let [samples (seq (cp.spec/sample env gen))]
          (->samples (flatten-samples samples))
          (throw (ex-info "No samples!?" {}))))
      (catch #?(:clj Throwable :cljs :default) e
        (log/error e "Failed to generate samples!")
-       (grp.art/record-error! env
-         (merge {::grp.art/problem-type :error/sample-generator-failed}
+       (cp.art/record-error! env
+         (merge {::cp.art/problem-type :error/sample-generator-failed}
            extra))
        #{}))))
 
 (declare convert-shorthand-metadata derive-sampler-type)
 
-(>defn get-fn-ref [env {:as fd ::grp.art/keys [fn-ref env->fn]}]
-  [::grp.art/env (s/keys :req [(or ::grp.art/fn-ref ::grp.art/env->fn)]) => fn?]
+(>defn get-fn-ref [env {:as fd ::cp.art/keys [fn-ref env->fn]}]
+  [::cp.art/env (s/keys :req [(or ::cp.art/fn-ref ::cp.art/env->fn)]) => fn?]
   (or fn-ref (env->fn env)))
 
 (>defn get-gspec [fd argtypes]
-  [(s/keys :req [::grp.art/arities]) (s/coll-of any?) => ::grp.art/gspec]
-  (let [gspec (-> fd ::grp.art/arities (grp.art/get-arity argtypes) ::grp.art/gspec)
-        sampler (some-> gspec ::grp.art/metadata convert-shorthand-metadata derive-sampler-type)]
+  [(s/keys :req [::cp.art/arities]) (s/coll-of any?) => ::cp.art/gspec]
+  (let [gspec (-> fd ::cp.art/arities (cp.art/get-arity argtypes) ::cp.art/gspec)
+        sampler (some-> gspec ::cp.art/metadata convert-shorthand-metadata derive-sampler-type)]
     (cond-> gspec
-      sampler (assoc ::grp.art/sampler sampler))))
+      sampler (assoc ::cp.art/sampler sampler))))
 
 (>defn sampler-params [sampler]
   [(? ::sampler) => (? some?)]
   (when (vector? sampler)
     (second sampler)))
 
-(>defn return-sample-gen [env {:as fd ::grp.art/keys [generator return-spec return-type]}]
-  [::grp.art/env (s/keys :req [(or ::grp.art/generator ::grp.art/return-spec)]) => ::grp.art/generator]
-  (try (or generator (grp.spec/generator env return-spec))
+(>defn return-sample-gen [env {:as fd ::cp.art/keys [generator return-spec return-type]}]
+  [::cp.art/env (s/keys :req [(or ::cp.art/generator ::cp.art/return-spec)]) => ::cp.art/generator]
+  (try (or generator (cp.spec/generator env return-spec))
     (catch #? (:clj Exception :cljs :default) e
       (log/error e "Could not create generator for" return-type)
       nil)))
 
-(>defn get-args [env {:as td ::grp.art/keys [samples fn-ref env->fn]}]
-  [::grp.art/env ::grp.art/type-description => (s/coll-of any? :min-count 1)]
+(>defn get-args [env {:as td ::cp.art/keys [samples fn-ref env->fn]}]
+  [::cp.art/env ::cp.art/type-description => (s/coll-of any? :min-count 1)]
   (or
     (and (seq samples) samples)
     (and fn-ref [fn-ref])
     (and env->fn [(env->fn env)])
     (throw (ex-info "Failed to get samples or fn-ref for type description"
-             {::grp.art/type-description td}))))
+             {::cp.art/type-description td}))))
 
 (>defn args-gen [env args]
-  [::grp.art/env (s/coll-of (s/coll-of any? :min-count 1)) => ::grp.art/generator]
+  [::cp.art/env (s/coll-of (s/coll-of any? :min-count 1)) => ::cp.art/generator]
   (apply gen/tuple (map gen/elements args)))
 
 (>defn params-gen [env fd argtypes]
-  [::grp.art/env
-   (s/keys :req [(or ::grp.art/fn-ref ::grp.art/env->fn)])
-   (s/coll-of ::grp.art/type-description)
-   => ::grp.art/generator]
-  (let [{::grp.art/keys [sampler] :as gspec} (get-gspec fd argtypes)]
+  [::cp.art/env
+   (s/keys :req [(or ::cp.art/fn-ref ::cp.art/env->fn)])
+   (s/coll-of ::cp.art/type-description)
+   => ::cp.art/generator]
+  (let [{::cp.art/keys [sampler] :as gspec} (get-gspec fd argtypes)]
     (gen/hash-map
       :fn-ref (gen/return (get-fn-ref env fd))
       :params (gen/return (sampler-params sampler))
       :argtypes (gen/return argtypes)
-      :return-sample-fn (gen/return #(grp.spec/generate env (return-sample-gen env gspec))))))
+      :return-sample-fn (gen/return #(cp.spec/generate env (return-sample-gen env gspec))))))
 
 (>defn sample! [env fd argtypes]
-  [::grp.art/env
-   (s/keys :req [::grp.art/arities
-                 (or ::grp.art/fn-ref ::grp.art/env->fn)
-                 (or ::grp.art/fn-name ::grp.art/var-name ::grp.art/lambda-name)])
-   (s/coll-of ::grp.art/type-description)
-   => ::grp.art/samples]
-  (let [{::grp.art/keys [sampler] :as gspec} (get-gspec fd argtypes)
+  [::cp.art/env
+   (s/keys :req [::cp.art/arities
+                 (or ::cp.art/fn-ref ::cp.art/env->fn)
+                 (or ::cp.art/fn-name ::cp.art/var-name ::cp.art/lambda-name)])
+   (s/coll-of ::cp.art/type-description)
+   => ::cp.art/samples]
+  (let [{::cp.art/keys [sampler] :as gspec} (get-gspec fd argtypes)
         generator (gen/let [params (params-gen env fd argtypes)
                             args (args-gen env (map (partial get-args env) argtypes))]
                     (propagate-samples! env sampler
                       (assoc params :args args)))]
     (try-sampling! env generator
-      {::grp.art/original-expression
-       ((some-fn ::grp.art/fn-name ::grp.art/var-name ::grp.art/lambda-name) fd)})))
+      {::cp.art/original-expression
+       ((some-fn ::cp.art/fn-name ::cp.art/var-name ::cp.art/lambda-name) fd)})))
 
 (defmethod propagate-samples-mm! ::pure
   [env x {:keys [fn-ref args argtypes]}]
   (apply fn-ref
     (map (fn [arg ?fn-td]
-           (if-not (::grp.art/arities ?fn-td)
+           (if-not (::cp.art/arities ?fn-td)
              arg
              (fn [& args]
                (let [function arg
                      gspec (get-gspec ?fn-td args)]
-                 (if (= ::pure (::grp.art/sampler gspec))
+                 (if (= ::pure (::cp.art/sampler gspec))
                    ;; TODO: what if throws?
                    (apply function args)
                    (->> gspec
                      (return-sample-gen env)
-                     (grp.spec/generate env)))))))
+                     (cp.spec/generate env)))))))
       args argtypes)))
 
 (defn map-like-args [env colls]
@@ -142,7 +142,7 @@
 
 (defmethod propagate-samples-mm! ::map-like
   [env _ {:keys [return-sample-fn], [function & colls] :argtypes}]
-  (let [{::grp.art/keys [sampler] :as gspec} (get-gspec function colls)]
+  (let [{::cp.art/keys [sampler] :as gspec} (get-gspec function colls)]
     (try-sampling! env
       (if-not sampler
         (return-sample-gen env gspec)
@@ -150,8 +150,8 @@
           (map #(propagate-samples! env sampler
                   (assoc params :args %))
             (map-like-args env colls))))
-      {::grp.art/original-expression
-       ((some-fn ::grp.art/name ::grp.art/lambda-name) function)})))
+      {::cp.art/original-expression
+       ((some-fn ::cp.art/name ::cp.art/lambda-name) function)})))
 
 (s/def ::dispatch keyword?)
 (s/def ::sampler (s/or
@@ -187,19 +187,19 @@
       (first possible-values))))
 
 (>defn random-samples-from [env & tds]
-  [::grp.art/env (s/+ ::grp.art/type-description) => ::grp.art/samples]
-  (if-let [tds (seq (remove ::grp.art/unknown-expression tds))]
+  [::cp.art/env (s/+ ::cp.art/type-description) => ::cp.art/samples]
+  (if-let [tds (seq (remove ::cp.art/unknown-expression tds))]
     (->> tds
-      (map (comp gen/elements ::grp.art/samples))
+      (map (comp gen/elements ::cp.art/samples))
       (gen/one-of)
-      (grp.spec/sample env)
+      (cp.spec/sample env)
       (into #{}))
     #{}))
 
 (defn random-samples-from-each [env tds]
-  (if (some ::grp.art/unknown-expression tds) #{}
+  (if (some ::cp.art/unknown-expression tds) #{}
     (->> tds
-      (map (comp gen/elements ::grp.art/samples))
+      (map (comp gen/elements ::cp.art/samples))
       (apply gen/tuple)
-      (grp.spec/sample env)
+      (cp.spec/sample env)
       set)))

@@ -2,7 +2,7 @@
   {:clojure.tools.namespace.repl/load false}
   (:refer-clojure :exclude [run!])
   (:require
-    [com.fulcrologic.copilot.transit-handlers :as grp.transit]
+    [com.fulcrologic.copilot.transit-handlers :as cp.transit]
     [com.fulcrologicpro.taoensso.timbre :as log])
   (:import
     (java.net URI)
@@ -17,7 +17,7 @@
 (def msg-cbs (atom {}))
 
 (defn- send-edn! [^WebSocketClient client edn]
-  (.send client (str "+" (grp.transit/write-edn edn))))
+  (.send client (str "+" (cp.transit/write-edn edn))))
 
 (defn send! [{:as env ::keys [^WebSocketClient client]} edn & [cb]]
   (let [ready-state (.getReadyState client)]
@@ -101,7 +101,7 @@
       (onMessage [m]
         (let [message (subs m 1)]
           (try
-            (on-ws-msg! (assoc env ::client this) (grp.transit/read-edn message))
+            (on-ws-msg! (assoc env ::client this) (cp.transit/read-edn message))
             (catch Throwable e
               (log/error e "Failed to process message because:")
               (on-error (assoc env ::client this) e))))))))

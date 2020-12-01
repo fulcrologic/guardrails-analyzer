@@ -1,26 +1,26 @@
 (ns com.fulcrologic.copilot.analysis.analyzer-spec
   (:require
     com.fulcrologic.copilot.analysis.analyzer
-    [com.fulcrologic.copilot.analysis.analyzer.dispatch :as grp.ana.disp]
-    [com.fulcrologic.copilot.artifacts :as grp.art]
+    [com.fulcrologic.copilot.analysis.analyzer.dispatch :as cp.ana.disp]
+    [com.fulcrologic.copilot.artifacts :as cp.art]
     [com.fulcrologic.copilot.test-fixtures :as tf]
     [fulcro-spec.core :refer [specification assertions when-mocking]]))
 
-(defmethod grp.art/cljc-rewrite-sym-ns-mm "analyzer-spec" [sym] "cljc-analyzer-spec")
+(defmethod cp.art/cljc-rewrite-sym-ns-mm "analyzer-spec" [sym] "cljc-analyzer-spec")
 
-(defmethod grp.ana.disp/analyze-mm 'custom [& _] {})
-(defmethod grp.ana.disp/analyze-mm 'nsed/custom [& _] {})
-(defmethod grp.ana.disp/analyze-mm 'cljc-analyzer-spec/custom [& _] {})
+(defmethod cp.ana.disp/analyze-mm 'custom [& _] {})
+(defmethod cp.ana.disp/analyze-mm 'nsed/custom [& _] {})
+(defmethod cp.ana.disp/analyze-mm 'cljc-analyzer-spec/custom [& _] {})
 
 (specification "analyze-dispatch"
   (when-mocking
-    (grp.art/function-detail _ sym) => (case sym (local.defn when-let) true false)
-    (grp.art/external-function-detail _ sym) => (case sym ext.fn true false)
-    (grp.art/symbol-detail _ sym) => (case sym (local.sym if-let) true false)
-    (grp.art/qualify-extern _ sym) => (case sym when-not 'clojure.core/when-not
-                                        (grp.art/cljc-rewrite-sym-ns sym))
+    (cp.art/function-detail _ sym) => (case sym (local.defn when-let) true false)
+    (cp.art/external-function-detail _ sym) => (case sym ext.fn true false)
+    (cp.art/symbol-detail _ sym) => (case sym (local.sym if-let) true false)
+    (cp.art/qualify-extern _ sym) => (case sym when-not 'clojure.core/when-not
+                                        (cp.art/cljc-rewrite-sym-ns sym))
     (let [env (tf/test-env)
-          disp #(grp.ana.disp/analyze-dispatch env %)]
+          disp #(cp.ana.disp/analyze-dispatch env %)]
       (assertions
         (disp '(local.defn :a)) => :function/call
         (disp '(ext.fn :a)) => :function.external/call

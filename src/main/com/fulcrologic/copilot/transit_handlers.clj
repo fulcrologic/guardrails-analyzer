@@ -17,7 +17,7 @@
         Pattern "guardrails/regex"
         str re-pattern))
     ;; NOTE: for user unknown tagged values
-    ;;  - but should not fail in grp code
+    ;;  - but should not fail in cp code
     (f.transit/install-type-handler!
       (f.transit/type-handler
         UnknownTaggedValue "guardrails/unknown-tag"

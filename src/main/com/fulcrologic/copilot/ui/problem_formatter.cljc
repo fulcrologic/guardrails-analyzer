@@ -3,7 +3,7 @@
     #?@(:cljs [[goog.string :refer [format]]
                [goog.string.format]])
     [clojure.string :as str]
-    [com.fulcrologic.copilot.artifacts :as grp.art]
+    [com.fulcrologic.copilot.artifacts :as cp.art]
     [com.fulcrologicpro.com.rpl.specter :as $]
     [com.fulcrologicpro.taoensso.timbre :as log]))
 
@@ -13,31 +13,31 @@
     (str/replace "<" "&lt;")
     (str/replace ">" "&gt;")))
 
-(defmulti format-problem-mm (fn [problem params] (::grp.art/problem-type problem)))
+(defmulti format-problem-mm (fn [problem params] (::cp.art/problem-type problem)))
 
 (defn format-problem [problem]
-  (let [message       (or (try (format-problem-mm problem (::grp.art/message-params problem))
+  (let [message       (or (try (format-problem-mm problem (::cp.art/message-params problem))
                                (catch #?(:clj Throwable :cljs :default) e
                                  (log/error e "Failed to create message for problem:" problem)
                                  nil))
                         (format "Failed to create message for problem-type: <%s>!"
-                          (::grp.art/problem-type problem)))
+                          (::cp.art/problem-type problem)))
         plain-message (if (string? message) message (:message message))
         tooltip       (if (string? message) (html-escape message) (:tooltip message))]
     (-> problem
-      (assoc ::grp.art/message plain-message)
-      (assoc ::grp.art/tooltip tooltip))))
+      (assoc ::cp.art/message plain-message)
+      (assoc ::cp.art/tooltip tooltip))))
 
 (defn format-problems [problems]
-  ($/transform ($/walker ::grp.art/problem-type)
+  ($/transform ($/walker ::cp.art/problem-type)
     format-problem problems))
 
 (defmethod format-problem-mm :default [problem params]
-  (str (::grp.art/problem-type problem)))
+  (str (::cp.art/problem-type problem)))
 
-(defn format-actual [{:as problem ::grp.art/keys [actual]}]
+(defn format-actual [{:as problem ::cp.art/keys [actual]}]
   ;; TODO: test nil "" ...
-  (let [{::grp.art/keys [failing-samples]} actual]
+  (let [{::cp.art/keys [failing-samples]} actual]
     (case (count failing-samples)
       0 (do (log/error "Failed to get failing-samples from problem:" problem)
             "???")
@@ -45,19 +45,19 @@
       (str/join ", "
         (map pr-str failing-samples)))))
 
-(defn format-arglist [{:as problem ::grp.art/keys [actual]}]
-  (let [{::grp.art/keys [failing-samples]} actual]
+(defn format-arglist [{:as problem ::cp.art/keys [actual]}]
+  (let [{::cp.art/keys [failing-samples]} actual]
     (case (count failing-samples)
       0 (do (log/error "Failed to get failing-samples from problem:" problem)
             "???")
       (str/join ", " (first failing-samples)))))
 
-(defn format-expected [{::grp.art/keys [expected]}]
-  (let [{::grp.art/keys [spec type]} expected]
+(defn format-expected [{::cp.art/keys [expected]}]
+  (let [{::cp.art/keys [spec type]} expected]
     (or type spec)))
 
 (defn format-expr [problem]
-  (::grp.art/original-expression problem))
+  (::cp.art/original-expression problem))
 
 (defmethod format-problem-mm :error/value-failed-spec
   [problem params]
@@ -85,11 +85,11 @@
 (defmethod format-problem-mm :error/function-argument-failed-spec
   [problem params]
   {:message (format "The function argument: %s should be %s, but could end up having value like %s"
-              (::grp.art/original-expression problem)
+              (::cp.art/original-expression problem)
               (format-expected problem)
               (format-actual problem))
    :tooltip (format "The function argument: <b>%s</b><br/>with spec: <b>%s</b><br/>could contain an invalid value like <b>%s</b>."
-              (::grp.art/original-expression problem)
+              (::cp.art/original-expression problem)
               (html-escape (format-expected problem))
               (html-escape (format-actual problem)))})
 

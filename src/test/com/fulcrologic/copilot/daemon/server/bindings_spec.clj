@@ -1,8 +1,8 @@
 (ns com.fulcrologic.copilot.daemon.server.bindings-spec
   (:require
     com.fulcrologic.copilot.ftags.clojure-core ;; NOTE: required
-    [com.fulcrologic.copilot.analysis.analyzer :as grp.ana]
-    [com.fulcrologic.copilot.artifacts :as grp.art]
+    [com.fulcrologic.copilot.analysis.analyzer :as cp.ana]
+    [com.fulcrologic.copilot.artifacts :as cp.art]
     [com.fulcrologic.copilot.daemon.server.bindings :refer [encode-for]]
     [com.fulcrologic.copilot.test-checkers :as tc]
     [com.fulcrologic.copilot.test-fixtures :as tf]
@@ -12,10 +12,10 @@
 ;; (tf/use-fixtures :once tf/with-default-test-logging-config)
 
 (defn test:encode-for [viewer-type sexpr]
-  (grp.art/clear-bindings!)
-  (grp.ana/analyze! (tf/test-env) sexpr)
+  (cp.art/clear-bindings!)
+  (cp.ana/analyze! (tf/test-env) sexpr)
   (encode-for {:viewer-type viewer-type}
-    @grp.art/bindings))
+    @cp.art/bindings))
 
 (specification "encode-for" :integration :wip
   (component "viewer: IDEA"

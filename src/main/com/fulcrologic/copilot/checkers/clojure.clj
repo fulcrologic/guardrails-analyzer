@@ -2,7 +2,7 @@
   (:require
     [clojure.spec.alpha :as s]
     [clojure.tools.namespace.repl :refer [refresh set-refresh-dirs]]
-    [com.fulcrologic.copilot.checker :as grp.checker]
+    [com.fulcrologic.copilot.checker :as cp.checker]
     [com.fulcrologic.copilot.checkers.sente-client :as ws]
     [com.fulcrologic.guardrails.core :refer [>defn => |]]
     [com.fulcrologic.guardrails.config :as gr.cfg]
@@ -17,15 +17,15 @@
       (log/info :on-mut sym :resp/args args))))
 
 (defn report-analysis! [env]
-  (let [analysis (grp.checker/gather-analysis!)]
+  (let [analysis (cp.checker/gather-analysis!)]
     (send-mutation! env 'daemon/report-analysis analysis)))
 
 (defn check! [env {:as msg :keys [NS]}]
   (require (symbol NS) :reload)
-  (grp.checker/check! msg (partial report-analysis! env)))
+  (cp.checker/check! msg (partial report-analysis! env)))
 
 (defn refresh-and-check! [env msg]
-  (grp.checker/prepare-check! msg (partial report-analysis! env))
+  (cp.checker/prepare-check! msg (partial report-analysis! env))
   (refresh :after 'com.fulcrologic.copilot.checker/run-prepared-check!))
 
 (defn ?find-port []

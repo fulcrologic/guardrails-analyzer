@@ -3,7 +3,7 @@
     [com.fulcrologicpro.fulcro.networking.websocket-protocols :as wsp]
     [com.fulcrologic.copilot.daemon.reader :as reader]
     [com.fulcrologic.copilot.daemon.server.connection-management :refer [registered-checkers]]
-    [com.fulcrologic.copilot.forms :as grp.forms]
+    [com.fulcrologic.copilot.forms :as cp.forms]
     [com.fulcrologicpro.taoensso.timbre :as log]))
 
 (defn notify-checkers! [ws event checker-info->data]
@@ -21,7 +21,7 @@
   (notify-checkers! ws (opts->check-type opts)
     (fn [{:keys [checker-type]}]
       (let [{:keys [NS forms]} (reader/read-file path checker-type)]
-        {:forms (grp.forms/form-expression forms)
+        {:forms (cp.forms/form-expression forms)
          :file  path
          :NS    NS}))))
 
@@ -35,6 +35,6 @@
       (let [{:keys [NS forms]} (reader/read-file path checker-type)]
         {:forms (->> forms
                   (filter (partial root-form-at? line))
-                  (grp.forms/form-expression))
+                  (cp.forms/form-expression))
          :file path
          :NS   NS}))))

@@ -2,12 +2,12 @@
   #?(:cljs (:require-macros [com.fulcrologic.copilot.analytics]))
   (:require
     #?(:cljs [goog.object :as g.obj])
-    [com.fulcrologic.copilot.artifacts :as grp.art]))
+    [com.fulcrologic.copilot.artifacts :as cp.art]))
 
 (defonce analyze-stats (atom []))
 
 (defn record-analyze-stats!
-  [{::grp.art/keys [current-ns checking-sym]} sexpr problems]
+  [{::cp.art/keys [current-ns checking-sym]} sexpr problems]
   (when (seq? sexpr)
     (swap! analyze-stats conj
       (cond-> {:analyzing (first sexpr)
@@ -18,10 +18,10 @@
 
 (defmacro with-analytics [env sexpr condition body-fn]
   `(let [problems# (atom [])
-         env#      (grp.art/with-problem-observer ~env
+         env#      (cp.art/with-problem-observer ~env
                      #(swap! problems# conj
                         (select-keys %
-                          [::grp.art/problem-type])))
+                          [::cp.art/problem-type])))
          result#   (~body-fn env#)]
      (when ~condition
        (record-analyze-stats! env# ~sexpr @problems#))
@@ -75,6 +75,6 @@
         (reset! profiling-info {})
         (reset! analyze-stats [])
         ;; TODO FIXME should send to endpoint & on ack clear stats
-        (#?(:clj #(spit "/tmp/grp-analytics.txt" (pr-str %) :append true)
+        (#?(:clj #(spit "/tmp/cp-analytics.txt" (pr-str %) :append true)
             :cljs tap>)
           analytics)))))

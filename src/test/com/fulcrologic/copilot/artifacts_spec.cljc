@@ -3,7 +3,7 @@
     [clojure.spec.alpha :as s]
     [clojure.test.check.generators :as gen]
     [com.fulcrologic.guardrails.registry :as gr.reg]
-    [com.fulcrologic.copilot.artifacts :as grp.art]
+    [com.fulcrologic.copilot.artifacts :as cp.art]
     [com.fulcrologic.copilot.stateful.generators :as st.gen]
     [clojure.test]
     [fulcro-spec.check :as _]
@@ -12,10 +12,10 @@
 
 (specification "fix-kw-nss"
   (assertions
-    (#'grp.art/fix-kw-nss {::gr.reg/foo {::gr.reg/bar 1}
+    (#'cp.art/fix-kw-nss {::gr.reg/foo {::gr.reg/bar 1}
                            ::_/a ::_/b
                            :qux {:wub 2}})
-    => {::grp.art/foo {::grp.art/bar 1}
+    => {::cp.art/foo {::cp.art/bar 1}
         ::_/a ::_/b
         :qux {:wub 2}}))
 
@@ -23,17 +23,17 @@
   (let [spec-registry {'int? int?
                        'string? string?}]
     (assertions
-      (#'grp.art/resolve-quoted-specs spec-registry
-        {::grp.art/quoted.argument-specs '[int?]})
-      => {::grp.art/quoted.argument-specs '[int?]
-          ::grp.art/argument-specs [int?]}
-      (#'grp.art/resolve-quoted-specs spec-registry
-        {::grp.art/quoted.argument-specs '[int?]
-         ::grp.art/quoted.return-spec 'string?})
-      => {::grp.art/quoted.argument-specs '[int?]
-          ::grp.art/argument-specs [int?]
-          ::grp.art/quoted.return-spec 'string?
-          ::grp.art/return-spec string?})))
+      (#'cp.art/resolve-quoted-specs spec-registry
+        {::cp.art/quoted.argument-specs '[int?]})
+      => {::cp.art/quoted.argument-specs '[int?]
+          ::cp.art/argument-specs [int?]}
+      (#'cp.art/resolve-quoted-specs spec-registry
+        {::cp.art/quoted.argument-specs '[int?]
+         ::cp.art/quoted.return-spec 'string?})
+      => {::cp.art/quoted.argument-specs '[int?]
+          ::cp.art/argument-specs [int?]
+          ::cp.art/quoted.return-spec 'string?
+          ::cp.art/return-spec string?})))
 
 (defn wrap-spec-gen [spec f]
   (s/with-gen spec

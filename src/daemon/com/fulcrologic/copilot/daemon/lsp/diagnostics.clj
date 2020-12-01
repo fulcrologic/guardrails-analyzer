@@ -1,6 +1,6 @@
 (ns com.fulcrologic.copilot.daemon.lsp.diagnostics
   (:require
-    [com.fulcrologic.copilot.artifacts :as grp.art]
+    [com.fulcrologic.copilot.artifacts :as cp.art]
     [com.fulcrologicpro.com.rpl.specter :as $]
     [com.fulcrologicpro.taoensso.timbre :as log])
   (:import
@@ -12,7 +12,7 @@
 (defonce currently-open-uri (atom nil))
 
 (defn problem->diagnostic
-  [{::grp.art/keys [problem-type message
+  [{::cp.art/keys [problem-type message
                     line-start line-end
                     column-start column-end]}]
   (new Diagnostic
@@ -40,6 +40,6 @@
       (publish-problems-for uri
         (log/spy :debug :update-problems!
           ($/select
-            [($/walker ::grp.art/problem-type)
-             ($/pred (comp (partial = file) ::grp.art/file))]
+            [($/walker ::cp.art/problem-type)
+             ($/pred (comp (partial = file) ::cp.art/file))]
             problems))))))

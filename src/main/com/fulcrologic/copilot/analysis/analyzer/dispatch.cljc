@@ -1,8 +1,8 @@
 (ns com.fulcrologic.copilot.analysis.analyzer.dispatch
   (:require
     [com.fulcrologic.guardrails.core :as gr :refer [>defn =>]]
-    [com.fulcrologic.copilot.analytics :as grp.analytics]
-    [com.fulcrologic.copilot.artifacts :as grp.art])
+    [com.fulcrologic.copilot.analytics :as cp.analytics]
+    [com.fulcrologic.copilot.artifacts :as cp.art])
   #?(:clj (:import (java.util.regex Pattern))))
 
 (declare analyze-mm)
@@ -19,22 +19,22 @@
 (defn qualify-symbol [env sym]
   (if (special-symbol? sym)
     (symbol "clojure.core" (name sym))
-    (grp.art/qualify-extern env sym)))
+    (cp.art/qualify-extern env sym)))
 
 (defn list-dispatch [env [head :as _sexpr]]
   (letfn [(symbol-dispatch [sym]
             (let [cljc-symbol (qualify-symbol env sym)]
               (cond
                 ;; NOTE: a local symbol resolves first
-                (grp.art/symbol-detail env sym)
+                (cp.art/symbol-detail env sym)
                 #_=> :symbol.local/lookup
                 ;; NOTE: analyze methods resolve before any >defn / >ftag definitions
                 (get (methods analyze-mm) cljc-symbol)
                 #_=> cljc-symbol
                 ;; NOTE: >defn resolves before >ftag
-                (grp.art/function-detail env sym)
+                (cp.art/function-detail env sym)
                 #_=> :function/call
-                (grp.art/external-function-detail env sym)
+                (cp.art/external-function-detail env sym)
                 #_=> :function.external/call
                 (quoted-symbol? sym) :ifn/call
                 :else :unknown)))]
@@ -69,15 +69,15 @@
 
 (>defn -analyze!
   [env sexpr]
-  [::grp.art/env any? => ::grp.art/type-description]
+  [::cp.art/env any? => ::cp.art/type-description]
   (let [dispatch (analyze-dispatch env sexpr)]
-    (grp.analytics/with-analytics env sexpr
+    (cp.analytics/with-analytics env sexpr
       (and (qualified-symbol? dispatch)
         (#{"clojure.core"} (namespace dispatch)))
       #(as-> % env
          (assoc env ::dispatch dispatch)
-         (grp.art/update-location env (meta sexpr))
-         (grp.analytics/profile ::analyze-mm
+         (cp.art/update-location env (meta sexpr))
+         (cp.analytics/profile ::analyze-mm
            (analyze-mm env sexpr))))))
 
 (defn analyze-statements! [env body]
@@ -86,5 +86,5 @@
   (-analyze! env (last body)))
 
 (defn unknown-expr [env sexpr]
-  (grp.art/record-info! env sexpr :info/failed-to-analyze-unknown-expression)
-  {::grp.art/unknown-expression sexpr})
+  (cp.art/record-info! env sexpr :info/failed-to-analyze-unknown-expression)
+  {::cp.art/unknown-expression sexpr})

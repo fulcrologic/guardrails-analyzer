@@ -3,34 +3,34 @@
     com.fulcrologic.copilot.ftags.clojure-core
     com.fulcrologic.copilot.ftags.clojure-string
     [clojure.test.check.generators]
-    [com.fulcrologic.copilot.analysis.analyzer :as grp.ana]
-    [com.fulcrologic.copilot.analysis.spec :as grp.spec]
-    [com.fulcrologic.copilot.artifacts :as grp.art]
-    [com.fulcrologic.copilot.forms :as grp.forms]
+    [com.fulcrologic.copilot.analysis.analyzer :as cp.ana]
+    [com.fulcrologic.copilot.analysis.spec :as cp.spec]
+    [com.fulcrologic.copilot.artifacts :as cp.art]
+    [com.fulcrologic.copilot.forms :as cp.forms]
     [com.fulcrologic.copilot.ui.binding-formatter :refer [format-bindings]]
     [com.fulcrologic.copilot.ui.problem-formatter :refer [format-problems]]
     [com.fulcrologicpro.com.rpl.specter :as $]
     [com.fulcrologicpro.taoensso.timbre :as log]
-    [com.fulcrologic.copilot.analytics :as grp.analytics]))
+    [com.fulcrologic.copilot.analytics :as cp.analytics]))
 
 (defn check-form! [env form]
-  (try (grp.ana/analyze! env form)
+  (try (cp.ana/analyze! env form)
        (catch #?(:clj Throwable :cljs :default) t
-         (grp.art/record-error! env form :error/failed-to-analyze-form)
+         (cp.art/record-error! env form :error/failed-to-analyze-form)
          (log/error t "Failed to analyze form:" form))))
 
 (defn check!
-  ([msg cb] (check! (grp.art/build-env) msg cb))
+  ([msg cb] (check! (cp.art/build-env) msg cb))
   ([env {:as msg :keys [forms file NS]} cb]
    (let [on-done (fn []
-                   (grp.analytics/report-analytics!)
+                   (cp.analytics/report-analytics!)
                    (cb))
          env     (-> env
-                   (assoc ::grp.art/checking-file file)
-                   (assoc ::grp.art/current-ns NS))]
-     (grp.art/clear-problems! file)
-     (grp.art/clear-bindings! file)
-     (grp.spec/with-cache {}
+                   (assoc ::cp.art/checking-file file)
+                   (assoc ::cp.art/current-ns NS))]
+     (cp.art/clear-problems! file)
+     (cp.art/clear-bindings! file)
+     (cp.spec/with-cache {}
        #?(:cljs (fn check-forms! [[form & forms]]
                   (if-not form (on-done)
                                (js/setTimeout
@@ -42,7 +42,7 @@
                   (doseq [form forms]
                     (check-form! env form))
                   (on-done)))
-       (grp.forms/interpret forms)))))
+       (cp.forms/interpret forms)))))
 
 (defonce to-check (atom nil))
 
@@ -57,12 +57,12 @@
   ($/transform [$/ALL]
     #(-> %
        ;; TODO: recursive-description
-       (dissoc ::grp.art/actual ::grp.art/expected ::grp.art/spec
-         ::grp.art/literal-value ::grp.art/original-expression)
-       (assoc ::grp.art/samples (set (map pr-str (::grp.art/samples %))))
-       (assoc ::grp.art/expression (str (::grp.art/original-expression %))))
+       (dissoc ::cp.art/actual ::cp.art/expected ::cp.art/spec
+         ::cp.art/literal-value ::cp.art/original-expression)
+       (assoc ::cp.art/samples (set (map pr-str (::cp.art/samples %))))
+       (assoc ::cp.art/expression (str (::cp.art/original-expression %))))
     problems))
 
 (defn gather-analysis! []
-  {:problems (-> @grp.art/problems format-problems transit-safe-problems)
-   :bindings (-> @grp.art/bindings format-bindings transit-safe-problems)})
+  {:problems (-> @cp.art/problems format-problems transit-safe-problems)
+   :bindings (-> @cp.art/bindings format-bindings transit-safe-problems)})

@@ -6,8 +6,8 @@
     [com.fulcrologicpro.fulcro.mutations :as f.m]
     [com.fulcrologicpro.fulcro.networking.websockets :as fws]
     [com.fulcrologicpro.fulcro.routing.dynamic-routing :as dr :refer [defrouter]]
-    [com.fulcrologic.copilot.artifacts :as grp.art]
-    [com.fulcrologic.copilot.checker :as grp.checker]
+    [com.fulcrologic.copilot.artifacts :as cp.art]
+    [com.fulcrologic.copilot.checker :as cp.checker]
     [com.fulcrologic.copilot.ui.shared :as ui.shared]
     [com.fulcrologicpro.taoensso.timbre :as log]))
 
@@ -42,17 +42,17 @@
 
 ;; TODO: remove or config + disabled by default
 (defn DBG_ENV! []
-  (let [env (grp.art/build-env)]
+  (let [env (cp.art/build-env)]
     (js/setTimeout #(tap> env) 2000)))
 
 (defn report-analysis! []
-  (let [analysis (grp.checker/gather-analysis!)]
+  (let [analysis (cp.checker/gather-analysis!)]
     (comp/transact! @app [(report-analysis analysis)])))
 
 (defn check! [msg]
   (DBG_ENV!)
   (try
-    (grp.checker/check! msg
+    (cp.checker/check! msg
       #(report-analysis!))
     (catch :default e
       (log/error e "Failed to check!"))))

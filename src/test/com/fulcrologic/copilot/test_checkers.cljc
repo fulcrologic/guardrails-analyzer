@@ -5,26 +5,26 @@
                [goog.string :refer [format]]])
     #?@(:clj [[com.fulcrologic.guardrails.impl.parser :as impl.parser]])
     [clojure.set :as set]
-    [com.fulcrologic.copilot.artifacts :as grp.art]
+    [com.fulcrologic.copilot.artifacts :as cp.art]
     [com.fulcrologic.copilot.analysis.analyzer.dispatch :refer [analyze-mm]]
-    [com.fulcrologic.copilot.analysis.analyzer.literals :as grp.ana.lit]
+    [com.fulcrologic.copilot.analysis.analyzer.literals :as cp.ana.lit]
     [fulcro-spec.check :as _ :refer [checker]]))
 
 #?(:clj
    (defmacro >test-fn [& args]
-     (let [parsed-fn (grp.art/fix-kw-nss (impl.parser/parse-fn args []))
+     (let [parsed-fn (cp.art/fix-kw-nss (impl.parser/parse-fn args []))
            lambda (merge
-                    {::grp.art/lambda-name `(quote ~(gensym ">test-fn$"))}
+                    {::cp.art/lambda-name `(quote ~(gensym ">test-fn$"))}
                     parsed-fn
-                    {::grp.art/fn-ref `(fn ~@args)
+                    {::cp.art/fn-ref `(fn ~@args)
                      ::test-fn? true})]
-       `(grp.art/resolve-quoted-specs
-          ~(::grp.art/spec-registry lambda)
+       `(cp.art/resolve-quoted-specs
+          ~(::cp.art/spec-registry lambda)
           ~lambda))))
 
 (defmethod analyze-mm :collection/map [env hashmap]
-  (if ((every-pred ::test-fn? ::grp.art/arities) hashmap) hashmap
-    (grp.ana.lit/analyze-hashmap! env hashmap)))
+  (if ((every-pred ::test-fn? ::cp.art/arities) hashmap) hashmap
+    (cp.ana.lit/analyze-hashmap! env hashmap)))
 
 (defn of-length?*
   ([exp-len]

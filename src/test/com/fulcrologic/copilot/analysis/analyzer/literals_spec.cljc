@@ -1,7 +1,7 @@
 (ns com.fulcrologic.copilot.analysis.analyzer.literals-spec
   (:require
-    [com.fulcrologic.copilot.analysis.analyzer :as grp.ana]
-    [com.fulcrologic.copilot.artifacts :as grp.art]
+    [com.fulcrologic.copilot.analysis.analyzer :as cp.ana]
+    [com.fulcrologic.copilot.artifacts :as cp.art]
     [com.fulcrologic.copilot.test-fixtures :as tf]
     [clojure.test]
     [fulcro-spec.check :as _]
@@ -12,15 +12,15 @@
 (specification "analyze-set!"
   (let [env (tf/test-env)]
     (assertions
-      (grp.ana/analyze! env
+      (cp.ana/analyze! env
         `(do #{"str" :kw 123}))
       =check=> (_/embeds?*
-                 {::grp.art/samples #{#{"str" :kw 123}}})
-      (grp.ana/analyze! env
+                 {::cp.art/samples #{#{"str" :kw 123}}})
+      (cp.ana/analyze! env
         `(do #{:always (rand-nth [:a :b])}))
       =check=> (_/embeds?*
-                 {::grp.art/samples #{#{:always :a} #{:always :b}}})
-      (grp.ana/analyze! env
+                 {::cp.art/samples #{#{:always :a} #{:always :b}}})
+      (cp.ana/analyze! env
         `(do #{(rand-nth [1 2]) (rand-nth [:a :b])}))
       =check=> (_/embeds?*
-                 {::grp.art/samples #{#{1 :a} #{1 :b} #{2 :a} #{2 :b}}}))))
+                 {::cp.art/samples #{#{1 :a} #{1 :b} #{2 :a} #{2 :b}}}))))

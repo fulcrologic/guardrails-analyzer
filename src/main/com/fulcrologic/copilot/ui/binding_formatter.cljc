@@ -4,7 +4,7 @@
                [goog.string.format]])
     [clojure.pprint :refer [pprint]]
     [clojure.string :as str]
-    [com.fulcrologic.copilot.artifacts :as grp.art]
+    [com.fulcrologic.copilot.artifacts :as cp.art]
     [com.fulcrologicpro.com.rpl.specter :as $]))
 
 (defn html-escape [s]
@@ -15,16 +15,16 @@
 
 (defn format-binding [bind]
   (-> bind
-    (assoc ::grp.art/message
-      (str "Bindings for: " (::grp.art/original-expression bind)))
-    (assoc ::grp.art/tooltip
+    (assoc ::cp.art/message
+      (str "Bindings for: " (::cp.art/original-expression bind)))
+    (assoc ::cp.art/tooltip
       (format
         "<b>Type:</b>%s<br><b>Sample Values:</b><br>%s"
-        (some-> bind ::grp.art/type html-escape)
+        (some-> bind ::cp.art/type html-escape)
         (str/join
           (mapv (comp #(format "<pre>%s</pre>" (html-escape %))
                   #(str/trim (with-out-str (pprint %))))
-            (::grp.art/samples bind)))))))
+            (::cp.art/samples bind)))))))
 
 (defn format-bindings [bindings]
-  ($/transform [($/walker ::grp.art/samples)] format-binding bindings))
+  ($/transform [($/walker ::cp.art/samples)] format-binding bindings))

@@ -4,7 +4,7 @@
     [com.fulcrologicpro.fulcro.dom :as dom :refer [div h3 h4 label input]]
     [com.fulcrologicpro.fulcro.mutations :as f.m]
     [com.fulcrologicpro.fulcro.routing.dynamic-routing :as dr]
-    [com.fulcrologic.copilot.artifacts :as grp.art]))
+    [com.fulcrologic.copilot.artifacts :as cp.art]))
 
 (f.m/defmutation focus-ns [{:keys [ns]}]
   (action [{:keys [app state]}]
@@ -13,7 +13,7 @@
 
 (defn set-problems* [state problems]
   (reduce
-    (fn [s {:as p ::grp.art/keys [NS sym]}]
+    (fn [s {:as p ::cp.art/keys [NS sym]}]
       (update-in s
         [:problems/by-namespace NS (name sym)]
         (fnil conj [])
@@ -38,7 +38,7 @@
                 :value    daemon-port
                 :onChange (fn [evt] (f.m/set-integer!! this :settings/daemon-port :event evt))})))))
 
-(defn ui-problem [{:as problem ::grp.art/keys [problem-type message line-start]}]
+(defn ui-problem [{:as problem ::cp.art/keys [problem-type message line-start]}]
   (div :.item {:key message}
     (dom/i :.exclamation.icon
       {:classes [(case (namespace problem-type)
@@ -58,7 +58,7 @@
             (when (seq problems)
               (div :.list
                 (mapv ui-problem
-                  (sort-by ::grp.art/line-start problems))))))
+                  (sort-by ::cp.art/line-start problems))))))
         ns-problems))))
 
 (defsc NamespaceProblems [this {:keys [problems/by-namespace current-namespace]}]

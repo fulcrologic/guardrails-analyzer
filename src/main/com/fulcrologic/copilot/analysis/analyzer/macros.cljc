@@ -1,24 +1,24 @@
 (ns com.fulcrologic.copilot.analysis.analyzer.macros
   (:require
-    [com.fulcrologic.copilot.analysis.analyzer.dispatch :as grp.ana.disp]
+    [com.fulcrologic.copilot.analysis.analyzer.dispatch :as cp.ana.disp]
     [com.fulcrologic.copilot.analysis.analyzer.literals]
-    [com.fulcrologic.copilot.analysis.destructuring :as grp.destr]
-    [com.fulcrologic.copilot.analysis.function-type :as grp.fnt]
-    [com.fulcrologic.copilot.analysis.sampler :as grp.sampler]
-    [com.fulcrologic.copilot.analysis.spec :as grp.spec]
-    [com.fulcrologic.copilot.artifacts :as grp.art]
+    [com.fulcrologic.copilot.analysis.destructuring :as cp.destr]
+    [com.fulcrologic.copilot.analysis.function-type :as cp.fnt]
+    [com.fulcrologic.copilot.analysis.sampler :as cp.sampler]
+    [com.fulcrologic.copilot.analysis.spec :as cp.spec]
+    [com.fulcrologic.copilot.artifacts :as cp.art]
     [com.fulcrologic.guardrails.core :as gr]
     [com.fulcrologicpro.taoensso.timbre :as log]))
 
 (defn analyze-single-arity! [env defn-sym [arglist gspec & body]]
-  (let [gspec  (grp.fnt/interpret-gspec env arglist gspec)
-        env    (grp.fnt/bind-argument-types env arglist gspec)
-        result (grp.ana.disp/analyze-statements! env body)]
-    (grp.fnt/check-return-type! env gspec result
+  (let [gspec  (cp.fnt/interpret-gspec env arglist gspec)
+        env    (cp.fnt/bind-argument-types env arglist gspec)
+        result (cp.ana.disp/analyze-statements! env body)]
+    (cp.fnt/check-return-type! env gspec result
       (last body) (meta defn-sym))))
 
 (defn analyze:>defn! [env [_ defn-sym & defn-forms :as sexpr]]
-  (let [env (assoc env ::grp.art/checking-sym defn-sym)
+  (let [env (assoc env ::cp.art/checking-sym defn-sym)
         arities (drop-while (some-fn string? map?) defn-forms)]
     (if (vector? (first arities))
       (analyze-single-arity! env defn-sym arities)
@@ -26,30 +26,30 @@
         (analyze-single-arity! env defn-sym arity))))
   {})
 
-(defmethod grp.ana.disp/analyze-mm '>defn  [env sexpr] (analyze:>defn! env sexpr))
-(defmethod grp.ana.disp/analyze-mm `gr/>defn  [env sexpr] (analyze:>defn! env sexpr))
-(defmethod grp.ana.disp/analyze-mm '>defn-  [env sexpr] (analyze:>defn! env sexpr))
-(defmethod grp.ana.disp/analyze-mm `gr/>defn- [env sexpr] (analyze:>defn! env sexpr))
+(defmethod cp.ana.disp/analyze-mm '>defn  [env sexpr] (analyze:>defn! env sexpr))
+(defmethod cp.ana.disp/analyze-mm `gr/>defn  [env sexpr] (analyze:>defn! env sexpr))
+(defmethod cp.ana.disp/analyze-mm '>defn-  [env sexpr] (analyze:>defn! env sexpr))
+(defmethod cp.ana.disp/analyze-mm `gr/>defn- [env sexpr] (analyze:>defn! env sexpr))
 
-(defmethod grp.ana.disp/analyze-mm 'clojure.core/do [env [_ & body]]
-  (grp.ana.disp/analyze-statements! env body))
+(defmethod cp.ana.disp/analyze-mm 'clojure.core/do [env [_ & body]]
+  (cp.ana.disp/analyze-statements! env body))
 
 (defn analyze-let-bindings! [env bindings]
   (reduce (fn [env [bind-sexpr sexpr]]
-            (reduce-kv grp.art/remember-local
-              env (grp.destr/destructure! env bind-sexpr
-                    (grp.ana.disp/-analyze! env sexpr))))
+            (reduce-kv cp.art/remember-local
+              env (cp.destr/destructure! env bind-sexpr
+                    (cp.ana.disp/-analyze! env sexpr))))
     env (partition 2 bindings)))
 
 (defn analyze-let-like-form! [env [_ bindings & body]]
-  (grp.ana.disp/analyze-statements!
+  (cp.ana.disp/analyze-statements!
     (analyze-let-bindings! env bindings)
     body))
 
-(defmethod grp.ana.disp/analyze-mm 'let [env sexpr]
+(defmethod cp.ana.disp/analyze-mm 'let [env sexpr]
   (analyze-let-like-form! env sexpr))
 
-(defmethod grp.ana.disp/analyze-mm 'clojure.core/let [env sexpr]
+(defmethod cp.ana.disp/analyze-mm 'clojure.core/let [env sexpr]
   (analyze-let-like-form! env sexpr))
 
 (defn analyze:>letfn [env [_ fns & body]]
@@ -59,7 +59,7 @@
   ;; 2. analyze fn bodies & letfn body
   )
 
-(defmethod grp.ana.disp/analyze-mm 'clojure.core/if [env [_ condition then & [else]]]
+(defmethod cp.ana.disp/analyze-mm 'clojure.core/if [env [_ condition then & [else]]]
   ;; TODO: on each branch (then & else) update env locals used in condition:
   ;; if predicate has sampler, look it up & call it to filter locals used
   ;; otherwise:
@@ -68,71 +68,71 @@
   #_(if (even? x)
       (str "EVEN:" x) ;; x should     be even?
       (str "ODD:" x)) ;; x should not be even?
-  (let [C (grp.ana.disp/-analyze! env condition)
-        T (grp.ana.disp/-analyze! env then)
+  (let [C (cp.ana.disp/-analyze! env condition)
+        T (cp.ana.disp/-analyze! env then)
         E (if else
-            (grp.ana.disp/-analyze! env else)
-            {::grp.art/samples (set (grp.spec/sample env (grp.spec/generator env nil?)))})]
+            (cp.ana.disp/-analyze! env else)
+            {::cp.art/samples (set (cp.spec/sample env (cp.spec/generator env nil?)))})]
     (log/debug "IF:" C "THEN:" T)
-    (when (not (some identity (::grp.art/samples C)))
-      (grp.art/record-warning! env condition
+    (when (not (some identity (::cp.art/samples C)))
+      (cp.art/record-warning! env condition
         :warning/if-condition-never-reaches-then-branch))
-    (when (and E (not (some not (::grp.art/samples C))))
-      (grp.art/record-warning! env condition
+    (when (and E (not (some not (::cp.art/samples C))))
+      (cp.art/record-warning! env condition
         :warning/if-condition-never-reaches-else-branch))
-    {::grp.art/samples (grp.sampler/random-samples-from env T E)}))
+    {::cp.art/samples (cp.sampler/random-samples-from env T E)}))
 
-(defmethod grp.ana.disp/analyze-mm 'clojure.core/if-let [env [_ [bind-sym bind-expr] then & [else]]]
-  (grp.ana.disp/-analyze! env
+(defmethod cp.ana.disp/analyze-mm 'clojure.core/if-let [env [_ [bind-sym bind-expr] then & [else]]]
+  (cp.ana.disp/-analyze! env
     `(let [t# ~bind-expr]
        (if t#
          (let [~bind-sym t#] ~then)
          ~else))))
 
-(defmethod grp.ana.disp/analyze-mm 'clojure.core/if-not [env [_ condition then & [else]]]
-  (grp.ana.disp/-analyze! env
+(defmethod cp.ana.disp/analyze-mm 'clojure.core/if-not [env [_ condition then & [else]]]
+  (cp.ana.disp/-analyze! env
     `(if (not ~condition) ~then ~else)))
 
-(defmethod grp.ana.disp/analyze-mm 'clojure.core/when [env [_ condition & body]]
-  (grp.ana.disp/-analyze! env
+(defmethod cp.ana.disp/analyze-mm 'clojure.core/when [env [_ condition & body]]
+  (cp.ana.disp/-analyze! env
     `(if ~condition (do ~@body))))
 
-(defmethod grp.ana.disp/analyze-mm 'clojure.core/when-let [env [_ bindings & body]]
-  (grp.ana.disp/-analyze! env
+(defmethod cp.ana.disp/analyze-mm 'clojure.core/when-let [env [_ bindings & body]]
+  (cp.ana.disp/-analyze! env
     `(if-let ~bindings (do ~@body))))
 
-(defmethod grp.ana.disp/analyze-mm 'clojure.core/when-not [env [_ condition & body]]
-  (grp.ana.disp/-analyze! env
+(defmethod cp.ana.disp/analyze-mm 'clojure.core/when-not [env [_ condition & body]]
+  (cp.ana.disp/-analyze! env
     `(if (not ~condition) (do ~@body))))
 
-(defmethod grp.ana.disp/analyze-mm 'clojure.core/and [env [_ & exprs]]
+(defmethod cp.ana.disp/analyze-mm 'clojure.core/and [env [_ & exprs]]
   (if (empty? exprs)
-    {::grp.art/samples #{true}}
+    {::cp.art/samples #{true}}
     (letfn [(AND [exprs]
               (when-let [[expr & rst] (seq exprs)]
                 `(let [t# ~expr]
                    (if t# ~(AND rst) t#))))]
-      (grp.ana.disp/-analyze! env (AND exprs)))))
+      (cp.ana.disp/-analyze! env (AND exprs)))))
 
-(defmethod grp.ana.disp/analyze-mm 'clojure.core/or [env [_ & exprs]]
+(defmethod cp.ana.disp/analyze-mm 'clojure.core/or [env [_ & exprs]]
   (if (empty? exprs)
-    {::grp.art/samples #{nil}}
+    {::cp.art/samples #{nil}}
     (letfn [(OR [exprs]
               (when-let [[expr & rst] (seq exprs)]
                 `(let [t# ~expr]
                    (if t# t# ~(OR rst)))))]
-      (grp.ana.disp/-analyze! env (OR exprs)))))
+      (cp.ana.disp/-analyze! env (OR exprs)))))
 
-(defmethod grp.ana.disp/analyze-mm 'clojure.core/cond [env [_ & clauses]]
+(defmethod cp.ana.disp/analyze-mm 'clojure.core/cond [env [_ & clauses]]
   (if (empty? clauses)
-    {::grp.art/samples #{nil}}
+    {::cp.art/samples #{nil}}
     (letfn [(COND [clauses]
               (when-let [[tst expr & rst] (seq clauses)]
                 `(if ~tst ~expr ~(COND rst))))]
-      (grp.ana.disp/-analyze! env (COND clauses)))))
+      (cp.ana.disp/-analyze! env (COND clauses)))))
 
-(defmethod grp.ana.disp/analyze-mm 'clojure.core/-> [env [_ subject & args]]
-  (grp.ana.disp/-analyze! env
+(defmethod cp.ana.disp/analyze-mm 'clojure.core/-> [env [_ subject & args]]
+  (cp.ana.disp/-analyze! env
     (reduce (fn [subject step]
               (with-meta
                 (if (seq? step)
@@ -141,8 +141,8 @@
                 (meta step)))
       subject args)))
 
-(defmethod grp.ana.disp/analyze-mm 'clojure.core/->> [env [_ subject & args]]
-  (grp.ana.disp/-analyze! env
+(defmethod cp.ana.disp/analyze-mm 'clojure.core/->> [env [_ subject & args]]
+  (cp.ana.disp/-analyze! env
     (reduce (fn [subject step]
               (with-meta
                 (if (seq? step)
@@ -151,7 +151,7 @@
                 (meta step)))
       subject args)))
 
-(defmethod grp.ana.disp/analyze-mm 'clojure.core/as-> [env [_ expr subject & args]]
+(defmethod cp.ana.disp/analyze-mm 'clojure.core/as-> [env [_ expr subject & args]]
   (analyze-let-like-form! env
     ['_ (reduce (fn [bindings step]
                   (conj bindings
@@ -159,7 +159,7 @@
           [subject expr] args)
      subject]))
 
-(defmethod grp.ana.disp/analyze-mm 'clojure.core/some-> [env [_ subject & args]]
+(defmethod cp.ana.disp/analyze-mm 'clojure.core/some-> [env [_ subject & args]]
   (analyze-let-like-form! env
     ['_ (reduce (fn [bindings step]
                   (conj bindings
@@ -168,7 +168,7 @@
           [] args)
      subject]))
 
-(defmethod grp.ana.disp/analyze-mm 'clojure.core/some->> [env [_ subject & args]]
+(defmethod cp.ana.disp/analyze-mm 'clojure.core/some->> [env [_ subject & args]]
   (analyze-let-like-form! env
     ['_ (reduce (fn [bindings step]
                   (conj bindings
@@ -177,7 +177,7 @@
           [] args)
      subject]))
 
-(defmethod grp.ana.disp/analyze-mm 'clojure.core/cond-> [env [_ subject & args]]
+(defmethod cp.ana.disp/analyze-mm 'clojure.core/cond-> [env [_ subject & args]]
   (analyze-let-like-form! env
     ['_ (reduce (fn [bindings [tst step]]
                   (conj bindings
@@ -187,7 +187,7 @@
           [] (partition 2 args))
      subject]))
 
-(defmethod grp.ana.disp/analyze-mm 'clojure.core/cond->> [env [_ subject & args]]
+(defmethod cp.ana.disp/analyze-mm 'clojure.core/cond->> [env [_ subject & args]]
   (analyze-let-like-form! env
     ['_ (reduce (fn [bindings [tst step]]
                   (conj bindings
@@ -202,26 +202,26 @@
             (case bind-sexpr
               :let (analyze-let-bindings! env sexpr)
               (:when :while) env
-              (reduce-kv grp.art/remember-local
-                env (grp.destr/destructure! env bind-sexpr
-                      (let [td (grp.ana.disp/-analyze! env sexpr)]
-                        (if-not (every? seqable? (::grp.art/samples td))
-                          (do (grp.art/record-error! env sexpr
+              (reduce-kv cp.art/remember-local
+                env (cp.destr/destructure! env bind-sexpr
+                      (let [td (cp.ana.disp/-analyze! env sexpr)]
+                        (if-not (every? seqable? (::cp.art/samples td))
+                          (do (cp.art/record-error! env sexpr
                                 :error/expected-seqable-collection)
                             {})
-                          (update td ::grp.art/samples
+                          (update td ::cp.art/samples
                             (comp set (partial mapcat identity)))))))))
     env (partition 2 bindings)))
 
 (defn analyze-for-loop! [env bindings body]
   (-> env
     (analyze-for-bindings! bindings)
-    (grp.ana.disp/analyze-statements! body)
-    (update ::grp.art/samples (comp hash-set vec))))
+    (cp.ana.disp/analyze-statements! body)
+    (update ::cp.art/samples (comp hash-set vec))))
 
-(defmethod grp.ana.disp/analyze-mm 'clojure.core/for [env [_ bindings & body]]
+(defmethod cp.ana.disp/analyze-mm 'clojure.core/for [env [_ bindings & body]]
   (analyze-for-loop! env bindings body))
 
-(defmethod grp.ana.disp/analyze-mm 'clojure.core/doseq [env [_ bindings & body]]
+(defmethod cp.ana.disp/analyze-mm 'clojure.core/doseq [env [_ bindings & body]]
   (analyze-for-loop! env bindings body)
-  {::grp.art/samples #{nil}})
+  {::cp.art/samples #{nil}})

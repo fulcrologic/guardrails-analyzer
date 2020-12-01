@@ -4,7 +4,7 @@
     [clojure.set :as set]
     [clojure.spec.alpha :as s]
     [clojure.test.check.generators :as gen]
-    [com.fulcrologic.copilot.analysis.spec :as grp.spec]
+    [com.fulcrologic.copilot.analysis.spec :as cp.spec]
     [com.fulcrologic.guardrails.core :refer [>defn => ?]]
     [com.fulcrologic.guardrails.registry :as gr.reg]
     [com.fulcrologic.guardrails.impl.externs :as gr.externs]
@@ -201,7 +201,7 @@
                                          (fix-kw-nss)
                                          (resolve-quoted-specs spec-registry))
           ::spec-registry              spec-registry}
-       (grp.spec/with-spec-impl :clojure.spec.alpha)))))
+       (cp.spec/with-spec-impl :clojure.spec.alpha)))))
 
 (>defn qualify-extern
   [env sym]

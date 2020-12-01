@@ -1,8 +1,8 @@
 (ns com.fulcrologic.copilot.test-fixtures
   (:require
     [clojure.test :as t]
-    [com.fulcrologic.copilot.artifacts :as grp.art]
-    [com.fulcrologic.copilot.analysis.spec :as grp.spec]
+    [com.fulcrologic.copilot.artifacts :as cp.art]
+    [com.fulcrologic.copilot.analysis.spec :as cp.spec]
     [com.fulcrologic.copilot.test-fixtures.logging :as tf.log]
     [com.fulcrologicpro.taoensso.timbre :as log]))
 
@@ -21,20 +21,20 @@
   (fn [f] (f)))
 
 (defn test-env [& args]
-  (-> (grp.art/build-env)
-    (merge {::grp.art/checking-sym  'fake-sym
-            ::grp.art/checking-file "fake-file"
-            ::grp.art/current-ns    "fake-ns"
-            ::grp.art/location      #::grp.art{:line-start   1
+  (-> (cp.art/build-env)
+    (merge {::cp.art/checking-sym  'fake-sym
+            ::cp.art/checking-file "fake-file"
+            ::cp.art/current-ns    "fake-ns"
+            ::cp.art/location      #::cp.art{:line-start   1
                                                :column-start 1}})
-    (grp.spec/with-spec-impl :clojure.spec.alpha
+    (cp.spec/with-spec-impl :clojure.spec.alpha
       {:cache-samples? false})))
 
 (defn capture-errors [f & args]
   (let [errors  (atom [])
-        record! grp.art/record-error!]
+        record! cp.art/record-error!]
     (with-redefs
-      [grp.art/record-error! (fn [& args]
+      [cp.art/record-error! (fn [& args]
                                (if (= 2 (count args))
                                  (swap! errors conj (second args))
                                  (apply record! args))
@@ -44,9 +44,9 @@
 
 (defn capture-warnings [f & args]
   (let [warnings (atom [])
-        record!  grp.art/record-warning!]
+        record!  cp.art/record-warning!]
     (with-redefs
-      [grp.art/record-warning! (fn [& args]
+      [cp.art/record-warning! (fn [& args]
                                  (if (= 2 (count args))
                                    (swap! warnings conj (second args))
                                    (apply record! args))
@@ -57,7 +57,7 @@
 (defn capture-bindings [f & args]
   (let [bindings (atom [])]
     (with-redefs
-      [grp.art/record-binding! (fn [env sym td]
+      [cp.art/record-binding! (fn [env sym td]
                                  (swap! bindings conj td))]
       (apply f args)
       @bindings)))

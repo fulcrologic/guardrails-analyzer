@@ -5,7 +5,7 @@
     [com.fulcrologic.copilot.daemon.server.config :refer [config]]
     [com.fulcrologic.copilot.daemon.server.pathom :refer [parser]]
     [com.fulcrologic.copilot.daemon.server.websockets :refer [websockets]]
-    [com.fulcrologic.copilot.transit-handlers :as grp.transit]
+    [com.fulcrologic.copilot.transit-handlers :as cp.transit]
     [mount.core :refer [defstate]]
     [ring.middleware.defaults :refer [wrap-defaults]]
     [com.fulcrologicpro.taoensso.timbre :as log]))
@@ -27,7 +27,7 @@
 (defstate middleware
   :start
   (let [defaults-config     (:ring.middleware/defaults-config config)
-        transit-writer-opts {:opts {:default-handler grp.transit/default-write-handler}}]
+        transit-writer-opts {:opts {:default-handler cp.transit/default-write-handler}}]
     (log/info "Starting with ring defaults config" defaults-config)
     (-> not-found-handler
       (wrap-api "/api")
