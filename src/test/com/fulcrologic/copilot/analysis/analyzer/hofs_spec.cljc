@@ -150,7 +150,7 @@
       (tf/capture-errors grp.ana/analyze! env
         `(partial + "err"))
       =check=> (_/seq-matches?*
-                 [(_/embeds?* {::grp.art/problem-type :error/invalid-function-arguments
+                 [(_/embeds?* {::grp.art/problem-type        :error/invalid-partially-applied-arguments
                                ::grp.art/original-expression ["err"]})])
       (grp.ana/analyze! env
         `(partial + "err"))
@@ -170,7 +170,7 @@
       (tf/capture-errors grp.ana/analyze! env
         `(partial + 1 2 "err"))
       =check=> (_/seq-matches?*
-                 [(_/embeds?* {::grp.art/problem-type :error/invalid-function-arguments})])
+                 [(_/embeds?* {::grp.art/problem-type :error/invalid-partially-applied-arguments})])
       (tf/capture-errors grp.ana/analyze! env
         `((partial + 1 2 3) "err"))
       =check=> (_/seq-matches?*
@@ -187,7 +187,7 @@
           (tf/capture-errors grp.ana/analyze! env
             `(partial ~lambda 1.0))
           =check=> (_/seq-matches?*
-                     [(_/embeds?* {::grp.art/problem-type :error/invalid-function-arguments})]))))))
+                     [(_/embeds?* {::grp.art/problem-type :error/invalid-partially-applied-arguments})]))))))
 
 (specification "analyze-reduce!" :integration :wip
   (let [env (tf/test-env)

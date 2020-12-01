@@ -330,7 +330,7 @@
                 #(grp.fnt/valid-argtypes? env % args-td)))]
     (if (seq (::grp.art/arities ptd))
       (update ptd ::grp.fnt/partial-argtypes concat args-td)
-      (do (grp.art/record-error! env args :error/invalid-function-arguments {:function f})
+      (do (grp.art/record-error! env args :error/invalid-partially-applied-arguments {:function (str f)})
           {}))))
 
 (defn analyze-partial! [env [this-sym f & values :as sexpr]]

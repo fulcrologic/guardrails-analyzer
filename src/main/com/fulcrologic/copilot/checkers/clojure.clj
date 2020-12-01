@@ -1,12 +1,14 @@
 (ns com.fulcrologic.copilot.checkers.clojure
   (:require
+    [clojure.pprint :refer [pprint]]
     [clojure.tools.namespace.repl :refer [refresh set-refresh-dirs refresh-dirs]]
     [com.fulcrologic.copilot.checker :as grp.checker]
     [com.fulcrologic.copilot.checkers.sente-client :as ws]
-    [com.fulcrologic.guardrails.core :refer [>defn =>]]
+    [com.fulcrologic.guardrails.core :refer [>defn => | ?]]
     [com.fulcrologic.guardrails.config :as gr.cfg]
     [com.fulcrologicpro.taoensso.timbre :as log]
-    [clojure.tools.namespace.repl :as tools-ns])
+    [clojure.tools.namespace.repl :as tools-ns]
+    [clojure.spec.alpha :as s])
   (:import
     (java.io FileNotFoundException)))
 
@@ -113,10 +115,34 @@
   [int? => string?]
   (+ x 1))
 
+(s/def ::thing int?)
+
+(>defn h [a b]
+  [int? int? | #(< a b) => int?]
+  (+ a b))
+
+(>defn ma [a & rest]
+  [int? (s/* pos-int?) => int?]
+  (reduce + a rest))
+
+(s/def :person/name string?)
+(s/def :person/age int?)
+
+(>defn person []
+  [=> (s/keys :req [:person/name])]
+  {:person/name "Joe"})
+
 (>defn g [x]
   [int? => int?]
   (let [a (f (+ x 1))
+        {:person/keys [age]} (person)
+        m (h 8 9)
+        j (ma -1 -2 -3)
+        {::keys [thing]} {::thing 40}
         b (f a)]
+    (if true
+      1
+      2)
     a))
 
 (comment
@@ -127,6 +153,8 @@
                                      :port     3050
                                      :src-dirs ["src/main" "src/test"
                                                 "/Users/tonykay/fulcrologic/copilot/src/main"]
-                                     :main-ns  `com.fulcrologic.fulcro.application
+                                     :main-ns
+                                     ;`com.fulcrologic.fulcro.application
+                                               `com.fulcrologic.copilot.checkers.clojure
                                      #_'dataico.server-components.middleware})
   (start))

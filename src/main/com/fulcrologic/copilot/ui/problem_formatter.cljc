@@ -16,16 +16,16 @@
 (defmulti format-problem-mm (fn [problem params] (::grp.art/problem-type problem)))
 
 (defn format-problem [problem]
-  (let [message (or (try (format-problem-mm problem (::grp.art/message-params problem))
-                         (catch #?(:clj Throwable :cljs :default) e
-                           (log/error e "Failed to create message for problem:" problem)
-                           nil))
-                  (format "Failed to create message for problem-type: <%s>!"
-                    (::grp.art/problem-type problem)))
-        message (if (string? message) message (:message message))
-        tooltip (if (string? message) (html-escape message) (:tooltip message))]
+  (let [message       (or (try (format-problem-mm problem (::grp.art/message-params problem))
+                               (catch #?(:clj Throwable :cljs :default) e
+                                 (log/error e "Failed to create message for problem:" problem)
+                                 nil))
+                        (format "Failed to create message for problem-type: <%s>!"
+                          (::grp.art/problem-type problem)))
+        plain-message (if (string? message) message (:message message))
+        tooltip       (if (string? message) (html-escape message) (:tooltip message))]
     (-> problem
-      (assoc ::grp.art/message message)
+      (assoc ::grp.art/message plain-message)
       (assoc ::grp.art/tooltip tooltip))))
 
 (defn format-problems [problems]
@@ -45,6 +45,13 @@
       (str/join ", "
         (map pr-str failing-samples)))))
 
+(defn format-arglist [{:as problem ::grp.art/keys [actual]}]
+  (let [{::grp.art/keys [failing-samples]} actual]
+    (case (count failing-samples)
+      0 (do (log/error "Failed to get failing-samples from problem:" problem)
+            "???")
+      (str/join ", " (first failing-samples)))))
+
 (defn format-expected [{::grp.art/keys [expected]}]
   (let [{::grp.art/keys [spec type]} expected]
     (or type spec)))
@@ -54,47 +61,62 @@
 
 (defmethod format-problem-mm :error/value-failed-spec
   [problem params]
-  (format "Value <%s> failed spec <%s>."
-    (format-actual problem)
-    (format-expected problem)))
-
-(defmethod format-problem-mm :error/bad-return-value
-  [problem params]
-  {:message "Invalid return type"
-   :tooltip (format "The <b>return value</b> of the function could be a value like: %s<br/>That is invalid for declared return spec: %s"
+  {:message (format "The expression %s does not conform to the declared spec %s."
+              (format-actual problem)
+              (format-expected problem))
+   :tooltip (format "The expression: <b>%s</b><br/>does not conform to the declared spec <b>%s</b>."
               (html-escape (format-actual problem))
               (html-escape (format-expected problem)))})
 
+(defmethod format-problem-mm :error/bad-return-value
+  [problem params]
+  {:message (format "The Return spec is %s, but it is possible to return a value like %s."
+              (format-expected problem)
+              (format-actual problem))
+   :tooltip (format "The function's return type is declared <b>%s</b><br/>It is possible for it to return a value like <b>%s</b>"
+              (html-escape (format-expected problem))
+              (html-escape (format-actual problem)))})
+
 (defmethod format-problem-mm :error/sample-generator-failed
   [problem params]
-  (format "Failed to generate samples for <%s>."
+  (format "%s could not be used to generate samples in a reasonable amount of time. Consider adding `with-gen` to your spec."
     (format-expr problem)))
 
 (defmethod format-problem-mm :error/function-argument-failed-spec
   [problem params]
-  (format "The function argument: %s\ncould end up having the value: %s\nwhich is invalid for the argument's spec: %s"
-    (::grp.art/original-expression problem)
-    (format-actual problem)
-    (format-expected problem)))
+  {:message (format "The function argument: %s should be %s, but could end up having value like %s"
+              (::grp.art/original-expression problem)
+              (format-expected problem)
+              (format-actual problem))
+   :tooltip (format "The function argument: <b>%s</b><br/>with spec: <b>%s</b><br/>could contain an invalid value like <b>%s</b>."
+              (::grp.art/original-expression problem)
+              (html-escape (format-expected problem))
+              (html-escape (format-actual problem)))})
 
 (defmethod format-problem-mm :error/function-arguments-failed-predicate
   [problem params]
-  (format "In call to <%s> arguments %s failed predicate with values <%s>."
-    (:function-name params)
-    (format-expr problem)
-    (format-actual problem)))
+  {:message (format "The arguments: -> %s <- failed to conform to the function's argument predicate."
+              (format-arglist problem))
+   :tooltip (format "The arguments: <b>%s</b><br/>Failed to conform to the function's argument predicate."
+              (html-escape (format-arglist problem)))})
 
 (defmethod format-problem-mm :error/function-arguments-failed-spec
   [problem params]
-  (format "Function arguments <%s> failed spec <%s>."
-    (format-actual problem)
-    (format-expected problem)))
+  {:message (format "The varargs portion of the argument list (%s) does not conform to the expectation of %s."
+              (format-arglist problem)
+              (format-expected problem))
+   :tooltip (format "The varargs portion of the argument list is <b>%s</b><br/>It not conform to the expectation of <b>%s</b>."
+              (html-escape (format-arglist problem))
+              (html-escape (format-expected problem)))})
 
-(defmethod format-problem-mm :error/invalid-function-arguments
+(defmethod format-problem-mm :error/invalid-partially-applied-arguments
   [problem params]
-  (format "Invalid arguments <%s> to function <%s>."
-    (format-expr problem)
-    (:function params)))
+  {:message (format "The partial application of the arguments %s to function %s violates one or more of that functions expected argument types."
+              (format-expr problem)
+              (:function params))
+   :tooltip (format "The partial application of the arguments <b>%s</b> to <b>%s</b> violates one or more of that functions expected argument types."
+              (html-escape (format-expr problem))
+              (html-escape (:function params)))})
 
 (defmethod format-problem-mm :error/expected-seqable-collection
   [problem params]
@@ -103,17 +125,16 @@
 
 (defmethod format-problem-mm :error/invalid-function-arguments-count
   [problem params]
-  (format "inv args count %s"
-    (pr-str problem)))
+  (format "Incorrect arity"))
 
 (defmethod format-problem-mm :warning/if-condition-never-reaches-then-branch
   [problem params]
-  (format "If then branch potentially unreachable, condition <%s> was never sampled to be truthy."
+  (format "The then branch is potentially unreachable. The samples of expression %s never yielded a truthy value."
     (format-expr problem)))
 
 (defmethod format-problem-mm :warning/if-condition-never-reaches-else-branch
   [problem params]
-  (format "If else branch potentially unreachable, condition <%s> was never sampled to be falsey."
+  (format "The else branch is potentially unreachable. The samples of expression %s never yielded a false or nil value."
     (format-expr problem)))
 
 (defmethod format-problem-mm :warning/failed-to-find-keyword-in-hashmap-samples
@@ -123,7 +144,7 @@
 
 (defmethod format-problem-mm :warning/qualified-keyword-missing-spec
   [problem params]
-  (format "Fully qualified keyword <%s> has no spec. Possible typo?"
+  (format "The qualified keyword %s has no spec. Possible typo?"
     (format-expr problem)))
 
 (defmethod format-problem-mm :warning/get-in-might-never-succeed

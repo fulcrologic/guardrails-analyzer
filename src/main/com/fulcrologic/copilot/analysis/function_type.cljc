@@ -105,7 +105,7 @@
                          :actual              {::grp.art/failing-samples #{sample-rest-arguments}}
                          :expected            #::grp.art{:spec args-spec :type args-type}
                          :problem-type        :error/function-arguments-failed-spec}))))
-      (when (not @failed?)
+      (when (and (not @failed?) (seq argtypes))
         (doseq [sample-arguments (apply map vector (map get-samples argtypes))
                 argument-pred    argument-predicates]
           (when-not (apply argument-pred sample-arguments)
