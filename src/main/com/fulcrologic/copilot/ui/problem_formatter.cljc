@@ -17,14 +17,16 @@
 
 (defn format-problem [problem]
   (let [message (or (try (format-problem-mm problem (::grp.art/message-params problem))
-                      (catch #?(:clj Throwable :cljs :default) e
-                        (log/error e "Failed to create message for problem:" problem)
-                        nil))
+                         (catch #?(:clj Throwable :cljs :default) e
+                           (log/error e "Failed to create message for problem:" problem)
+                           nil))
                   (format "Failed to create message for problem-type: <%s>!"
-                    (::grp.art/problem-type problem)))]
+                    (::grp.art/problem-type problem)))
+        message (if (string? message) message (:message message))
+        tooltip (if (string? message) (html-escape message) (:tooltip message))]
     (-> problem
       (assoc ::grp.art/message message)
-      (assoc ::grp.art/tooltip (html-escape message)))))
+      (assoc ::grp.art/tooltip tooltip))))
 
 (defn format-problems [problems]
   ($/transform ($/walker ::grp.art/problem-type)
@@ -38,7 +40,7 @@
   (let [{::grp.art/keys [failing-samples]} actual]
     (case (count failing-samples)
       0 (do (log/error "Failed to get failing-samples from problem:" problem)
-          "???")
+            "???")
       1 (pr-str (first failing-samples))
       (str/join ", "
         (map pr-str failing-samples)))))
@@ -56,6 +58,13 @@
     (format-actual problem)
     (format-expected problem)))
 
+(defmethod format-problem-mm :error/bad-return-value
+  [problem params]
+  {:message "Invalid return type"
+   :tooltip (format "The <b>return value</b> of the function could be a value like: %s<br/>That is invalid for declared return spec: %s"
+              (html-escape (format-actual problem))
+              (html-escape (format-expected problem)))})
+
 (defmethod format-problem-mm :error/sample-generator-failed
   [problem params]
   (format "Failed to generate samples for <%s>."
@@ -63,7 +72,8 @@
 
 (defmethod format-problem-mm :error/function-argument-failed-spec
   [problem params]
-  (format "Function argument <%s> failed spec <%s>."
+  (format "The function argument: %s\ncould end up having the value: %s\nwhich is invalid for the argument's spec: %s"
+    (::grp.art/original-expression problem)
     (format-actual problem)
     (format-expected problem)))
 

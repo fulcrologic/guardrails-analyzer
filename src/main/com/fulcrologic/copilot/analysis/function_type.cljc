@@ -54,7 +54,7 @@
           {::grp.art/original-expression expr
            ::grp.art/actual              {::grp.art/failing-samples #{sample-failure}}
            ::grp.art/expected            #::grp.art{:spec return-spec :type return-type}
-           ::grp.art/problem-type        :error/value-failed-spec})))))
+           ::grp.art/problem-type        :error/bad-return-value})))))
 
 (>defn validate-argtypes!?
   [env {::grp.art/keys [arglist gspec]} argtypes]

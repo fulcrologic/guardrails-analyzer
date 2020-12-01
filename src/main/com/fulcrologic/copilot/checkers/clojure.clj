@@ -3,6 +3,7 @@
     [clojure.tools.namespace.repl :refer [refresh set-refresh-dirs refresh-dirs]]
     [com.fulcrologic.copilot.checker :as grp.checker]
     [com.fulcrologic.copilot.checkers.sente-client :as ws]
+    [com.fulcrologic.guardrails.core :refer [>defn =>]]
     [com.fulcrologic.guardrails.config :as gr.cfg]
     [com.fulcrologicpro.taoensso.timbre :as log]
     [clojure.tools.namespace.repl :as tools-ns])
@@ -107,6 +108,16 @@
   []
   (stop!)
   (tools-ns/refresh :after `start))
+
+(>defn f [x]
+  [int? => string?]
+  (+ x 1))
+
+(>defn g [x]
+  [int? => int?]
+  (let [a (f (+ x 1))
+        b (f a)]
+    a))
 
 (comment
   (reload!)
