@@ -45,3 +45,9 @@
    (update-problems! websockets viewer)
    (update-visible-bindings! websockets viewer)
    (wsp/push websockets cid :up-to-date {})))
+
+(defn report-error!
+  ([websockets error]
+   (let [viewers @subscribed-viewers]
+     (doseq [[cid _] viewers]
+       (wsp/push websockets cid :error error)))))

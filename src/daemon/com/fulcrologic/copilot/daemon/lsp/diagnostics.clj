@@ -4,7 +4,10 @@
     [com.fulcrologicpro.com.rpl.specter :as $]
     [com.fulcrologicpro.taoensso.timbre :as log])
   (:import
-    (org.eclipse.lsp4j Diagnostic DiagnosticSeverity Position PublishDiagnosticsParams Range)
+    (org.eclipse.lsp4j
+      Diagnostic DiagnosticSeverity
+      MessageParams MessageType
+      Position PublishDiagnosticsParams Range)
     (java.net URI)))
 
 (defonce clients (atom {}))
@@ -43,3 +46,10 @@
             [($/walker ::cp.art/problem-type)
              ($/pred (comp (partial = file) ::cp.art/file))]
             problems))))))
+
+(defn report-error! [error]
+  (doseq [[_ client] @clients]
+    (.showMessage client
+      (new MessageParams
+          MessageType/Error
+          error))))

@@ -1,10 +1,12 @@
 (ns com.fulcrologic.copilot.checkers.clojure
   (:require
+    [clojure.string :as str]
     [clojure.spec.alpha :as s]
-    [clojure.tools.namespace.repl :refer [refresh set-refresh-dirs]]
+    [clojure.tools.namespace.repl :as tools-ns :refer [refresh set-refresh-dirs]]
     [com.fulcrologic.copilot.checker :as cp.checker]
     [com.fulcrologic.copilot.checkers.sente-client :as ws]
-    [com.fulcrologic.guardrails.core :refer [>defn => |]]
+    [com.fulcrologic.copilot.generators :as cp.gen]
+    [com.fulcrologic.guardrails.core :refer [>defn >fdef => |]]
     [com.fulcrologic.guardrails.config :as gr.cfg]
     [com.fulcrologicpro.taoensso.timbre :as log])
   (:import
@@ -20,17 +22,31 @@
   (let [analysis (cp.checker/gather-analysis!)]
     (send-mutation! env 'daemon/report-analysis analysis)))
 
+(defn report-error! [env error]
+  (send-mutation! env 'daemon/report-error
+    {:error (str/join "\n"
+              [error (when-let [cause (.getCause error)]
+                       (str "Cause: " cause))
+               "See checker logs for more detailed information."])}))
+
 (defn check! [env {:as msg :keys [NS]}]
-  (require (symbol NS) :reload)
-  (cp.checker/check! msg (partial report-analysis! env)))
+  (when (try (require (symbol NS) :reload) true
+          (catch Exception e
+            (log/error e "Failed to reload:")
+            (report-error! env e)
+            false))
+    (cp.checker/check! msg (partial report-analysis! env))) )
 
 (defn refresh-and-check! [env msg]
   (cp.checker/prepare-check! msg (partial report-analysis! env))
-  (refresh :after 'com.fulcrologic.copilot.checker/run-prepared-check!))
+  (let [?err (refresh :after 'com.fulcrologic.copilot.checker/run-prepared-check!)]
+    (when (instance? Throwable ?err)
+      (log/error ?err "Failed to reload:")
+      (report-error! env ?err))))
 
 (defn ?find-port []
   (try (Integer/parseInt (slurp ".copilot/daemon.port"))
-       (catch FileNotFoundException _ nil)))
+    (catch FileNotFoundException _ nil)))
 
 (defn start
   "Start the checker.
@@ -67,7 +83,7 @@
                         (send-mutation! env 'daemon/register-checker
                           {:checker-type :clj})
                         (catch Exception e
-                          (log/error e "Cannot send message to register"))))
+                          (log/error e "Failed to register with daemon!"))))
         :on-message (fn [env [dispatch msg]]
                       (try
                         (binding [*ns* root-ns]
@@ -79,7 +95,8 @@
                               nil)
                             nil))
                         (catch Exception e
-                          (log/error e "Unexpected checker exception"))))}))))
+                          (log/error e "Unexpected exception!")
+                          (report-error! env e))))}))))
 
 (defn start!
   "Tools deps entry point. DOES NOT RETURN, but will exit if copilotd isn't started yet.

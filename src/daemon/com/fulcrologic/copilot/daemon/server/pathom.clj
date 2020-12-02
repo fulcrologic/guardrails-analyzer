@@ -15,6 +15,12 @@
   {::pc/output [:all-problems]}
   {:all-problems (problems/get!)})
 
+(pc/defmutation report-error [{:keys [websockets]} {:keys [error]}]
+  {::pc/sym 'daemon/report-error}
+  (cmgmt/report-error! websockets error)
+  (lsp.diag/report-error! error)
+  {})
+
 (pc/defmutation report-analysis [{:keys [websockets]} {:keys [bindings problems]}]
   {::pc/sym    'daemon/report-analysis
    ::pc/output [:result]}
@@ -47,7 +53,7 @@
   (daemon.check/check-root-form! websockets file line opts)
   {})
 
-(def all-resolvers [all-problems report-analysis
+(def all-resolvers [all-problems report-analysis report-error
                     subscribe register-checker
                     check-current-file check-root-form])
 
