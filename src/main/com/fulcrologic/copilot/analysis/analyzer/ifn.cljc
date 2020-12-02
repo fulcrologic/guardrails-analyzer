@@ -8,7 +8,7 @@
 (defn analyze:ifn-call!
   [env {:as td ifn ::cp.art/original-expression} args-td]
   {::cp.art/samples (set (map (partial apply ifn)
-                            (cp.sampler/random-samples-from-each env args-td)))})
+                           (cp.sampler/random-samples-from-each env args-td)))})
 
 (defmethod cp.ana.disp/analyze-mm :ifn/call [env [ifn & args :as sexpr]]
   (let [ifn-td (cp.ana.disp/-analyze! env ifn)

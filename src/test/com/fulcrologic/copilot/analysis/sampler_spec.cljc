@@ -211,7 +211,15 @@
       (cp.sampler/random-samples-from env
         {::cp.art/samples #{4 5 6}}
         (cp.ana.disp/unknown-expr env ::UNK))
-      =check=> (tc/subset?* #{4 5 6}))))
+      =check=> (tc/subset?* #{4 5 6})
+      "handles empty or nil samples"
+      (cp.sampler/random-samples-from env
+        {::cp.art/samples #{}})
+      => #{}
+      (cp.sampler/random-samples-from env
+        {})
+      => #{}
+      )))
 
 (specification "random-samples-from-each"
   (let [env (tf/test-env)]
@@ -222,4 +230,20 @@
       =check=> (_/every?*
                  (_/seq-matches?*
                    [(_/is?* number?)
-                    (_/is?* keyword?)])))))
+                    (_/is?* keyword?)]))
+      "handles unknown expressions"
+      (cp.sampler/random-samples-from-each env
+        [(cp.ana.disp/unknown-expr env ::UNK)])
+      => #{}
+      "handles empty or nil samples"
+      (cp.sampler/random-samples-from-each env
+        [{}])
+      => #{}
+      (cp.sampler/random-samples-from-each env
+        [{::cp.art/samples #{}}])
+      => #{}
+      ;; TODO: not sure is 100% correct
+      (cp.sampler/random-samples-from-each env
+        [{::cp.art/samples #{1 2 3}}
+         {::cp.art/samples #{}}])
+      => #{[1] [2] [3]})))

@@ -188,18 +188,21 @@
 
 (>defn random-samples-from [env & tds]
   [::cp.art/env (s/+ ::cp.art/type-description) => ::cp.art/samples]
-  (if-let [tds (seq (remove ::cp.art/unknown-expression tds))]
-    (->> tds
-      (map (comp gen/elements ::cp.art/samples))
-      (gen/one-of)
-      (cp.spec/sample env)
-      (into #{}))
-    #{}))
+  (into #{}
+    (some->> tds
+      (remove ::cp.art/unknown-expression)
+      (keep (fn [td]
+              (when-let [samples (seq (::cp.art/samples td))]
+                (gen/elements samples))))
+      (seq) (gen/one-of)
+      (cp.spec/sample env))))
 
 (defn random-samples-from-each [env tds]
-  (if (some ::cp.art/unknown-expression tds) #{}
-    (->> tds
-      (map (comp gen/elements ::cp.art/samples))
-      (apply gen/tuple)
-      (cp.spec/sample env)
-      set)))
+  (into #{}
+    (some->> tds
+      (remove ::cp.art/unknown-expression)
+      (keep (fn [td]
+              (when-let [samples (seq (::cp.art/samples td))]
+                (gen/elements samples))))
+      (seq) (apply gen/tuple)
+      (cp.spec/sample env))))
