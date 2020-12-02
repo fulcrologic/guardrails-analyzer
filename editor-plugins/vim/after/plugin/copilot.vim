@@ -13,7 +13,7 @@ function! s:FindProjectAddress(b)
 endfunction
 
 call ale#linter#Define('clojure', {
-      \   'name': 'guardrails',
+      \   'name': 'copilot',
       \   'lsp': 'socket',
       \   'address': function('s:FindProjectAddress'),
       \   'project_root': function('s:FindProjectRoot'),
