@@ -121,4 +121,7 @@
  {:date "2020-11-18" :description "chat with tony" :timespans [[1200 1230]]}
  {:date "2020-11-18" :description "update to develop" :timespans [[1430 1720]]}
  {:date "2020-11-19" :description "resolve all symbols" :timespans [[1400 1710]]}
+ {:date "2020-11-20" :description "fixes & chat" :timespans [[1100 1300]]}
+ {:date "2020-11-30" :description "git pull & fixes" :timespans [[1800 2000] [2215 2300]]}
+ {:date "2020-12-01" :description "bug & test fixes, chat, and stub-spec" :timespans [[1100 1130] [1230 1330] [1500 1600] [1650 1810]]}
  ]
