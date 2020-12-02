@@ -78,7 +78,6 @@
  {:date "2020-11-27" :description "pairing, added specs, etc" :timespans [[630 930] [1230 1500]]}
  {:date      "2020-11-28" :description "project rename, attempts to make it possible to work on checker while working on other project"
   :timespans [[1100 1430] [1620 1911]]}
- {:date      "2020-11-29" :description ""
-  :timespans [[1109 ]]}
-
+ {:date      "2020-11-30" :description "error msgs, various bug fixes, etc." :timespans [[1109 2000]]}
+ {:date      "2020-12-01" :description "design, business webapp" :timespans [[1130 1700]]}
  ]
