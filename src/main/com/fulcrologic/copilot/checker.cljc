@@ -6,6 +6,7 @@
     [com.fulcrologic.copilot.analysis.analyzer :as cp.ana]
     [com.fulcrologic.copilot.analysis.spec :as cp.spec]
     [com.fulcrologic.copilot.artifacts :as cp.art]
+    [com.fulcrologic.copilot.prepared-check :refer [prepared-check]]
     [com.fulcrologic.copilot.forms :as cp.forms]
     [com.fulcrologic.copilot.ui.binding-formatter :refer [format-bindings]]
     [com.fulcrologic.copilot.ui.problem-formatter :refer [format-problems]]
@@ -44,14 +45,12 @@
                   (on-done)))
        (cp.forms/interpret forms)))))
 
-(defonce to-check (atom nil))
-
 (defn prepare-check! [msg cb]
-  (reset! to-check [msg cb]))
+  (reset! prepared-check [msg cb]))
 
 (defn run-prepared-check! []
-  (apply check! @to-check)
-  (reset! to-check nil))
+  (apply check! @prepared-check)
+  (reset! prepared-check nil))
 
 (defn- transit-safe-problems [problems]
   ($/transform [$/ALL]
