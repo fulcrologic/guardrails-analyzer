@@ -56,6 +56,7 @@
     (regex? sexpr) :literal/regex
     (number? sexpr) :literal/number
     (keyword? sexpr) :literal/keyword
+    (boolean? sexpr) :literal/boolean
 
     (vector? sexpr) :collection/vector
     (set? sexpr) :collection/set

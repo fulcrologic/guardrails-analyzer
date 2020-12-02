@@ -41,3 +41,17 @@
                    (_/all*
                      (_/is?* vector?)
                      (tc/subset?* #{[:a 0] [:a 1] [:b 0] [:b 1]})))))))
+
+(specification "analyze if" :integration
+  (let [env (tf/test-env)]
+    (assertions
+      (cp.ana/analyze! env
+        `(if true :a :b))
+      =check=> (_/embeds?*
+                 {::cp.art/samples #{:a :b}})
+      (tf/capture-warnings cp.ana/analyze! env
+        `(if true :a :b))
+      =check=> (_/all*
+                 (tc/of-length?* 1)
+                 (_/seq-matches?*
+                   [(_/embeds?* {::cp.art/problem-type :warning/if-condition-never-reaches-else-branch})])))))

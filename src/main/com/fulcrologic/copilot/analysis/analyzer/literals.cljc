@@ -12,6 +12,7 @@
    ::regex         #::cp.art{:spec regex? :type "literal-regex"}
    ::number        #::cp.art{:spec number? :type "literal-number"}
    ::keyword       #::cp.art{:spec keyword? :type "literal-keyword"}
+   ::boolean       #::cp.art{:spec boolean :type "literal-boolean"}
    ::map           #::cp.art{:spec map? :type "literal-map"}
    ::vector        #::cp.art{:spec vector? :type "literal-vector"}
    ::set           #::cp.art{:spec set? :type "literal-set"}
@@ -29,6 +30,7 @@
 (defmethod cp.ana.disp/analyze-mm :literal/string [env sexpr] (literal-td env ::string sexpr))
 (defmethod cp.ana.disp/analyze-mm :literal/regex [env sexpr] (literal-td env ::regex sexpr))
 (defmethod cp.ana.disp/analyze-mm :literal/number [env sexpr] (literal-td env ::number sexpr))
+(defmethod cp.ana.disp/analyze-mm :literal/boolean [env sexpr] (literal-td env ::boolean sexpr))
 (defmethod cp.ana.disp/analyze-mm :literal/keyword [env sexpr]
   (when (and (qualified-keyword? sexpr)
           (not (cp.spec/lookup env sexpr)))
