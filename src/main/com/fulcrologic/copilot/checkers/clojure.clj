@@ -143,6 +143,24 @@
       2)
     a))
 
+(defprotocol DB
+  (q [this query]))
+
+(s/def :fake/db (cp.gen/stub-spec DB))
+
+(>fdef com.fulcrologic.copilot.checkers.clojure/q
+  [db query] [:fake/db vector? => any?])
+
+(>defn get-person-name [db id]
+  [:fake/db int? => string?]
+  (str db id "_name"))
+
+(>defn test-db [db]
+  [:fake/db => nil?]
+  (q :not-a-db [:stuff])
+  (q db :not-a-vec)
+  (get-person-name "NOT_A_DB" 1))
+
 (comment
   (reload!)
   (stop!)
