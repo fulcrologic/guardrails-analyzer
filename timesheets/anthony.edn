@@ -125,4 +125,5 @@
  {:date "2020-11-30" :description "git pull & fixes" :timespans [[1800 2000] [2215 2300]]}
  {:date "2020-12-01" :description "bug & test fixes, chat, and stub-spec" :timespans [[1100 1130] [1230 1330] [1500 1600] [1650 1810]]}
  {:date "2020-12-01" :description "bug fixes" :timespans [[1840 1910]]}
+ {:date "2020-12-02" :description "reporting checker errors" :timespans [[1245 1405]]}
  ]
