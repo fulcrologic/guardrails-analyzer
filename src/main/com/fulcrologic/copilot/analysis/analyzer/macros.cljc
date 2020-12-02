@@ -10,6 +10,8 @@
     [com.fulcrologic.guardrails.core :as gr]
     [com.fulcrologicpro.taoensso.timbre :as log]))
 
+(defmethod cp.ana.disp/analyze-mm 'comment  [env sexpr] {})
+
 (defn analyze-single-arity! [env defn-sym [arglist gspec & body]]
   (let [gspec  (cp.fnt/interpret-gspec env arglist gspec)
         env    (cp.fnt/bind-argument-types env arglist gspec)
