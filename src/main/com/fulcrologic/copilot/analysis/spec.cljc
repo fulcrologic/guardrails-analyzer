@@ -6,7 +6,10 @@
     [clojure.test.check.generators :as tc.gen]
     [clojure.test.check.random :as tc.random]
     [clojure.test.check.rose-tree :as tc.rose]
+    [clojure.tools.namespace.repl :as tools-ns]
     [com.fulcrologicpro.taoensso.timbre :as log]))
+
+(tools-ns/disable-reload!)
 
 (defn make-size-range-seq [max-size]
   (cycle (mapcat #(repeat 5 %) (range 0 max-size))))
