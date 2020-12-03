@@ -77,7 +77,6 @@
       (onOpen [_hs]
         (log/info "Opened connection to " uri))
       (onError [e]
-        ;(log/error e "error:")
         (when on-error
           (on-error (assoc env ::client this) e)))
       (onClose [code reason remote-caused?]
@@ -87,17 +86,18 @@
            (on-disconnect (assoc env ::client this) code reason remote-caused?))
           (catch Exception e
             (log/error e "onClose")))
-        (let [client this]
-          (future
-            (loop []
-              (if (= @active-client client)
-                (do
-                  (Thread/sleep 2000)
-                  (log/info "Attempting to reconnect...")
-                  (if (reconnect! client)
-                    (log/info "Reconnected.")
-                    (recur)))
-                (log/info "Client closed because it was shut down."))))))
+        (when (pos? code)
+          (let [client this]
+            (future
+              (loop []
+                (if (= @active-client client)
+                  (do
+                    (Thread/sleep 2000)
+                    (log/info "Attempting to reconnect...")
+                    (if (reconnect! client)
+                      (log/info "Reconnected.")
+                      (recur)))
+                  (log/info "Client closed because it was shut down.")))))))
       (onMessage [m]
         (let [message (subs m 1)]
           (try
