@@ -40,7 +40,7 @@
                 (bind-type-desc env argument-type argument-spec
                   {::cp.art/original-expression arglist}))))
       env
-      (map vector arglist argument-types argument-specs))))
+      (map vector (remove #{'&} arglist) argument-types argument-specs))))
 
 (>defn check-return-type!
   [env {::cp.art/keys [return-type return-spec]} {::cp.art/keys [samples]} expr loc]
