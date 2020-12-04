@@ -126,4 +126,6 @@
  {:date "2020-12-01" :description "bug & test fixes, chat, and stub-spec" :timespans [[1100 1130] [1230 1330] [1500 1600] [1650 1810]]}
  {:date "2020-12-01" :description "bug fixes" :timespans [[1840 1910]]}
  {:date "2020-12-02" :description "reporting checker errors" :timespans [[1245 1405]]}
+ {:date "2020-12-02" :description "prototype check-project command" :timespans [[1540 1810]]}
+ {:date "2020-12-03" :description "bug fixes" :timespans [[1330 1415] [1815 1935]]}
  ]
