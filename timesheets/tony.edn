@@ -80,4 +80,10 @@
   :timespans [[1100 1430] [1620 1911]]}
  {:date      "2020-11-30" :description "error msgs, various bug fixes, etc." :timespans [[1109 2000]]}
  {:date      "2020-12-01" :description "design, business webapp" :timespans [[1130 1700]]}
+ {:date      "2020-12-02" :description "check-in" :timespans [[1200 1220]]}
+ {:date      "2020-12-03" :description "check-in" :timespans [[1200 1220]]}
+ {:date      "2020-12-04" :description "check-in, help with tests" :timespans [[1200 1220] [1730 1800]]}
+ {:date      "2020-12-05" :description "business webapp" :timespans [[900 1145]
+                                                                     [1200 1220]
+                                                                     ]}
  ]
