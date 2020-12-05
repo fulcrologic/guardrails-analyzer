@@ -9,7 +9,7 @@
              :test-paths   ["src/test"]
              :focus-meta   [:integration]
              :skip-meta    [:unit]
-             :source-paths ["src/main"]}]
+             :source-paths ["src/main" "src/test_cases"]}]
  ;:reporter [kaocha.report/documentation]
  :reporter [fulcro-spec.reporters.terminal/fulcro-report]
  :plugins  []
