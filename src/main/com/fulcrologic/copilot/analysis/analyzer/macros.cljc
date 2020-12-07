@@ -10,14 +10,13 @@
     [com.fulcrologic.guardrails.core :as gr]
     [com.fulcrologicpro.taoensso.timbre :as log]))
 
-(defmethod cp.ana.disp/analyze-mm 'comment  [env sexpr] {})
+(defmethod cp.ana.disp/analyze-mm 'comment [env sexpr] {})
 
 (defn analyze-single-arity! [env defn-sym [arglist gspec & body]]
   (let [gspec  (cp.fnt/interpret-gspec env arglist gspec)
         env    (cp.fnt/bind-argument-types env arglist gspec)
         result (cp.ana.disp/analyze-statements! env body)]
-    (cp.fnt/check-return-type! env gspec result
-      (last body) (meta defn-sym))))
+    (cp.fnt/check-return-type! env gspec result (meta defn-sym))))
 
 (defn analyze:>defn! [env [_ defn-sym & defn-forms :as sexpr]]
   (let [env (assoc env ::cp.art/checking-sym defn-sym)
@@ -28,9 +27,9 @@
         (analyze-single-arity! env defn-sym arity))))
   {})
 
-(defmethod cp.ana.disp/analyze-mm '>defn  [env sexpr] (analyze:>defn! env sexpr))
+(defmethod cp.ana.disp/analyze-mm '>defn     [env sexpr] (analyze:>defn! env sexpr))
 (defmethod cp.ana.disp/analyze-mm `gr/>defn  [env sexpr] (analyze:>defn! env sexpr))
-(defmethod cp.ana.disp/analyze-mm '>defn-  [env sexpr] (analyze:>defn! env sexpr))
+(defmethod cp.ana.disp/analyze-mm '>defn-    [env sexpr] (analyze:>defn! env sexpr))
 (defmethod cp.ana.disp/analyze-mm `gr/>defn- [env sexpr] (analyze:>defn! env sexpr))
 
 (defmethod cp.ana.disp/analyze-mm 'clojure.core/do [env [_ & body]]
@@ -47,9 +46,6 @@
   (cp.ana.disp/analyze-statements!
     (analyze-let-bindings! env bindings)
     body))
-
-(defmethod cp.ana.disp/analyze-mm 'let [env sexpr]
-  (analyze-let-like-form! env sexpr))
 
 (defmethod cp.ana.disp/analyze-mm 'clojure.core/let [env sexpr]
   (analyze-let-like-form! env sexpr))
@@ -201,18 +197,19 @@
 
 (defn analyze-for-bindings! [env bindings]
   (reduce (fn [env [bind-sexpr sexpr]]
-            (case bind-sexpr
-              :let (analyze-let-bindings! env sexpr)
-              (:when :while) env
-              (reduce-kv cp.art/remember-local
-                env (cp.destr/destructure! env bind-sexpr
-                      (let [td (cp.ana.disp/-analyze! env sexpr)]
-                        (if-not (every? seqable? (::cp.art/samples td))
-                          (do (cp.art/record-error! env sexpr
-                                :error/expected-seqable-collection)
-                            {})
-                          (update td ::cp.art/samples
-                            (comp set (partial mapcat identity)))))))))
+            (let [bind-sexpr (cp.art/unwrap-meta bind-sexpr)]
+              (case bind-sexpr
+                :let (analyze-let-bindings! env sexpr)
+                (:when :while) env
+                (reduce-kv cp.art/remember-local
+                  env (cp.destr/destructure! env bind-sexpr
+                        (let [td (cp.ana.disp/-analyze! env sexpr)]
+                          (if-not (every? seqable? (::cp.art/samples td))
+                            (do (cp.art/record-error! env sexpr
+                                  :error/expected-seqable-collection)
+                              {})
+                            (update td ::cp.art/samples
+                              (comp set (partial mapcat identity))))))))))
     env (partition 2 bindings)))
 
 (defn analyze-for-loop! [env bindings body]

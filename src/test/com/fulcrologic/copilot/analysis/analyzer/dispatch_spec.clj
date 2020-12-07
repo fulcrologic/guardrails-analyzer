@@ -13,7 +13,7 @@
 
 (specification "analyze-dispatch"
   (when-mocking
-    (cp.art/function-detail _ sym) => (case sym (local.defn when-let) true false)
+    (cp.art/function-detail _ sym) => (case sym (local.defn) true false)
     (cp.art/external-function-detail _ sym) => (case sym ext.fn true false)
     (cp.art/symbol-detail _ sym) => (case sym (local.sym if-let) true false)
     (cp.art/qualify-extern _ sym) => (case sym when-not 'clojure.core/when-not
@@ -27,7 +27,7 @@
         (disp '(custom :a)) => 'custom
         (disp '(if true :a :b)) => 'clojure.core/if
         (disp '(if-let [a 1] :a :b)) => :symbol.local/lookup
-        (disp '(when-let [a 1] :a :b)) => :function/call
+        (disp '(when-let [a 1] :a :b)) => 'clojure.core/when-let
         (disp '(when-not false :a)) => 'clojure.core/when-not
         (disp '(nsed/custom :a)) => 'nsed/custom
         (disp '(analyzer-spec/custom :a)) => 'cljc-analyzer-spec/custom

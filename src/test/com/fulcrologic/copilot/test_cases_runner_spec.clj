@@ -8,6 +8,3 @@
     (tcr/parse-test-cases ";assert: a") => [:a]
     (tcr/parse-test-cases "; assert: a,b") => [:a :b]
     (tcr/parse-test-cases "; assert: a, b") => [:a :b]))
-
-(specification "test cases:"
-  (tcr/check-test-cases!))

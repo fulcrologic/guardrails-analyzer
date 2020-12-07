@@ -2,8 +2,13 @@
   (:require
     [com.fulcrologic.guardrails.core :as gr :refer [>defn => ?]]
     [com.fulcrologic.copilot.artifacts :as cp.art]
-    [com.fulcrologic.copilot.analysis.analyzer.dispatch :as cp.ana.disp :refer [regex?]]
-    [com.fulcrologic.copilot.analysis.spec :as cp.spec]))
+    [com.fulcrologic.copilot.analysis.analyzer.dispatch :as cp.ana.disp]
+    [com.fulcrologic.copilot.analysis.spec :as cp.spec])
+  #?(:clj (:import (java.util.regex Pattern))))
+
+(defn regex? [x]
+  #?(:clj  (= (type x) Pattern)
+     :cljs (regexp? x)))
 
 (def kind->td
   {::nil           #::cp.art{:spec nil? :type "literal-nil"}
@@ -25,17 +30,17 @@
     ::cp.art/samples #{sexpr}
     ::cp.art/original-expression sexpr))
 
-(defmethod cp.ana.disp/analyze-mm :literal/nil [env sexpr] (literal-td env ::nil sexpr))
-(defmethod cp.ana.disp/analyze-mm :literal/char [env sexpr] (literal-td env ::char sexpr))
-(defmethod cp.ana.disp/analyze-mm :literal/string [env sexpr] (literal-td env ::string sexpr))
-(defmethod cp.ana.disp/analyze-mm :literal/regex [env sexpr] (literal-td env ::regex sexpr))
-(defmethod cp.ana.disp/analyze-mm :literal/number [env sexpr] (literal-td env ::number sexpr))
-(defmethod cp.ana.disp/analyze-mm :literal/boolean [env sexpr] (literal-td env ::boolean sexpr))
-(defmethod cp.ana.disp/analyze-mm :literal/keyword [env sexpr]
-  (when (and (qualified-keyword? sexpr)
-          (not (cp.spec/lookup env sexpr)))
-    (cp.art/record-warning! env sexpr :warning/qualified-keyword-missing-spec))
-  (literal-td env ::keyword sexpr))
+(defmethod cp.ana.disp/analyze-mm :literal/wrapped
+  [env {:keys [kind value metadata]}]
+  (when (and (qualified-keyword? value)
+          (not (cp.spec/lookup env value)))
+    (-> env
+      (cp.art/update-location metadata)
+      (cp.art/record-warning! value :warning/qualified-keyword-missing-spec)))
+  (let [lit-kind (if-not (namespace kind)
+                   (keyword (namespace ::_) (name kind))
+                   kind)]
+    (literal-td env lit-kind value)))
 
 (defmethod cp.ana.disp/analyze-mm 'clojure.core/quote [env [_ sexpr]]
   (if (symbol? sexpr)
@@ -66,17 +71,20 @@
         (set valid-samples)))))
 
 (defn analyze-hashmap-entry
-  [env acc k v]
-  (when (and (qualified-keyword? k) (nil? (cp.spec/lookup env k)))
-    (cp.art/record-warning! env k :warning/qualified-keyword-missing-spec))
-  (let [sample-value (let [{::cp.art/keys [samples]} (cp.ana.disp/-analyze! env v)]
-                       (validate-samples! env k v samples)
-                       (if (seq samples)
-                         (rand-nth (vec samples))
-                         (do
-                           (cp.art/record-warning! env v :warning/missing-samples)
-                           ::cp.art/unknown)))]
-    (assoc acc k sample-value)))
+  [env acc map-key v]
+  (let [{:as kk ::cp.art/keys [samples]} (cp.ana.disp/-analyze! env map-key)]
+    (assert (and (first samples) (not (next samples))) "WIP: NOT IMPLEMENTED YET")
+    (let [k (first samples)]
+      (when (and (qualified-keyword? k) (nil? (cp.spec/lookup env k)))
+        (cp.art/record-warning! env k :warning/qualified-keyword-missing-spec))
+      (let [sample-value (let [{::cp.art/keys [samples]} (cp.ana.disp/-analyze! env v)]
+                           (validate-samples! env k v samples)
+                           (if (seq samples)
+                             (rand-nth (vec samples))
+                             (do
+                               (cp.art/record-warning! env v :warning/missing-samples)
+                               ::cp.art/unknown)))]
+        (assoc acc k sample-value)))))
 
 (>defn analyze-hashmap! [env hashmap]
   [::cp.art/env map? => ::cp.art/type-description]

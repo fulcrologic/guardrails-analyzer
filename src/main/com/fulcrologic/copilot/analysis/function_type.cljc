@@ -43,15 +43,15 @@
       (map vector (remove #{'&} arglist) argument-types argument-specs))))
 
 (>defn check-return-type!
-  [env {::cp.art/keys [return-type return-spec]} {::cp.art/keys [samples]} expr loc]
-  [::cp.art/env ::cp.art/gspec ::cp.art/type-description ::cp.art/original-expression (? map?) => any?]
+  [env {::cp.art/keys [return-type return-spec]} {::cp.art/keys [samples original-expression]} loc]
+  [::cp.art/env ::cp.art/gspec ::cp.art/type-description (? map?) => any?]
   (let [sample-failure (some #(when-not (cp.spec/valid? env return-spec %)
                                 {:failing-case %})
                          samples)]
     (when (contains? sample-failure :failing-case)
       (let [sample-failure (:failing-case sample-failure)]
         (cp.art/record-error! (cp.art/update-location env loc)
-          {::cp.art/original-expression expr
+          {::cp.art/original-expression original-expression
            ::cp.art/actual              {::cp.art/failing-samples #{sample-failure}}
            ::cp.art/expected            #::cp.art{:spec return-spec :type return-type}
            ::cp.art/problem-type        :error/bad-return-value})))))

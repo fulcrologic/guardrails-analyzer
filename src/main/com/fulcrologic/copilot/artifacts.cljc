@@ -22,6 +22,11 @@
   (symbol (cljc-rewrite-sym-ns-mm (namespace sym))
     (name sym)))
 
+;; ========== HELPERS ============
+
+(defn unwrap-meta [x]
+  ($/transform [($/walker :com.fulcrologic.copilot/meta-wrapper?)] :value x))
+
 ;; ========== ARTIFACTS ==========
 
 (def posint?
@@ -224,7 +229,10 @@
   (let [sym (if (qualified-symbol? sym)
               (cljc-rewrite-sym-ns sym)
               (qualify-extern env sym))]
-    (get-in env [::external-function-registry sym])))
+    (get-in env [::external-function-registry sym]
+      (when-not (namespace sym)
+        (external-function-detail env
+          (symbol "clojure.core" (name sym)))))))
 
 (>defn symbol-detail [env sym]
   [::env symbol? => (? ::type-description)]

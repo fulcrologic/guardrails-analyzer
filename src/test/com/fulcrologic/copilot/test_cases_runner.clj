@@ -6,10 +6,10 @@
     [clojure.test :as t]
     [com.fulcrologic.copilot.artifacts :as cp.art]
     [com.fulcrologic.copilot.checker :as cp.checker]
-    [com.fulcrologic.copilot.daemon.reader :as reader]
+    [com.fulcrologic.copilot.daemon.reader :as daemon.reader]
     [com.fulcrologicpro.taoensso.encore :as enc]))
 
-(defn get-test-cases []
+(defn get-test-case-files []
   (->> (io/file "src/test_cases")
     (file-seq)
     (filter #(.isFile %))))
@@ -30,12 +30,13 @@
   (set/subset? (set expected) (set actual)))
 
 (defn read-test-case [file]
-  (let [msg (reader/read-file file {:checker-type :test-case})]
-    (-> msg
-      (assoc :file-length (count (line-seq (io/reader file))))
-      (assoc :file (str file))
-      (assoc :tests (last (:forms msg)))
-      (update :forms drop-last))))
+  (let [msg (daemon.reader/read-file file {:checker-type :test-case})]
+    (when (get (meta (second (:ns-decl msg))) :test-case? true)
+      (-> msg
+        (assoc :file-length (count (line-seq (io/reader file))))
+        (assoc :file (str file))
+        (assoc :tests (cp.art/unwrap-meta (last (:forms msg))))
+        (update :forms drop-last)))))
 
 (defn check-test-case! [{:keys [message expected]} p]
   (t/testing message
@@ -47,10 +48,10 @@
 
 (defn check-test-cases! []
   (t/is (= true true))
-  (cp.art/clear-problems!)
-  (doseq [tc-file (get-test-cases)]
+  (doseq [tc-file (get-test-case-files)]
     (t/testing (str "TESTING TEST CASE FILE: " tc-file "\n")
-      (let [{:as msg :keys [NS tests file-length]} (read-test-case tc-file)]
+      (when-let [{:as msg :keys [NS tests file-length]} (read-test-case tc-file)]
+        (cp.art/clear-problems!)
         (require (symbol NS) :reload)
         (cp.checker/check! msg
           (fn []

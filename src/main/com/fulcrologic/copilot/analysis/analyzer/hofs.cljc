@@ -16,7 +16,7 @@
   (let [gspec  (cp.fnt/interpret-gspec env arglist gspec)
         env    (cp.fnt/bind-argument-types env arglist gspec)
         result (cp.ana.disp/analyze-statements! env body)]
-    (cp.fnt/check-return-type! env gspec result (last body) (meta (last body)))))
+    (cp.fnt/check-return-type! env gspec result (meta (last body)))))
 
 (defn location-of-lambda [lambda]
   ((juxt :line :column) (meta (first lambda))))

@@ -7,7 +7,8 @@
 
 (defn analyze:ifn-call!
   [env {:as td ifn ::cp.art/original-expression} args-td]
-  {::cp.art/samples (set (map (partial apply ifn)
+  ;; NOTE: unsure about using original-expression... and unwrap-meta is a temporary fix
+  {::cp.art/samples (set (map (partial apply (cp.art/unwrap-meta ifn))
                            (cp.sampler/random-samples-from-each env args-td)))})
 
 (defmethod cp.ana.disp/analyze-mm :ifn/call [env [ifn & args :as sexpr]]
@@ -18,7 +19,7 @@
         (::lit/quoted-symbol ::lit/keyword ::lit/map ::lit/set)
         (analyze:ifn-call! env ifn-td args-td)
         #_:else
-        (cp.ana.disp/unknown-expr env sexpr))
+        (cp.ana.disp/unknown-expr env (::cp.art/original-expression ifn-td)))
       (analyze:ifn-call! env ifn-td args-td))))
 
 (defmethod cp.ana.disp/analyze-mm :ifn/literal [env sexpr]

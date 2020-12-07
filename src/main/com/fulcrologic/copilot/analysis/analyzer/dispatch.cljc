@@ -1,15 +1,11 @@
 (ns com.fulcrologic.copilot.analysis.analyzer.dispatch
   (:require
-    [com.fulcrologic.guardrails.core :as gr :refer [>defn =>]]
     [com.fulcrologic.copilot.analytics :as cp.analytics]
-    [com.fulcrologic.copilot.artifacts :as cp.art])
-  #?(:clj (:import (java.util.regex Pattern))))
+    [com.fulcrologic.copilot.artifacts :as cp.art]
+    [com.fulcrologic.guardrails.core :as gr :refer [>defn =>]]
+    [com.fulcrologicpro.taoensso.timbre :as log]))
 
 (declare analyze-mm)
-
-(defn regex? [x]
-  #?(:clj  (= (type x) Pattern)
-     :cljs (regexp? x)))
 
 (defn quoted-symbol? [x]
   (and (seq? x) (seq x)
@@ -23,7 +19,9 @@
 
 (defn list-dispatch [env [head :as _sexpr]]
   (letfn [(symbol-dispatch [sym]
-            (let [cljc-symbol (qualify-symbol env sym)]
+            (let [cljc-symbol (qualify-symbol env sym)
+                  core-symbol (when-not (namespace sym)
+                                (symbol "clojure.core" (name sym)))]
               (cond
                 ;; NOTE: a local symbol resolves first
                 (cp.art/symbol-detail env sym)
@@ -31,6 +29,8 @@
                 ;; NOTE: analyze methods resolve before any >defn / >ftag definitions
                 (get (methods analyze-mm) cljc-symbol)
                 #_=> cljc-symbol
+                (when core-symbol (get (methods analyze-mm) core-symbol))
+                #_=> core-symbol
                 ;; NOTE: >defn resolves before >ftag
                 (cp.art/function-detail env sym)
                 #_=> :function/call
@@ -50,13 +50,7 @@
     (seq? sexpr) (list-dispatch env sexpr)
     (symbol? sexpr) :symbol/lookup
 
-    (nil? sexpr) :literal/nil
-    (char? sexpr) :literal/char
-    (string? sexpr) :literal/string
-    (regex? sexpr) :literal/regex
-    (number? sexpr) :literal/number
-    (keyword? sexpr) :literal/keyword
-    (boolean? sexpr) :literal/boolean
+    (and (map? sexpr) (:com.fulcrologic.copilot/meta-wrapper? sexpr)) :literal/wrapped
 
     (vector? sexpr) :collection/vector
     (set? sexpr) :collection/set

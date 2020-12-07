@@ -1,7 +1,4 @@
-(ns com.fulcrologic.copilot.prepared-check
-  (:require
-    [clojure.tools.namespace.repl :as tools-ns]))
-
-(tools-ns/disable-reload!)
+(ns ^{:clojure.tools.namespace.repl/load false}
+  com.fulcrologic.copilot.prepared-check)
 
 (defonce prepared-check (atom nil))

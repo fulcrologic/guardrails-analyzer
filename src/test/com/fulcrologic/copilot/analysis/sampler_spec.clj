@@ -127,30 +127,30 @@
         (cp.sampler/propagate-samples! env nil
           {:return-sample-fn (constantly ::test-sample)})
         => ::test-sample))
-    #?(:clj (component "pure"
-              (let [test-fn-type {::cp.art/fn-ref +
-                                  ::cp.art/arities
-                                                   {:n {::cp.art/arglist '[& nums]
-                                                        ::cp.art/gspec
-                                                                          {::cp.art/return-spec number?
-                                                                           ::cp.art/return-type "number?"}}}}]
-                (assertions
-                  (cp.sampler/propagate-samples! env ::cp.sampler/pure
-                    {:fn-ref   str :args ["pure" \: "test"]
-                     :argtypes [{} {} {}]})
-                  => "pure:test"
-                  (cp.sampler/propagate-samples! env ::cp.sampler/pure
-                    {:fn-ref   apply :args [+ [1/3 1/5 1/7]]
-                     :argtypes [test-fn-type {}]})
-                  =check=> (_/all* (_/is?* number?)
-                             (_/is?* #(not= 71/105 %)))
-                  (cp.sampler/propagate-samples! env ::cp.sampler/pure
-                    {:fn-ref   apply :args [+ [1/3 1/5 1/7]]
-                     :argtypes [(assoc-in test-fn-type
-                                  [::cp.art/arities :n ::cp.art/gspec ::cp.art/sampler]
-                                  ::cp.sampler/pure)
-                                {}]})
-                  => 71/105))))
+    (component "pure"
+      (let [test-fn-type {::cp.art/fn-ref +
+                          ::cp.art/arities
+                          {:n {::cp.art/arglist '[& nums]
+                               ::cp.art/gspec
+                               {::cp.art/return-spec number?
+                                ::cp.art/return-type "number?"}}}}]
+        (assertions
+          (cp.sampler/propagate-samples! env ::cp.sampler/pure
+            {:fn-ref   str :args ["pure" \: "test"]
+             :argtypes [{} {} {}]})
+          => "pure:test"
+          (cp.sampler/propagate-samples! env ::cp.sampler/pure
+            {:fn-ref   apply :args [+ [1/3 1/5 1/7]]
+             :argtypes [test-fn-type {}]})
+          =check=> (_/all* (_/is?* number?)
+                     (_/is?* #(not= 71/105 %)))
+          (cp.sampler/propagate-samples! env ::cp.sampler/pure
+            {:fn-ref   apply :args [+ [1/3 1/5 1/7]]
+             :argtypes [(assoc-in test-fn-type
+                          [::cp.art/arities :n ::cp.art/gspec ::cp.art/sampler]
+                          ::cp.sampler/pure)
+                        {}]})
+          => 71/105)))
     (component "merge-arg"
       (assertions
         (cp.sampler/propagate-samples! env [::cp.sampler/merge-arg 1]

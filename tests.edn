@@ -9,9 +9,13 @@
              :test-paths   ["src/test"]
              :focus-meta   [:integration]
              :skip-meta    [:unit]
-             :source-paths ["src/main" "src/test_cases"]}]
- ;:reporter [kaocha.report/documentation]
- :reporter [fulcro-spec.reporters.terminal/fulcro-report]
+             :source-paths ["src/main"]}
+            {:id           :test-case
+             :ns-patterns  [".*"]
+             :test-paths   ["src/test_cases"]
+             :source-paths ["src/main" "src/test"]}]
+ :reporter [kaocha.report/documentation]
+ ;:reporter [fulcro-spec.reporters.terminal/fulcro-report]
  :plugins  []
  :kaocha.plugin.capture-output/capture-output? false
  :bindings {kaocha.stacktrace/*stacktrace-filters*

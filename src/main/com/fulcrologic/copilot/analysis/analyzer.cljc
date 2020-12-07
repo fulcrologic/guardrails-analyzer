@@ -2,7 +2,6 @@
   (:require
     [com.fulcrologic.copilot.analysis.analyzer.dispatch :as cp.disp]
     [com.fulcrologic.copilot.analysis.analyzer.literals]
-    [com.fulcrologic.copilot.analysis.analyzer.functions]
     [com.fulcrologic.copilot.analysis.analyzer.macros]
     [com.fulcrologic.copilot.analysis.analyzer.hofs]
     [com.fulcrologic.copilot.analysis.function-type :as cp.fnt]
