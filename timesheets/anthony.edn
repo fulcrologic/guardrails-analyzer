@@ -128,4 +128,7 @@
  {:date "2020-12-02" :description "reporting checker errors" :timespans [[1245 1405]]}
  {:date "2020-12-02" :description "prototype check-project command" :timespans [[1540 1810]]}
  {:date "2020-12-03" :description "bug fixes" :timespans [[1330 1415] [1815 1935]]}
+ {:date "2020-12-04" :description "test case runner" :timespans [[1200 1350] [1455 1545] [1620 1910] [2015 2030]]}
+ {:date "2020-12-05" :description "test case runner & pair with tony" :timespans [[1300 1530] [1600 1835]]}
+ {:date "2020-12-07" :description "test case runner" :timespans [[1020 1440]]}
  ]
