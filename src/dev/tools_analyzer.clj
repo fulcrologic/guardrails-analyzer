@@ -1,7 +1,7 @@
 (ns tools-analyzer
   (:require
     [clojure.pprint :refer [pprint]]
-    [com.fulcrologic.copilot.daemon.reader :as drdr]
+    [com.fulcrologic.copilot.reader :as drdr]
     [clojure.tools.reader.reader-types :as readers]
     [clojure.tools.analyzer :as ana]
     [clojure.tools.analyzer.env :as env])

@@ -13,7 +13,9 @@
             {:id           :test-case
              :ns-patterns  [".*"]
              :test-paths   ["src/test_cases"]
-             :source-paths ["src/main" "src/test"]}]
+             :source-paths ["src/main" "src/test"]
+             :focus-meta   [:test-case]
+             :skip-meta    [:unit :integration]}]
  :reporter [kaocha.report/documentation]
  ;:reporter [fulcro-spec.reporters.terminal/fulcro-report]
  :plugins  []
