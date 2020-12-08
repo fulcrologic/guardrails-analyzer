@@ -11,7 +11,7 @@
              :skip-meta    [:unit]
              :source-paths ["src/main"]}
             {:id           :test-case
-             :ns-patterns  [".*"]
+             :ns-patterns  ["^test-cases"]
              :test-paths   ["src/test_cases"]
              :source-paths ["src/main" "src/test"]
              :focus-meta   [:test-case]

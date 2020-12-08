@@ -78,7 +78,10 @@
 (defn analyze-statements! [env body]
   (doseq [expr (butlast body)]
     (-analyze! env expr))
-  (-analyze! env (last body)))
+  ;; TODO maybe warn user if there is no body
+  (if-not (last body)
+    {::cp.art/samples #{nil}}
+    (-analyze! env (last body))))
 
 (defn unknown-expr [env sexpr]
   (cp.art/record-info! env sexpr :info/failed-to-analyze-unknown-expression)

@@ -6,7 +6,9 @@
     [com.fulcrologic.copilot.artifacts :as cp.art]
     [com.fulcrologic.copilot.checker :as cp.checker]
     [com.fulcrologic.copilot.reader :as cp.reader]
-    [com.fulcrologicpro.taoensso.encore :as enc]))
+    [com.fulcrologicpro.taoensso.encore :as enc]
+    [fulcro-spec.check :as _]
+    [fulcro-spec.core :refer [specification]]))
 
 (defn get-test-case-files [dir]
   (->> (io/file dir)
@@ -31,12 +33,12 @@
       (map inc (range))
       (line-seq (io/reader file)))))
 
-(defn read-test-case [file]
+(defn read-test-case [file tests]
   (let [file-info (cp.reader/read-file file {:checker-type :test-case})]
     (-> file-info
       (assoc :file-length (count (line-seq (io/reader file))))
       (assoc :file (str file))
-      (assoc :tests (cp.art/unwrap-meta (last (:forms file-info))))
+      (assoc :tests tests)
       (update :forms drop-last))))
 
 (defn subset-of? [expected actual]
@@ -44,11 +46,23 @@
 
 (defn check-test-case! [{:keys [message expected]} x]
   (t/testing (str "TEST CASE: " message)
-    (when-not (subset-of? expected x)
+    (cond
+      (nil? expected) nil
+      (map? expected)
+      (when-not (subset-of? expected x)
+        (t/do-report
+          {:type :fail
+           :actual x
+           :expected expected}))
+      (_/checker? expected)
+      (doseq [f ((_/all* expected) x)]
+        (t/do-report
+          (merge {:type :fail} f)))
+      :else
       (t/do-report
-        {:type :fail
-         :actual x
-         :expected expected}))))
+        {:type :error
+         :actual expected
+         :expected `(some-fn map? _/checker?)}))))
 
 (defn zip-fully [& colls]
   (take-while #(some some? %)
@@ -94,7 +108,7 @@
                     :actual non-existant-test-cases
                     :expected (set (keys tests))
                     :message (str "Found test cases that do not exist in <" tc-file "> !")}))
-    (doseq [[_line {:as tp :keys [problem-cases binding-cases problems bindings]}]
+    (doseq [[_line {:keys [problem-cases binding-cases problems bindings]}]
             (sort-by key (test-plan tc-info test-cases))]
       (if (and (empty? problem-cases) (empty? problems)) nil
         (doseq [[c p] (zip-fully problem-cases problems)]
@@ -123,15 +137,17 @@
                     :actual (into {} (map #(vector % (get tests %)) unused-test-cases))
                     :message (str "Found unused test cases in <" tc-file "> !")}))))
 
+(defn test-file! [tc-file tests]
+  (t/is (= true true))
+  (let [tc-info (read-test-case tc-file tests)]
+    (cp.art/clear-problems!)
+    (cp.art/clear-bindings!)
+    (require (symbol (:NS tc-info)) :reload)
+    (cp.checker/check! tc-info
+      (partial run-test-cases! tc-file tc-info))))
+
 ;; LANDMARK: PUBLIC API BELOW
 
-(defn check-test-cases! [{:keys [dir]}]
-  (t/is (= true true))
-  (doseq [tc-file (get-test-case-files dir)]
-    (t/testing (str "TESTING: " tc-file "\n")
-      (when-let [tc-info (read-test-case tc-file)]
-        (cp.art/clear-problems!)
-        (cp.art/clear-bindings!)
-        (require (symbol (:NS tc-info)) :reload)
-        (cp.checker/check! tc-info
-          (partial run-test-cases! tc-file tc-info))))))
+(defmacro deftc [tests]
+  `(specification ~(str "running assertions for: " *file*) :test-case
+     (test-file! (io/resource ~*file*) ~tests)))
