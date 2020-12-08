@@ -16,8 +16,8 @@
              :source-paths ["src/main" "src/test"]
              :focus-meta   [:test-case]
              :skip-meta    [:unit :integration]}]
- :reporter [kaocha.report/documentation]
- ;:reporter [fulcro-spec.reporters.terminal/fulcro-report]
+ ;:reporter [kaocha.report/documentation]
+ :reporter [fulcro-spec.reporters.terminal/fulcro-report]
  :plugins  []
  :kaocha.plugin.capture-output/capture-output? false
  :bindings {kaocha.stacktrace/*stacktrace-filters*

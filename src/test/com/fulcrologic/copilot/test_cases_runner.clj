@@ -8,8 +8,8 @@
     [com.fulcrologic.copilot.reader :as cp.reader]
     [com.fulcrologicpro.taoensso.encore :as enc]))
 
-(defn get-test-case-files []
-  (->> (io/file "src/test_cases")
+(defn get-test-case-files [dir]
+  (->> (io/file dir)
     (file-seq)
     (filter #(.isFile %))))
 
@@ -17,7 +17,7 @@
   (and (keyword? x) (#{"problem" "binding"} (namespace x))))
 
 (defn parse-test-cases [s]
-  (when-let [?cases (second (re-find #";(.*)$" s))]
+  (when-let [?cases (second (re-find #";\s*(:.*)$" s))]
     (let [cases (read-string (str \[ ?cases \]))]
       (when-not (every? test-case-keyword? cases)
         (throw (ex-info "Test cases should all be keywords with 'problem' or 'binding' as a namespace"
@@ -31,28 +31,27 @@
       (map inc (range))
       (line-seq (io/reader file)))))
 
+(defn read-test-case [file]
+  (let [file-info (cp.reader/read-file file {:checker-type :test-case})]
+    (-> file-info
+      (assoc :file-length (count (line-seq (io/reader file))))
+      (assoc :file (str file))
+      (assoc :tests (cp.art/unwrap-meta (last (:forms file-info))))
+      (update :forms drop-last))))
+
 (defn subset-of? [expected actual]
   (set/subset? (set expected) (set actual)))
 
-(defn read-test-case [file]
-  (let [file-info (cp.reader/read-file file {:checker-type :test-case})]
-    (when (get (-> file-info :ns-decl second meta) :test-case? true)
-      (-> file-info
-        (assoc :file-length (count (line-seq (io/reader file))))
-        (assoc :file (str file))
-        (assoc :tests (cp.art/unwrap-meta (last (:forms file-info))))
-        (update :forms drop-last)))))
-
-(defn check-test-case! [{:keys [message expected]} p]
+(defn check-test-case! [{:keys [message expected]} x]
   (t/testing (str "TEST CASE: " message)
-    (when-not (subset-of? expected p)
+    (when-not (subset-of? expected x)
       (t/do-report
         {:type :fail
-         :actual p
+         :actual x
          :expected expected}))))
 
 (defn zip-fully [& colls]
-  (take-while #(not= % [nil nil])
+  (take-while #(some some? %)
     (apply map vector
       (map #(concat % (repeat nil)) colls))))
 
@@ -95,8 +94,8 @@
                     :actual non-existant-test-cases
                     :expected (set (keys tests))
                     :message (str "Found test cases that do not exist in <" tc-file "> !")}))
-    (doseq [[_line {:keys [problem-cases binding-cases problems bindings]}]
-            (test-plan tc-info test-cases)]
+    (doseq [[_line {:as tp :keys [problem-cases binding-cases problems bindings]}]
+            (sort-by key (test-plan tc-info test-cases))]
       (if (and (empty? problem-cases) (empty? problems)) nil
         (doseq [[c p] (zip-fully problem-cases problems)]
           (cond
@@ -126,9 +125,9 @@
 
 ;; LANDMARK: PUBLIC API BELOW
 
-(defn check-test-cases! []
+(defn check-test-cases! [{:keys [dir]}]
   (t/is (= true true))
-  (doseq [tc-file (get-test-case-files)]
+  (doseq [tc-file (get-test-case-files dir)]
     (t/testing (str "TESTING: " tc-file "\n")
       (when-let [tc-info (read-test-case tc-file)]
         (cp.art/clear-problems!)

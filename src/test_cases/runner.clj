@@ -1,7 +1,7 @@
-(ns ^{:test-case? false} runner
+(ns runner
   (:require
-    [clojure.test :as t]
-    [com.fulcrologic.copilot.test-cases-runner :as tcr]))
+    [com.fulcrologic.copilot.test-cases-runner :as tcr]
+    [fulcro-spec.core :refer [specification]]))
 
-(t/deftest ^:test-case TestCasesRunner
-  (tcr/check-test-cases!))
+(specification "TestCasesRunner" :test-case
+  (tcr/check-test-cases! {:dir "src/test_cases/test_cases"}))

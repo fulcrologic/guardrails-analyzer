@@ -1,6 +1,5 @@
 (ns com.fulcrologic.copilot.analysis.analyzer.hofs
   (:require
-    [clojure.spec.alpha :as s]
     [com.fulcrologic.copilot.analysis.analyzer.dispatch :as cp.ana.disp]
     [com.fulcrologic.copilot.analysis.analyzer.literals]
     [com.fulcrologic.copilot.analysis.function-type :as cp.fnt]
