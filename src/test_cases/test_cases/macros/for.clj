@@ -10,8 +10,10 @@
   (for [x :kw] x) ; :problem/not-a-coll
   (let [_ (for [x (range 5)] x) ; :binding/for.range
         _ (for [x (range 3) :let [y "x="]] (str y x)) ; :binding/for.let
-        _ (for [x# [:a :b] y# (range 2)] (vector x# y#)) ; :binding/for.two
+        _ (for [x [:a :b] y (range 2)] (vector x y)) ; :binding/for.two
         ]
+    (for [x (range 1) :when true] x) ; :problem/for.when
+    (for [x (range 1) :while true] x) ; :problem/for.while
     []))
 
 (deftc
@@ -28,4 +30,10 @@
                                     (tc/fmap* first
                                       (_/all*
                                         (_/is?* vector?)
-                                        (tc/subset?* #{[:a 0] [:a 1] [:b 0] [:b 1]}))))}})
+                                        (tc/subset?* #{[:a 0] [:a 1] [:b 0] [:b 1]}))))}
+   :problem/for.when   {:message ":when clause is not currently supported"
+                        :expected (_/embeds?* {::cp.art/original-expression {:value :when}
+                                               ::cp.art/problem-type :warning/not-implemented})}
+   :problem/for.while  {:message ":while clause is not currently supported"
+                        :expected (_/embeds?* {::cp.art/original-expression {:value :while}
+                                               ::cp.art/problem-type :warning/not-implemented})}})

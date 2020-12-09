@@ -127,6 +127,11 @@
   [problem params]
   (format "Incorrect arity"))
 
+(defmethod format-problem-mm :warning/not-implemented
+  [problem params]
+  (format "Expression <%s> is not currently implemented yet."
+    (format-expr problem)))
+
 (defmethod format-problem-mm :warning/if-condition-never-reaches-then-branch
   [problem params]
   (format "The then branch is potentially unreachable. The samples of expression %s never yielded a truthy value."

@@ -197,19 +197,18 @@
 
 (defn analyze-for-bindings! [env bindings]
   (reduce (fn [env [bind-sexpr sexpr]]
-            (let [bind-sexpr (cp.art/unwrap-meta bind-sexpr)]
-              (case bind-sexpr
-                :let (analyze-let-bindings! env sexpr)
-                (:when :while) env
-                (reduce-kv cp.art/remember-local
-                  env (cp.destr/destructure! env bind-sexpr
-                        (let [td (cp.ana.disp/-analyze! env sexpr)]
-                          (if-not (every? seqable? (::cp.art/samples td))
-                            (do (cp.art/record-error! env sexpr
-                                  :error/expected-seqable-collection)
-                              {})
-                            (update td ::cp.art/samples
-                              (comp set (partial mapcat identity))))))))))
+            (case (cp.art/unwrap-meta bind-sexpr)
+              :let (analyze-let-bindings! env sexpr)
+              (:when :while) (do (cp.art/record-error! env bind-sexpr :warning/not-implemented) env)
+              (reduce-kv cp.art/remember-local
+                env (cp.destr/destructure! env (cp.art/unwrap-meta bind-sexpr)
+                      (let [td (cp.ana.disp/-analyze! env sexpr)]
+                        (if-not (every? seqable? (::cp.art/samples td))
+                          (do (cp.art/record-error! env sexpr
+                                :error/expected-seqable-collection)
+                            {})
+                          (update td ::cp.art/samples
+                            (comp set (partial mapcat identity)))))))))
     env (partition 2 bindings)))
 
 (defn analyze-for-loop! [env bindings body]
