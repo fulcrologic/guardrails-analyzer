@@ -4,9 +4,10 @@
     [com.fulcrologic.copilot.artifacts :as cp.art]
     [com.fulcrologic.copilot.analysis.destructuring :as cp.destr]
     [com.fulcrologic.copilot.test-fixtures :as tf]
-    [clojure.test]
     [fulcro-spec.core :refer [specification component assertions]]
     [fulcro-spec.check :as _]))
+
+(tf/use-fixtures :once tf/with-default-test-logging-config)
 
 (s/def :NS/kw keyword?)
 (s/def ::idx int?)

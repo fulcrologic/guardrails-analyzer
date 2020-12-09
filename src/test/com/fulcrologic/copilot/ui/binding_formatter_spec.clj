@@ -6,7 +6,7 @@
     [com.fulcrologic.copilot.ui.binding-formatter :refer [format-bindings]]
     [fulcro-spec.core :refer [specification assertions]]))
 
-;; (tf/use-fixtures :once tf/with-default-test-logging-config)
+(tf/use-fixtures :once tf/with-default-test-logging-config)
 
 (defn test:format-binding [env x]
   (mapv (juxt ::cp.art/message ::cp.art/tooltip)

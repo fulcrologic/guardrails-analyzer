@@ -9,7 +9,7 @@
     [fulcro-spec.core :refer [specification assertions component]]
     [fulcro-spec.check :as _]))
 
-;; (tf/use-fixtures :once tf/with-default-test-logging-config)
+(tf/use-fixtures :once tf/with-default-test-logging-config)
 
 (defn test:encode-for [viewer-type string]
   (cp.art/clear-bindings!)

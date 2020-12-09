@@ -2,8 +2,11 @@
   (:require
     [com.fulcrologic.copilot.artifacts :as cp.art]
     [com.fulcrologic.copilot.analysis.function-type :as cp.fnt]
+    [com.fulcrologic.copilot.test-fixtures :as tf]
     [fulcro-spec.core :refer [specification assertions]]
     [fulcro-spec.check :as _]))
+
+(tf/use-fixtures :once tf/with-default-test-logging-config)
 
 (specification "interpret-gspec"
   (let [env (update (cp.art/build-env)

@@ -6,7 +6,9 @@
     [com.fulcrologic.copilot.artifacts :as cp.art]
     [com.fulcrologic.copilot.checker :as cp.checker]
     [com.fulcrologic.copilot.reader :as cp.reader]
+    [com.fulcrologic.copilot.test-fixtures :as tf]
     [com.fulcrologicpro.taoensso.encore :as enc]
+    [com.fulcrologicpro.taoensso.timbre :as log]
     [fulcro-spec.check :as _]
     [fulcro-spec.core :refer [specification]]))
 
@@ -139,12 +141,13 @@
 
 (defn test-file! [tc-file tests]
   (t/is (= true true))
-  (let [tc-info (read-test-case tc-file tests)]
-    (cp.art/clear-problems!)
-    (cp.art/clear-bindings!)
-    (require (symbol (:NS tc-info)) :reload)
-    (cp.checker/check! tc-info
-      (partial run-test-cases! tc-file tc-info))))
+  (log/with-merged-config tf/default-logging-config
+    (let [tc-info (read-test-case tc-file tests)]
+      (cp.art/clear-problems!)
+      (cp.art/clear-bindings!)
+      (require (symbol (:NS tc-info)) :reload)
+      (cp.checker/check! tc-info
+        (partial run-test-cases! tc-file tc-info)))))
 
 ;; LANDMARK: PUBLIC API BELOW
 

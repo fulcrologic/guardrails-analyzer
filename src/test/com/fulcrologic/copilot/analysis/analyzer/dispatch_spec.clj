@@ -5,6 +5,8 @@
     [com.fulcrologic.copilot.test-fixtures :as tf]
     [fulcro-spec.core :refer [specification assertions when-mocking]]))
 
+(tf/use-fixtures :once tf/with-default-test-logging-config)
+
 (defmethod cp.art/cljc-rewrite-sym-ns-mm "analyzer-spec" [sym] "cljc-analyzer-spec")
 
 (defmethod cp.ana.disp/analyze-mm 'custom [& _] {})

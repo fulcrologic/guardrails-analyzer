@@ -2,13 +2,15 @@
   (:require
     [clojure.spec.alpha :as s]
     [clojure.test.check.generators :as gen]
-    [com.fulcrologic.guardrails.registry :as gr.reg]
     [com.fulcrologic.copilot.artifacts :as cp.art]
     [com.fulcrologic.copilot.stateful.generators :as st.gen]
-    [clojure.test]
+    [com.fulcrologic.copilot.test-checkers :as tc]
+    [com.fulcrologic.copilot.test-fixtures :as tf]
+    [com.fulcrologic.guardrails.registry :as gr.reg]
     [fulcro-spec.check :as _]
-    [fulcro-spec.core :refer [specification assertions]]
-    [com.fulcrologic.copilot.test-checkers :as tc]))
+    [fulcro-spec.core :refer [specification assertions]]))
+
+(tf/use-fixtures :once tf/with-default-test-logging-config)
 
 (specification "fix-kw-nss"
   (assertions

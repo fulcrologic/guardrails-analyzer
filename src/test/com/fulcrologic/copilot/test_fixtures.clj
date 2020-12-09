@@ -6,19 +6,28 @@
     [com.fulcrologic.copilot.test-fixtures.logging :as tf.log]
     [com.fulcrologicpro.taoensso.timbre :as log]))
 
-;; DOES NOT WORK IN CLJS
-;; (def use-fixtures t/use-fixtures)
+(def use-fixtures t/use-fixtures)
+
+(def default-logging-config
+  {:level          :debug
+   :timestamp-opts {:pattern "HH:mm:ss.SSS"}
+   :output-fn      tf.log/test-output-fn})
 
 (defn with-logging-config [config]
-  (fn [f] (f)))
+  (fn [f] (log/with-merged-config config (f))))
 
 (defn with-default-test-logging-config [f]
-  ((with-logging-config {}) f))
+  ((with-logging-config default-logging-config) f))
 
 (def test-logs (atom []))
 
-(defn with-record-logs [config & body]
-  (fn [f] (f)))
+(defmacro with-record-logs [config & body]
+  `(log/with-merged-config
+     (merge {:level :trace
+             :appenders {:test-appender (tf.log/test-appender test-logs)}}
+       ~config)
+     (reset! test-logs [])
+     ~@body))
 
 (defn test-env [& args]
   (-> (cp.art/build-env)

@@ -9,7 +9,7 @@
     [fulcro-spec.check :as _ :refer [checker]]
     [fulcro-spec.core :refer [specification component assertions when-mocking]]))
 
-;; (tf/use-fixtures :once tf/with-default-test-logging-config)
+(tf/use-fixtures :once tf/with-default-test-logging-config)
 
 (specification "convert-shorthand-metadata"
   (assertions
@@ -109,7 +109,7 @@
   (let [env (cp.art/build-env)]
     (when-mocking
       (cp.sampler/get-gspec _ _) => {::cp.art/sampler     ::cp.sampler/pure
-                                      ::cp.art/return-spec int?}
+                                     ::cp.art/return-spec int?}
       (assertions
         (gen/sample (cp.sampler/params-gen env {::cp.art/fn-ref +} []))
         =check=> (_/every?*
