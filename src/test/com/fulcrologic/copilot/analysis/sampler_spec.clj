@@ -6,7 +6,6 @@
     [com.fulcrologic.copilot.analysis.sampler :as cp.sampler]
     [com.fulcrologic.copilot.test-fixtures :as tf]
     [com.fulcrologic.copilot.test-checkers :as tc]
-    [clojure.test]
     [fulcro-spec.check :as _ :refer [checker]]
     [fulcro-spec.core :refer [specification component assertions when-mocking]]))
 
@@ -242,8 +241,8 @@
       (cp.sampler/random-samples-from-each env
         [{::cp.art/samples #{}}])
       => #{}
-      ;; TODO: not sure is 100% correct
+      ;; TODO: not sure is 100% correct, should it have a nil at the end of each vector?
       (cp.sampler/random-samples-from-each env
         [{::cp.art/samples #{1 2 3}}
          {::cp.art/samples #{}}])
-      => #{[1] [2] [3]})))
+      =check=> (tc/subset?* #{[1] [2] [3]}))))

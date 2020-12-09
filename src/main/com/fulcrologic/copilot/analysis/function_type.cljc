@@ -43,14 +43,14 @@
       (map vector (remove #{'&} arglist) argument-types argument-specs))))
 
 (>defn check-return-type!
-  [env {::cp.art/keys [return-type return-spec]} {::cp.art/keys [samples original-expression]} loc]
-  [::cp.art/env ::cp.art/gspec ::cp.art/type-description (? map?) => any?]
+  [env {::cp.art/keys [return-type return-spec]} {::cp.art/keys [samples original-expression]}]
+  [::cp.art/env ::cp.art/gspec ::cp.art/type-description => any?]
   (let [sample-failure (some #(when-not (cp.spec/valid? env return-spec %)
                                 {:failing-case %})
                          samples)]
     (when (contains? sample-failure :failing-case)
       (let [sample-failure (:failing-case sample-failure)]
-        (cp.art/record-error! (cp.art/update-location env loc)
+        (cp.art/record-error! env
           {::cp.art/original-expression original-expression
            ::cp.art/actual              {::cp.art/failing-samples #{sample-failure}}
            ::cp.art/expected            #::cp.art{:spec return-spec :type return-type}
@@ -133,10 +133,10 @@
         {::cp.art/keys [return-type return-spec]} gspec
         function-type #::cp.art{:type return-type :spec return-spec}]
     (assoc function-type ::cp.art/samples
-                         (if (validate-argtypes!? env arity argtypes)
-                           (cp.sampler/sample! env function argtypes)
-                           (cp.sampler/try-sampling! env (cp.spec/generator env return-spec)
-                             {::cp.art/original-expression function})))))
+      (if (validate-argtypes!? env arity argtypes)
+        (cp.sampler/sample! env function argtypes)
+        (cp.sampler/try-sampling! env (cp.spec/generator env return-spec)
+          {::cp.art/original-expression function})))))
 
 (>defn sample->type-description [sample]
   [any? => ::cp.art/type-description]

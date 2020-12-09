@@ -83,10 +83,10 @@
                     cases (mapcat :cases (get test-cases-by-line line))
                     problem-cases (->> cases
                                     (filter #(= "problem" (namespace %)))
-                                    (map #(get tests %)))
+                                    (map #(assoc (get tests %) :name %)))
                     binding-cases (->> cases
                                     (filter #(= "binding" (namespace %)))
-                                    (map #(get tests %)))]
+                                    (map #(assoc (get tests %) :name %)))]
                 (cond-> status-by-line
                   (seq problems-on-line)
                   #_=> (assoc-in [line :problems] problems-on-line)
@@ -108,16 +108,16 @@
                     :actual non-existant-test-cases
                     :expected (set (keys tests))
                     :message (str "Found test cases that do not exist in <" tc-file "> !")}))
-    (doseq [[_line {:keys [problem-cases binding-cases problems bindings]}]
+    (doseq [[line {:keys [problem-cases binding-cases problems bindings]}]
             (sort-by key (test-plan tc-info test-cases))]
       (if (and (empty? problem-cases) (empty? problems)) nil
         (doseq [[c p] (zip-fully problem-cases problems)]
           (cond
             (not c) (t/do-report {:type :fail
-                                  :message "found an extra problem"
+                                  :message (str "found an extra problem on line: " line)
                                   :actual p})
             (not p) (t/do-report {:type :fail
-                                  :message "found an extra problem test case"
+                                  :message (str "found an extra problem test case on line: " line)
                                   :actual c
                                   :expected nil})
             :else (check-test-case! c p))))
@@ -148,6 +148,7 @@
 
 ;; LANDMARK: PUBLIC API BELOW
 
-(defmacro deftc [tests]
-  `(specification ~(str "running assertions for: " *file*) :test-case
-     (test-file! (io/resource ~*file*) ~tests)))
+(defmacro deftc [& args]
+  `(specification ~(str "running assertions for: " *file*)
+     :test-case ~@(butlast args)
+     (test-file! (io/resource ~*file*) ~(last args))))

@@ -24,23 +24,21 @@
    ::quoted-symbol #::cp.art{:type "quoted-symbol"}
    ::quoted-expr   #::cp.art{:type "quoted-expression"}})
 
-(defn literal-td [env kind sexpr]
+(defn literal-td [env kind sexpr & [orig]]
   (assoc (kind->td kind)
     ::kind kind
     ::cp.art/samples #{sexpr}
-    ::cp.art/original-expression sexpr))
+    ::cp.art/original-expression (or orig sexpr)))
 
 (defmethod cp.ana.disp/analyze-mm :literal/wrapped
-  [env {:keys [kind value metadata]}]
+  [env {:as orig :keys [kind value]}]
   (when (and (qualified-keyword? value)
           (not (cp.spec/lookup env value)))
-    (-> env
-      (cp.art/update-location metadata)
-      (cp.art/record-warning! value :warning/qualified-keyword-missing-spec)))
+    (cp.art/record-warning! env value :warning/qualified-keyword-missing-spec))
   (let [lit-kind (if-not (namespace kind)
                    (keyword (namespace ::_) (name kind))
                    kind)]
-    (literal-td env lit-kind value)))
+    (literal-td env lit-kind value orig)))
 
 (defmethod cp.ana.disp/analyze-mm 'clojure.core/quote [env [_ sexpr]]
   (if (symbol? sexpr)

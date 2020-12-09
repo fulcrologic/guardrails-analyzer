@@ -16,7 +16,7 @@
   (let [gspec  (cp.fnt/interpret-gspec env arglist gspec)
         env    (cp.fnt/bind-argument-types env arglist gspec)
         result (cp.ana.disp/analyze-statements! env body)]
-    (cp.fnt/check-return-type! env gspec result (meta defn-sym))))
+    (cp.fnt/check-return-type! env gspec result)))
 
 (defn analyze:>defn! [env [_ defn-sym & defn-forms :as sexpr]]
   (let [env (assoc env ::cp.art/checking-sym defn-sym)

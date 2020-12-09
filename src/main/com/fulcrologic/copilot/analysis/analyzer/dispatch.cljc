@@ -2,8 +2,7 @@
   (:require
     [com.fulcrologic.copilot.analytics :as cp.analytics]
     [com.fulcrologic.copilot.artifacts :as cp.art]
-    [com.fulcrologic.guardrails.core :as gr :refer [>defn =>]]
-    [com.fulcrologicpro.taoensso.timbre :as log]))
+    [com.fulcrologic.guardrails.core :as gr :refer [>defn =>]]))
 
 (declare analyze-mm)
 
@@ -71,9 +70,10 @@
         (#{"clojure.core"} (namespace dispatch)))
       #(as-> % env
          (assoc env ::dispatch dispatch)
-         (cp.art/update-location env (meta sexpr))
+         (cp.art/sync-location env sexpr)
          (cp.analytics/profile ::analyze-mm
-           (analyze-mm env sexpr))))))
+           (assoc (analyze-mm env sexpr)
+             ::cp.art/original-expression sexpr))))))
 
 (defn analyze-statements! [env body]
   (doseq [expr (butlast body)]

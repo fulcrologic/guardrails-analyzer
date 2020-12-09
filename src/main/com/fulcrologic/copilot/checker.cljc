@@ -59,7 +59,8 @@
        (dissoc ::cp.art/actual ::cp.art/expected ::cp.art/spec
          ::cp.art/literal-value ::cp.art/original-expression)
        (assoc ::cp.art/samples (set (map pr-str (::cp.art/samples %))))
-       (assoc ::cp.art/expression (str (::cp.art/original-expression %))))
+       (assoc ::cp.art/expression
+         (str (cp.art/unwrap-meta (::cp.art/original-expression %)))))
     problems))
 
 (defn gather-analysis! []

@@ -272,6 +272,12 @@
     (assoc ::location
       (new-location location))))
 
+(>defn sync-location
+  [env sexpr]
+  [::env any? => ::env]
+  (let [loc-meta (or (meta sexpr) (:metadata sexpr) nil)]
+    (update-location env loc-meta)))
+
 ;; ========== BINDINGS ==========
 
 (defonce bindings (atom []))
@@ -313,12 +319,13 @@
 
 (defonce problems (atom []))
 
-(>defn env-location [env]
-  [::env => map?]
-  (merge (::location env)
-    {::file (::checking-file env)
-     ::sym  (::checking-sym env)
-     ::NS   (::current-ns env)}))
+(>defn env-location [env problem]
+  [::env map? => map?]
+  (let [env (sync-location env (::original-expression problem))]
+    (merge (::location env)
+      {::file (::checking-file env)
+       ::sym  (::checking-sym env)
+       ::NS   (::current-ns env)})))
 
 (defn with-problem-observer [env f]
   (update env ::problem-observers (fnil conj []) f))
@@ -326,6 +333,11 @@
 (defn notify-problem-observers! [env problem]
   (doseq [obs (::problem-observers env)]
     (obs problem)))
+
+(defn record-problem! [env problem]
+  (log/debug :record-problem! problem)
+  (swap! problems conj
+    (merge problem (env-location env problem))))
 
 (>defn record-error!
   ([env original-expression problem-type]
@@ -338,10 +350,8 @@
                        ::message-params message-params}))
   ([env error]
    [::env (s/keys :req [::problem-type ::original-expression]) => nil?]
-   (log/info :record-error! (env-location env) "\n" error)
    (notify-problem-observers! env error)
-   (swap! problems conj
-     (merge error (env-location env)))
+   (record-problem! env error)
    nil))
 
 (>defn record-warning!
@@ -356,8 +366,7 @@
   ([env warning]
    [::env (s/keys :req [::problem-type ::original-expression]) => nil?]
    (notify-problem-observers! env warning)
-   (swap! problems conj
-     (merge warning (env-location env)))
+   (record-problem! env warning)
    nil))
 
 (>defn record-info!
@@ -372,8 +381,7 @@
   ([env info]
    [::env (s/keys :req [::problem-type ::original-expression]) => nil?]
    (notify-problem-observers! env info)
-   (swap! problems conj
-     (merge info (env-location env)))
+   (record-problem! env info)
    nil))
 
 (defn- clear-problems-by-file [probs file]

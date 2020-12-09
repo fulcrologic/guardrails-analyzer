@@ -13,8 +13,7 @@
      _ ({:kw 4} :kw) ; :binding/map
      _ ({} :kw 5)    ; :binding/map-with-default
      _ (#{6} 6)      ; :binding/set
-     ]
-    nil))
+     ]))
 
 {
  :problem/number.not-an-ifn    {:expected
