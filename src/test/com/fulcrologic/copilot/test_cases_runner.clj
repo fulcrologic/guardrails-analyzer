@@ -10,7 +10,8 @@
     [com.fulcrologicpro.taoensso.encore :as enc]
     [com.fulcrologicpro.taoensso.timbre :as log]
     [fulcro-spec.check :as _]
-    [fulcro-spec.core :refer [specification]]))
+    [fulcro-spec.core :refer [specification]]
+    [clojure.string :as str]))
 
 (defn get-test-case-files [dir]
   (->> (io/file dir)
@@ -53,8 +54,8 @@
       (map? expected)
       (when-not (subset-of? expected x)
         (t/do-report
-          {:type :fail
-           :actual x
+          {:type     :fail
+           :actual   x
            :expected expected}))
       (_/checker? expected)
       (doseq [f ((_/all* expected) x)]
@@ -62,8 +63,8 @@
           (merge {:type :fail} f)))
       :else
       (t/do-report
-        {:type :error
-         :actual expected
+        {:type     :error
+         :actual   expected
          :expected `(some-fn map? _/checker?)}))))
 
 (defn zip-fully [& colls]
@@ -72,23 +73,23 @@
       (map #(concat % (repeat nil)) colls))))
 
 (defn test-plan [{:keys [tests file-length]} test-cases]
-  (let [problems @cp.art/problems
-        bindings @cp.art/bindings
+  (let [problems           @cp.art/problems
+        bindings           @cp.art/bindings
         test-cases-by-line (group-by :line test-cases)
-        bindings-by-line (enc/map-vals #(sort-by ::cp.art/column-start %)
-                           (group-by ::cp.art/line-start bindings))
-        problems-by-line (enc/map-vals #(sort-by ::cp.art/column-start %)
-                           (group-by ::cp.art/line-start problems))]
+        bindings-by-line   (enc/map-vals #(sort-by ::cp.art/column-start %)
+                             (group-by ::cp.art/line-start bindings))
+        problems-by-line   (enc/map-vals #(sort-by ::cp.art/column-start %)
+                             (group-by ::cp.art/line-start problems))]
     (reduce (fn [status-by-line line]
               (let [problems-on-line (get problems-by-line line)
                     bindings-on-line (get bindings-by-line line)
-                    cases (mapcat :cases (get test-cases-by-line line))
-                    problem-cases (->> cases
-                                    (filter #(= "problem" (namespace %)))
-                                    (map #(assoc (get tests %) :name %)))
-                    binding-cases (->> cases
-                                    (filter #(= "binding" (namespace %)))
-                                    (map #(assoc (get tests %) :name %)))]
+                    cases            (mapcat :cases (get test-cases-by-line line))
+                    problem-cases    (->> cases
+                                       (filter #(= "problem" (namespace %)))
+                                       (map #(assoc (get tests %) :name %)))
+                    binding-cases    (->> cases
+                                       (filter #(= "binding" (namespace %)))
+                                       (map #(assoc (get tests %) :name %)))]
                 (cond-> status-by-line
                   (seq problems-on-line)
                   #_=> (assoc-in [line :problems] problems-on-line)
@@ -106,37 +107,37 @@
                (seq (set/difference
                       (set (mapcat :cases test-cases))
                       (set (keys tests))))]
-      (t/do-report {:type :error
-                    :actual non-existant-test-cases
+      (t/do-report {:type     :error
+                    :actual   non-existant-test-cases
                     :expected (set (keys tests))
-                    :message (str "Found test cases that do not exist in <" tc-file "> !")}))
+                    :message  (str "Found test cases that do not exist in <" tc-file "> !")}))
     (doseq [[line {:keys [problem-cases binding-cases problems bindings]}]
             (sort-by key (test-plan tc-info test-cases))]
       (if (and (empty? problem-cases) (empty? problems)) nil
-        (doseq [[c p] (zip-fully problem-cases problems)]
-          (cond
-            (not c) (t/do-report {:type :fail
-                                  :message (str "found an extra problem on line: " line)
-                                  :actual p})
-            (not p) (t/do-report {:type :fail
-                                  :message (str "found an extra problem test case on line: " line)
-                                  :actual c
-                                  :expected nil})
-            :else (check-test-case! c p))))
+                                                         (doseq [[c p] (zip-fully problem-cases problems)]
+                                                           (cond
+                                                             (not c) (t/do-report {:type    :fail
+                                                                                   :message (str "found an extra problem on line: " line)
+                                                                                   :actual  p})
+                                                             (not p) (t/do-report {:type     :fail
+                                                                                   :message  (str "found an extra problem test case on line: " line)
+                                                                                   :actual   c
+                                                                                   :expected nil})
+                                                             :else (check-test-case! c p))))
       (if (and (empty? binding-cases) (empty? bindings)) nil
-        (doseq [[c b] (zip-fully binding-cases bindings)]
-          (if (not b)
-            (t/do-report {:type :fail
-                          :message "found an extra binding test case"
-                          :actual c
-                          :expected nil})
-            (check-test-case! c b)))))
+                                                         (doseq [[c b] (zip-fully binding-cases bindings)]
+                                                           (if (not b)
+                                                             (t/do-report {:type     :fail
+                                                                           :message  "found an extra binding test case"
+                                                                           :actual   c
+                                                                           :expected nil})
+                                                             (check-test-case! c b)))))
     (when-let [unused-test-cases
                (seq (set/difference
                       (set (keys tests))
                       (set (mapcat :cases test-cases))))]
-      (t/do-report {:type :error
-                    :actual (into {} (map #(vector % (get tests %)) unused-test-cases))
+      (t/do-report {:type    :error
+                    :actual  (into {} (map #(vector % (get tests %)) unused-test-cases))
                     :message (str "Found unused test cases in <" tc-file "> !")}))))
 
 (defn test-file! [tc-file tests]
@@ -152,6 +153,12 @@
 ;; LANDMARK: PUBLIC API BELOW
 
 (defmacro deftc [& args]
-  `(specification ~(str "running assertions for: " *file*)
-     :test-case ~@(butlast args)
-     (test-file! (io/resource ~*file*) ~(last args))))
+  (let [suffix (last (str/split *file* #"[.]"))
+        f      (str
+                 (-> (str *ns*)
+                   (str/replace #"[.]" "/")
+                   (str/replace #"[-]" "_"))
+                 "." suffix)]
+    `(specification ~(str "running assertions for: " f)
+       :test-case ~@(butlast args)
+       (test-file! (io/resource ~f) ~(last args)))))
