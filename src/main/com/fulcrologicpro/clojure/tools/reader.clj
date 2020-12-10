@@ -89,39 +89,39 @@
   (when (indexing-reader? rdr)
     [(get-line-number rdr) (get-column-number rdr)]))
 
-(def ^:dynamic *wrap-meta?* true)
-
-(defn wrap-meta [rdr kind value]
-  (if-not *wrap-meta?* value
-    (let [[start-line start-column] (starting-line-col-info rdr)
-          [end-line end-column] (ending-line-col-info rdr)
-          metadata (when start-line
+(defmacro wrap-meta [rdr kind body & {:keys [starting]}]
+  `(let [rdr# ~rdr
+         [start-line# start-column#] (or ~starting (starting-line-col-info rdr#))
+         value# ~body
+         [end-line# end-column#] (ending-line-col-info rdr#)
+         metadata# (when start-line#
                      (merge
-                       (when-let [file (get-file-name rdr)]
-                         {:file file})
-                       {:line start-line
-                        :column start-column
-                        :end-line end-line
-                        :end-column end-column}))]
-      {:com.fulcrologic.copilot/meta-wrapper? true
-       :kind kind :value value :metadata metadata})))
+                       (when-let [file# (get-file-name rdr#)]
+                         {:file file#})
+                       {:line start-line#
+                        :column start-column#
+                        :end-line end-line#
+                        :end-column end-column#}))]
+     {:com.fulcrologic.copilot/meta-wrapper? true
+      :kind ~kind :value value# :metadata metadata#}))
 
 (defn read-regex
   [rdr ch opts pending-forms]
   (let [sb (StringBuilder.)]
-    (loop [ch (read-char rdr)]
-      (if (identical? \" ch)
-        (wrap-meta rdr :regex (Pattern/compile (str sb)))
-        (if (nil? ch)
-          (err/throw-eof-reading rdr :regex sb)
-          (do
-            (.append sb ch )
-            (when (identical? \\ ch)
-              (let [ch (read-char rdr)]
-                (if (nil? ch)
-                  (err/throw-eof-reading rdr :regex sb))
-                (.append sb ch)))
-            (recur (read-char rdr))))))))
+    (wrap-meta rdr :regex
+      (loop [ch (read-char rdr)]
+        (if (identical? \" ch)
+          (Pattern/compile (str sb))
+          (if (nil? ch)
+            (err/throw-eof-reading rdr :regex sb)
+            (do
+              (.append sb ch )
+              (when (identical? \\ ch)
+                (let [ch (read-char rdr)]
+                  (when (nil? ch)
+                    (err/throw-eof-reading rdr :regex sb))
+                  (.append sb ch)))
+              (recur (read-char rdr)))))))))
 
 (defn- read-unicode-char
   ([^String token ^long offset ^long length ^long base]
@@ -163,9 +163,9 @@
 (defn- read-char*
   "Read in a character literal"
   [rdr backslash opts pending-forms]
-  (let [ch (read-char rdr)]
-    (if-not (nil? ch)
-      (wrap-meta rdr :char
+  (wrap-meta rdr :char
+    (let [ch (read-char rdr)]
+      (if-not (nil? ch)
         (let [token (if (or (macro-terminating? ch)
                           (whitespace? ch))
                       (str ch)
@@ -199,8 +199,8 @@
                     (err/throw-bad-octal-number rdr)
                     uc))))
 
-            :else (err/throw-unsupported-character rdr token))))
-      (err/throw-eof-in-character rdr))))
+            :else (err/throw-unsupported-character rdr token)))
+        (err/throw-eof-in-character rdr)))))
 
 (defonce ^:private READ_EOF (Object.))
 (defonce ^:private READ_FINISHED (Object.))
@@ -328,9 +328,9 @@
       (case token
 
         ;; special symbols
-        "nil" (wrap-meta rdr :nil nil)
-        "true" (wrap-meta rdr :boolean true)
-        "false" (wrap-meta rdr :boolean false)
+        "nil" (wrap-meta rdr :nil nil :starting [line column])
+        "true" (wrap-meta rdr :boolean true :starting [line column])
+        "false" (wrap-meta rdr :boolean false :starting [line column])
         "/" '/
 
         (or (when-let [p (parse-symbol token)]
@@ -363,14 +363,14 @@
 
 (defn- read-keyword
   [reader initch opts pending-forms]
-  (let [ch (read-char reader)]
-    (if-not (whitespace? ch)
-      (let [token (read-token reader :keyword ch)
-            s (parse-symbol token)]
-        (if s
-          (let [^String ns (s 0)
-                ^String name (s 1)]
-            (wrap-meta reader :keyword
+  (wrap-meta reader :keyword
+    (let [ch (read-char reader)]
+      (if-not (whitespace? ch)
+        (let [token (read-token reader :keyword ch)
+              s (parse-symbol token)]
+          (if s
+            (let [^String ns (s 0)
+                  ^String name (s 1)]
               (if (identical? \: (nth token 0))
                 (if ns
                   (let [ns (resolve-alias (symbol (subs ns 1)))]
@@ -378,9 +378,9 @@
                       (keyword (str ns) name)
                       (err/throw-invalid reader :keyword (str \: token))))
                   (keyword (str *ns*) (subs name 1)))
-                (keyword ns name))))
-          (err/throw-invalid reader :keyword (str \: token))))
-      (err/throw-single-colon reader))))
+                (keyword ns name)))
+            (err/throw-invalid reader :keyword (str \: token))))
+        (err/throw-single-colon reader)))))
 
 (defn- wrapping-reader
   "Returns a function which wraps a reader in a call to sym"

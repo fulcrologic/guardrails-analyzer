@@ -5,7 +5,8 @@
     [com.fulcrologic.copilot.transit-handlers :as f.transit]
     [com.fulcrologicpro.com.rpl.specter :as $]
     [com.fulcrologicpro.taoensso.timbre :as log]
-    [clojure.java.io :as io])
+    [clojure.java.io :as io]
+    [com.fulcrologic.copilot.artifacts :as cp.art])
   (:import
     (java.io FileReader PushbackReader File)))
 
@@ -36,15 +37,14 @@
    (reduce merge)))
 
 (defn read-file [file reader-cond-branch]
- (let [eof     (new Object)
+  (let [eof     (new Object)
         reader  (readers/indexing-push-back-reader
                   (new PushbackReader
                     (io/reader file)))
         opts    {:eof       eof
                  :read-cond :allow
                  :features  #{reader-cond-branch}}
-        ns-decl (binding [reader/*wrap-meta?* false]
-                  (read-impl opts reader))
+        ns-decl (cp.art/unwrap-meta (read-impl opts reader))
         _       (assert (= 'ns (first ns-decl))
                   (format "First form in file <%s> was not a ns declaration!"
                     (if (instance? File file)
