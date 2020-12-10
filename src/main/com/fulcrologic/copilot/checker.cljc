@@ -31,7 +31,7 @@
                    (assoc ::cp.art/current-ns NS))]
      (cp.art/clear-problems! file)
      (cp.art/clear-bindings! file)
-     (cp.spec/with-cache {}
+     (cp.spec/with-empty-cache
        #?(:cljs (fn check-forms! [[form & forms]]
                   (if-not form (on-done)
                                (js/setTimeout

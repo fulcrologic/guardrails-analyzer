@@ -133,4 +133,6 @@
  {:date "2020-12-07" :description "test case runner" :timespans [[1020 1440] [1730 2000]]}
  {:date "2020-12-08" :description "chat w/ tony" :timespans [[1225 1300]]}
  {:date "2020-12-08" :description "location fixing" :timespans [[1545 1720]]}
+ {:date "2020-12-09" :description "chat w/ tony" :timespans [[1230 1300]]}
+ {:date "2020-12-09" :description "test cases" :timespans [[1530 1600]]}
  ]

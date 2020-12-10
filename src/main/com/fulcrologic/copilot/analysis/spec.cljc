@@ -80,6 +80,6 @@
           (swap! cache assoc spec samples)
           samples)))))
 
-(defn with-cache [c f & args]
-  (reset! cache c)
+(defn with-empty-cache [f & args]
+  (reset! cache {})
   (apply f args))
