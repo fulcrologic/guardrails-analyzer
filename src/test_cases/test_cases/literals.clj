@@ -17,11 +17,21 @@
         ]))
 
 (deftc
-  {:binding/set        {:expected {::cp.art/samples #{#{"str" :kw 123}}}}
-   :binding/set.mixed  {:expected {::cp.art/samples #{#{:always :a} #{:always :b}}}}
-   :binding/set.random {:expected {::cp.art/samples #{#{1 :a} #{1 :b} #{2 :a} #{2 :b}}}}
+  {:binding/set
+   {:expected {::cp.art/samples #{#{"str" :kw 123}}}}
 
-   :binding/map        {:expected {::cp.art/samples #{{:a {:b :c}}}}}
-   :binding/map.nested {:expected {::cp.art/samples #{{:d {:a {:b :c}}}}}}
-   ; #_#_:binding/map.random {:expected {::cp.art/samples #{{:g 0} {:g 1} {:g 2}}}}
+   :binding/set.mixed
+   {:expected {::cp.art/samples #{#{:always :a} #{:always :b}}}}
+
+   :binding/set.random
+   {:expected {::cp.art/samples #{#{1 :a} #{1 :b} #{2 :a} #{2 :b}}}}
+
+   :binding/map
+   {:expected {::cp.art/samples #{{:a {:b :c}}}}}
+
+   :binding/map.nested
+   {:expected {::cp.art/samples #{{:d {:a {:b :c}}}}}}
+
+   ; #_ :binding/map.random
+   ; #_ {:expected {::cp.art/samples #{{:g 0} {:g 1} {:g 2}}}}
    })

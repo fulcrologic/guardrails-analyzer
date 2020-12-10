@@ -10,4 +10,6 @@
     x))
 
 (deftc
-  {:binding/y {:message "pure" :expected {::cp.art/samples #{"x=0"}}}})
+  {:binding/y
+   {:message "pure" :expected {::cp.art/samples #{"x=0"}}}
+   })

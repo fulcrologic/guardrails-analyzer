@@ -22,7 +22,8 @@
   (and (keyword? x) (#{"problem" "binding"} (namespace x))))
 
 (defn parse-test-cases [s]
-  (when-let [?cases (second (re-find #";\s*(:.*)$" s))]
+  (when-let [?cases (and (not (re-find #";.*;" s))
+                      (second (re-find #";\s*(:.*)$" s)))]
     (let [cases (read-string (str \[ ?cases \]))]
       (when-not (every? test-case-keyword? cases)
         (throw (ex-info "Test cases should all be keywords with 'problem' or 'binding' as a namespace"
@@ -103,6 +104,27 @@
 
 (defn run-test-cases! [tc-file {:as tc-info :keys [tests]}]
   (let [test-cases (find-test-cases tc-file)]
+    (doseq [[line {:keys [problem-cases binding-cases problems bindings]}]
+            (sort-by key (test-plan tc-info test-cases))]
+      (if (and (empty? problem-cases) (empty? problems)) nil
+        (doseq [[c p] (zip-fully problem-cases problems)]
+          (cond
+            (not c) (t/do-report {:type    :fail
+                                  :message (str "found an extra problem on line: " line)
+                                  :actual  p})
+            (not p) (t/do-report {:type     :fail
+                                  :message  (str "found an extra problem test case on line: " line)
+                                  :actual   c
+                                  :expected nil})
+            :else (check-test-case! c p))))
+      (if (and (empty? binding-cases) (empty? bindings)) nil
+        (doseq [[c b] (zip-fully binding-cases bindings)]
+          (if (not b)
+            (t/do-report {:type     :fail
+                          :message  (str "found an extra binding test case on line: " line)
+                          :actual   c
+                          :expected nil})
+            (check-test-case! c b)))))
     (when-let [non-existant-test-cases
                (seq (set/difference
                       (set (mapcat :cases test-cases))
@@ -111,27 +133,6 @@
                     :actual   non-existant-test-cases
                     :expected (set (keys tests))
                     :message  (str "Found test cases that do not exist in <" tc-file "> !")}))
-    (doseq [[line {:keys [problem-cases binding-cases problems bindings]}]
-            (sort-by key (test-plan tc-info test-cases))]
-      (if (and (empty? problem-cases) (empty? problems)) nil
-                                                         (doseq [[c p] (zip-fully problem-cases problems)]
-                                                           (cond
-                                                             (not c) (t/do-report {:type    :fail
-                                                                                   :message (str "found an extra problem on line: " line)
-                                                                                   :actual  p})
-                                                             (not p) (t/do-report {:type     :fail
-                                                                                   :message  (str "found an extra problem test case on line: " line)
-                                                                                   :actual   c
-                                                                                   :expected nil})
-                                                             :else (check-test-case! c p))))
-      (if (and (empty? binding-cases) (empty? bindings)) nil
-                                                         (doseq [[c b] (zip-fully binding-cases bindings)]
-                                                           (if (not b)
-                                                             (t/do-report {:type     :fail
-                                                                           :message  "found an extra binding test case"
-                                                                           :actual   c
-                                                                           :expected nil})
-                                                             (check-test-case! c b)))))
     (when-let [unused-test-cases
                (seq (set/difference
                       (set (keys tests))

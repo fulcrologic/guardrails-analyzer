@@ -16,14 +16,29 @@
      ]))
 
 {
- :problem/number.not-an-ifn    {:expected
-                                {::cp.art/problem-type :info/failed-to-analyze-unknown-expression
-                                 ::cp.art/original-expression -1}}
- :binding/keyword              {:expected {::cp.art/samples #{0}}}
- :binding/keyword-with-default {:expected {::cp.art/samples #{1}}}
- :binding/symbol               {:expected {::cp.art/samples #{2}}}
- :binding/symbol-with-default  {:expected {::cp.art/samples #{3}}}
- :binding/map                  {:expected {::cp.art/samples #{4}}}
- :binding/map-with-default     {:expected {::cp.art/samples #{5}}}
- :binding/set                  {:expected {::cp.art/samples #{6}}}
+ :problem/number.not-an-ifn
+ {:expected
+  {::cp.art/problem-type :info/failed-to-analyze-unknown-expression
+   ::cp.art/original-expression -1}}
+
+ :binding/keyword
+ {:expected {::cp.art/samples #{0}}}
+
+ :binding/keyword-with-default
+ {:expected {::cp.art/samples #{1}}}
+
+ :binding/symbol
+ {:expected {::cp.art/samples #{2}}}
+
+ :binding/symbol-with-default
+ {:expected {::cp.art/samples #{3}}}
+
+ :binding/map
+ {:expected {::cp.art/samples #{4}}}
+
+ :binding/map-with-default
+ {:expected {::cp.art/samples #{5}}}
+
+ :binding/set
+ {:expected {::cp.art/samples #{6}}}
  }

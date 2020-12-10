@@ -8,5 +8,9 @@
   (let [k (if true :a :b)] k)) ; :problem/always-true.literal :binding/if.keyword
 
 (deftc
-  {:problem/always-true.literal {:expected {::cp.art/problem-type :warning/if-condition-never-reaches-else-branch}}
-   :binding/if.keyword          {:expected {::cp.art/samples #{:a :b}}}})
+  {:problem/always-true.literal
+   {:expected {::cp.art/problem-type :warning/if-condition-never-reaches-else-branch}}
+
+   :binding/if.keyword
+   {:expected {::cp.art/samples #{:a :b}}}
+   })

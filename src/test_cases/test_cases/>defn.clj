@@ -29,16 +29,24 @@
         ]))
 
 (deftc
-  {:problem/defn.literal {:expected (_/embeds?* {::cp.art/original-expression {:value "abc"}})}
-   :problem/defn.expr    {:expected (_/embeds?* {::cp.art/original-expression
-                                                 (_/seq-matches?* ['str (_/embeds?* {:value 2})])})}
-   :problem/defn.pure    {:message "A defn can be marked pure on its symbol name"
-                          :expected (_/in* [::cp.art/actual ::cp.art/failing-samples]
-                                      (tc/fmap* first
-                                        (_/seq-matches?*
-                                          [(_/equals?* :pure)
-                                           (_/is?* int?)])))}
-   :binding/defn.not-pure-2 {:message "A defn's specific arity can be marked pure"
-                             :expected (_/embeds?* {::cp.art/samples (_/every?* (_/is?* vector?))})}
-   :binding/defn.pure-2 {:message "A defn's specific arity can be marked pure"
-                         :expected {::cp.art/samples #{{:pure 7}}}}})
+  {:problem/defn.literal
+   {:expected (_/embeds?* {::cp.art/original-expression {:value "abc"}})}
+
+   :problem/defn.expr
+   {:expected (_/embeds?* {::cp.art/original-expression
+                           (_/seq-matches?* ['str (_/embeds?* {:value 2})])})}
+   :problem/defn.pure
+   {:message "A defn can be marked pure on its symbol name"
+    :expected (_/in* [::cp.art/actual ::cp.art/failing-samples]
+                (tc/fmap* first
+                  (_/seq-matches?*
+                    [(_/equals?* :pure)
+                     (_/is?* int?)])))}
+
+   :binding/defn.not-pure-2
+   {:message "A defn's specific arity can be marked pure"
+    :expected (_/embeds?* {::cp.art/samples (_/every?* (_/is?* vector?))})}
+
+   :binding/defn.pure-2
+   {:message "A defn's specific arity can be marked pure"
+    :expected {::cp.art/samples #{{:pure 7}}}}})

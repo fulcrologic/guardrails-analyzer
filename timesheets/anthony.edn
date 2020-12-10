@@ -136,4 +136,5 @@
  {:date "2020-12-09" :description "chat w/ tony" :timespans [[1230 1300]]}
  {:date "2020-12-09" :description "test cases" :timespans [[1530 1600]]}
  {:date "2020-12-09" :description "fixed reader location bug" :timespans [[1630 1715] [1745 1845]]}
+ {:date "2020-12-10" :description "destructuring & chat w/ tony" :timespans [[1120 1325] [1500 1550]]}
  ]

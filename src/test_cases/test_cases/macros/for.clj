@@ -17,23 +17,35 @@
     []))
 
 (deftc
-  {:problem/not-a-coll {:expected {::cp.art/problem-type :error/expected-seqable-collection}}
-   :binding/for.range  {:expected (_/in* [::cp.art/samples]
-                                    (_/fmap* first
-                                      (tc/subset?* (set (range 5)))))}
-   :binding/for.let    {:message "can bind values using `:let [...]`"
-                        :expected (_/in* [::cp.art/samples]
-                                    (tc/fmap* first
-                                      (tc/subset?* #{"x=0" "x=1" "x=2"})))}
-   :binding/for.two    {:message "multiple sequences permute"
-                        :expected (_/in* [::cp.art/samples]
-                                    (tc/fmap* first
-                                      (_/all*
-                                        (_/is?* vector?)
-                                        (tc/subset?* #{[:a 0] [:a 1] [:b 0] [:b 1]}))))}
-   :problem/for.when   {:message ":when clause is not currently supported"
-                        :expected (_/embeds?* {::cp.art/original-expression {:value :when}
-                                               ::cp.art/problem-type :warning/not-implemented})}
-   :problem/for.while  {:message ":while clause is not currently supported"
-                        :expected (_/embeds?* {::cp.art/original-expression {:value :while}
-                                               ::cp.art/problem-type :warning/not-implemented})}})
+  {:problem/not-a-coll
+   {:expected {::cp.art/problem-type :error/expected-seqable-collection}}
+
+   :binding/for.range
+   {:expected (_/in* [::cp.art/samples]
+                (_/fmap* first
+                  (tc/subset?* (set (range 5)))))}
+
+   :binding/for.let
+   {:message "can bind values using `:let [...]`"
+    :expected (_/in* [::cp.art/samples]
+                (tc/fmap* first
+                  (tc/subset?* #{"x=0" "x=1" "x=2"})))}
+
+   :binding/for.two
+   {:message "multiple sequences permute"
+    :expected (_/in* [::cp.art/samples]
+                (tc/fmap* first
+                  (_/all*
+                    (_/is?* vector?)
+                    (tc/subset?* #{[:a 0] [:a 1] [:b 0] [:b 1]}))))}
+
+   :problem/for.when
+   {:message ":when clause is not currently supported"
+    :expected (_/embeds?* {::cp.art/original-expression {:value :when}
+                           ::cp.art/problem-type :warning/not-implemented})}
+
+   :problem/for.while
+   {:message ":while clause is not currently supported"
+    :expected (_/embeds?* {::cp.art/original-expression {:value :while}
+                           ::cp.art/problem-type :warning/not-implemented})}
+   })

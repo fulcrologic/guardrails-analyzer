@@ -19,60 +19,65 @@
    => any?]
   (if-let [spec (cp.spec/lookup env kw)]
     (do
-      (when-not (some #(contains? % kw) samples)
-        (cp.art/record-warning! env kw :warning/failed-to-find-keyword-in-hashmap-samples))
+      (when-not (some #(and (associative? %) (contains? % kw)) samples)
+        (cp.art/record-warning! env
+          #::cp.art{:problem-type        :warning/failed-to-find-keyword-in-hashmap-samples
+                    :expected            #::cp.art{:spec spec :type (pr-str kw)}
+                    :actual              {::cp.art/failing-samples samples}
+                    :original-expression (or orig-expr kw)}))
       (when-let [failing-case (some #(when-not (cp.spec/valid? env spec %) %)
                                 (map kw samples))]
         (cp.art/record-error! env
           #::cp.art{:problem-type        :error/value-failed-spec
-                     :expected            #::cp.art{:spec spec :type (pr-str kw)}
-                     :actual              {::cp.art/failing-samples #{failing-case}}
-                     :original-expression (or orig-expr kw)})))
-    (cp.art/record-warning! env kw
+                    :expected            #::cp.art{:spec spec :type (pr-str kw)}
+                    :actual              {::cp.art/failing-samples #{failing-case}}
+                    :original-expression (or orig-expr kw)})))
+    (cp.art/record-warning! env (or orig-expr kw)
       :warning/qualified-keyword-missing-spec)))
 
 (>defn destr-map-entry! [env [k v] td]
   [::cp.art/env map-entry? ::cp.art/type-description
    => (s/coll-of (s/tuple symbol? ::cp.art/type-description))]
-  (cond
-    (= :keys k) {}
-    (and (qualified-keyword? k) (= (name k) "keys"))
-    #_=> (mapv (fn [sym]
-                 (let [spec-kw (keyword (namespace k) (str sym))]
-                   (?validate-samples! env spec-kw (::cp.art/samples td) sym)
-                   [sym {::cp.art/original-expression sym
-                         ::cp.art/samples             (set (map spec-kw (::cp.art/samples td)))
-                         ::cp.art/spec                spec-kw
-                         ::cp.art/type                (pr-str spec-kw)}]))
-           v)
-    (qualified-keyword? v)
-    #_=> (do
-           (?validate-samples! env v (::cp.art/samples td))
-           (-destructure! env k
-             {::cp.art/original-expression k
-              ::cp.art/samples             (set (map v (::cp.art/samples td)))
-              ::cp.art/spec                v
-              ::cp.art/type                (pr-str v)}))
-    (keyword? v)
-    #_=> (-destructure! env k
-           #::cp.art{:original-expression k
-                      :samples             (set (map v (::cp.art/samples td)))})
-    (= :as k)
-    #_=> [[v (assoc td ::cp.art/original-expression v)]]
-    :else []))
+  (let [k-val (cp.art/unwrap-meta k)
+        v-val (cp.art/unwrap-meta v)]
+    (cond
+      (= :keys k-val) {}
+      (and (qualified-keyword? k-val) (= (name k-val) "keys"))
+      #_=> (mapv (fn [sym]
+                   (let [spec-kw (keyword (namespace k-val) (str sym))]
+                     (?validate-samples! env spec-kw (::cp.art/samples td) sym)
+                     [sym {::cp.art/original-expression sym
+                           ::cp.art/samples             (set (map spec-kw (::cp.art/samples td)))
+                           ::cp.art/spec                spec-kw
+                           ::cp.art/type                (pr-str spec-kw)}]))
+             v)
+      (qualified-keyword? v-val)
+      #_=> (do
+             (?validate-samples! env v-val (::cp.art/samples td) v)
+             (-destructure! env k
+               {::cp.art/original-expression k
+                ::cp.art/samples             (set (map v-val (::cp.art/samples td)))
+                ::cp.art/spec                v-val
+                ::cp.art/type                (pr-str v-val)}))
+      (simple-keyword? v-val)
+      #_=> (-destructure! env k
+             #::cp.art{:original-expression k
+                       :samples             (set (map v-val (::cp.art/samples td)))})
+      (= :as k-val)
+      #_=> [[v (assoc td ::cp.art/original-expression v)]]
+      :else [])))
 
 (>defn destr-vector! [env vect td]
   [::cp.art/env vector? ::cp.art/type-description
    => (s/coll-of (s/tuple symbol? ::cp.art/type-description))]
-  (let [[symbols specials] (split-with (complement #{'& :as}) vect)
-        sym-count     (count symbols)
+  (let [[symbols specials] (split-with (comp (complement #{'& :as}) cp.art/unwrap-meta) vect)
         coll-bindings (into {}
                         (map (fn [[expr bind]]
                                [bind
-                                (case expr
+                                (case (cp.art/unwrap-meta expr)
                                   :as td
                                   '& {::cp.art/samples
-                                      (set (map (partial drop sym-count)
+                                      (set (map (partial drop (count symbols))
                                              (::cp.art/samples td)))})]))
                         (partition 2 specials))]
     (into coll-bindings
