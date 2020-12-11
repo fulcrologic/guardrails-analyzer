@@ -88,4 +88,5 @@
  {:date      "2020-12-08" :description "check-in and licensing, fixed deftc to work in IJ, started setting up SMTP"
   :timespans [[1225 1300] [1730 1920] [1920 2025]]}
  {:date "2020-12-09" :description "check-in, licensing work" :timespans [[1230 1300] [2015 2045]]}
+ {:date "2020-12-10" :description "check-in, email server, schema design" :timespans [[1230 1300] [1655 1800] [1930 2155]]}
  ]
