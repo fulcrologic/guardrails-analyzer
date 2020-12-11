@@ -20,12 +20,17 @@
   (log/error "Unknown expression:" (pr-str sexpr))
   (cp.ana.disp/unknown-expr env sexpr))
 
-(defmethod cp.ana.disp/analyze-mm :symbol/lookup [env sym]
+(defmethod cp.ana.disp/analyze-mm :symbol.local/lookup [env sym]
   (or
     (cp.art/symbol-detail env sym)
     (cp.art/function-detail env sym)
     (cp.art/external-function-detail env sym)
     (cp.ana.disp/unknown-expr env sym)))
+
+(defmethod cp.ana.disp/analyze-mm :symbol.local/call [env [sym & args]]
+  (let [function (cp.art/symbol-detail env sym)
+        argtypes (mapv (partial cp.ana.disp/-analyze! env) args)]
+    (cp.fnt/analyze-function-call! env function argtypes)))
 
 (defmethod cp.ana.disp/analyze-mm :function.external/call [env [f & args :as sexpr]]
   (cp.analytics/with-analytics env sexpr true

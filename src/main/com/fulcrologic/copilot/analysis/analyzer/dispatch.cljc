@@ -24,13 +24,13 @@
               (cond
                 ;; NOTE: a local symbol resolves first
                 (cp.art/symbol-detail env sym)
-                #_=> :symbol.local/lookup
+                #_=> :symbol.local/call
                 ;; NOTE: analyze methods resolve before any >defn / >ftag definitions
                 (get (methods analyze-mm) cljc-symbol)
                 #_=> cljc-symbol
                 (when core-symbol (get (methods analyze-mm) core-symbol))
                 #_=> core-symbol
-                ;; NOTE: >defn resolves before >ftag
+                ;; NOTE: >defn resolves before >fdef
                 (cp.art/function-detail env sym)
                 #_=> :function/call
                 (cp.art/external-function-detail env sym)
@@ -47,7 +47,7 @@
 (defn analyze-dispatch [env sexpr]
   (cond
     (seq? sexpr) (list-dispatch env sexpr)
-    (symbol? sexpr) :symbol/lookup
+    (symbol? sexpr) :symbol.local/lookup
 
     (and (map? sexpr) (:com.fulcrologic.copilot/meta-wrapper? sexpr)) :literal/wrapped
 

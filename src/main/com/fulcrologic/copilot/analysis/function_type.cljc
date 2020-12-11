@@ -1,11 +1,12 @@
 (ns com.fulcrologic.copilot.analysis.function-type
   (:require
     [clojure.spec.alpha :as s]
-    [com.fulcrologic.copilot.artifacts :as cp.art]
+    [com.fulcrologic.copilot.analysis.analyzer.dispatch :as cp.ana.disp]
     [com.fulcrologic.copilot.analysis.destructuring :as cp.destr]
     [com.fulcrologic.copilot.analysis.sampler :as cp.sampler]
     [com.fulcrologic.copilot.analysis.spec :as cp.spec]
-    [com.fulcrologic.guardrails.core :as gr :refer [>defn => ?]]))
+    [com.fulcrologic.copilot.artifacts :as cp.art]
+    [com.fulcrologic.guardrails.core :as gr :refer [>defn =>]]))
 
 (>defn interpret-gspec [env arglist gspec]
   [::cp.art/env ::cp.art/arglist (s/coll-of ::cp.art/form :kind vector?) => ::cp.art/gspec]
@@ -124,19 +125,21 @@
 (s/def ::partial-argtypes (s/coll-of ::cp.art/type-description))
 
 (>defn analyze-function-call! [env function argtypes]
-  [::cp.art/env (s/or :function ::cp.art/function :lambda ::cp.art/lambda)
+  [::cp.art/env (s/or :function ::cp.art/function :lambda ::cp.art/lambda :invalid map?)
    (s/coll-of ::cp.art/type-description)
    => ::cp.art/type-description]
-  (let [{::cp.art/keys [arities] ::keys [partial-argtypes]} function
-        argtypes      (concat partial-argtypes argtypes)
-        {::cp.art/keys [gspec] :as arity} (cp.art/get-arity arities argtypes)
-        {::cp.art/keys [return-type return-spec]} gspec
-        function-type #::cp.art{:type return-type :spec return-spec}]
-    (assoc function-type ::cp.art/samples
-      (if (validate-argtypes!? env arity argtypes)
-        (cp.sampler/sample! env function argtypes)
-        (cp.sampler/try-sampling! env (cp.spec/generator env return-spec)
-          {::cp.art/original-expression function})))))
+  (if (not (::cp.art/arities function))
+    (cp.ana.disp/unknown-expr env function)
+    (let [{::cp.art/keys [arities] ::keys [partial-argtypes]} function
+          argtypes      (concat partial-argtypes argtypes)
+          {::cp.art/keys [gspec] :as arity} (cp.art/get-arity arities argtypes)
+          {::cp.art/keys [return-type return-spec]} gspec
+          function-type #::cp.art{:type return-type :spec return-spec}]
+      (assoc function-type ::cp.art/samples
+        (if (validate-argtypes!? env arity argtypes)
+          (cp.sampler/sample! env function argtypes)
+          (cp.sampler/try-sampling! env (cp.spec/generator env return-spec)
+            {::cp.art/original-expression function}))))))
 
 (>defn sample->type-description [sample]
   [any? => ::cp.art/type-description]

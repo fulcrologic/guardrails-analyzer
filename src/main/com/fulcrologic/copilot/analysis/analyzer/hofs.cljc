@@ -329,7 +329,8 @@
                 #(cp.fnt/valid-argtypes? env % args-td)))]
     (if (seq (::cp.art/arities ptd))
       (update ptd ::cp.fnt/partial-argtypes concat args-td)
-      (do (cp.art/record-error! env args :error/invalid-partially-applied-arguments {:function (str f)})
+      (do (cp.art/record-error! env args :error/invalid-partially-applied-arguments
+            {:function (str (cp.art/unwrap-meta f))})
           {}))))
 
 (defn analyze-partial! [env [this-sym f & values :as sexpr]]
@@ -344,4 +345,5 @@
       (>partial! env sexpr function values-td)
       {})))
 
-(defmethod cp.ana.disp/analyze-mm 'clojure.core/partial [env sexpr] (analyze-partial! env sexpr))
+(defmethod cp.ana.disp/analyze-mm 'clojure.core/partial [env sexpr]
+  (analyze-partial! env sexpr))
