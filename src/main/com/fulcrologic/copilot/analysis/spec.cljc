@@ -63,7 +63,10 @@
 (defn lookup [env value] (-lookup (::impl env) value))
 (defn valid? [env spec value] (-valid? (::impl env) spec value))
 (defn explain [env spec value] (-explain (::impl env) spec value))
-(defn generator [env spec] (-generator (::impl env) spec))
+(defn generator [env spec]
+  (try (-generator (::impl env) spec)
+    (catch #?(:clj Exception :cljs :default) e
+      nil)))
 (defn generate [env spec] (-generate (::impl env) spec))
 
 (defonce cache (atom {}))

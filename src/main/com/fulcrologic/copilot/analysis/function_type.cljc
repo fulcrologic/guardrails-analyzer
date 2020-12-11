@@ -39,9 +39,8 @@
         (reduce-kv cp.art/remember-local
           env (cp.destr/destructure! env bind-sexpr
                 (bind-type-desc env argument-type argument-spec
-                  {::cp.art/original-expression arglist}))))
-      env
-      (map vector (remove #{'&} arglist) argument-types argument-specs))))
+                  {::cp.art/original-expression bind-sexpr}))))
+      env (map vector (remove #{'&} arglist) argument-types argument-specs))))
 
 (>defn check-return-type!
   [env {::cp.art/keys [return-type return-spec]} {::cp.art/keys [samples original-expression]}]

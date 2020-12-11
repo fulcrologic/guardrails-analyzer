@@ -16,9 +16,9 @@
 
 (defn check-form! [env form]
   (try (cp.ana/analyze! env form)
-       (catch #?(:clj Throwable :cljs :default) t
-         (cp.art/record-error! env form :error/failed-to-analyze-form)
-         (log/error t "Failed to analyze form:" form))))
+    (catch #?(:clj Throwable :cljs :default) t
+      (cp.art/record-error! env form :error/failed-to-analyze-form)
+      (log/error t "Failed to analyze form:" form))))
 
 (defn check!
   ([msg cb] (check! (cp.art/build-env) msg cb))

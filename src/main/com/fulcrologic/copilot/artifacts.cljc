@@ -170,7 +170,7 @@
 
 (>defn lookup-spec [env quoted-spec]
   [(s/keys :req [::spec-registry]) ::form => ::spec]
-  (or (get-in env [::spec-registry quoted-spec])
+  (or (get-in env [::spec-registry (unwrap-meta quoted-spec)])
     (throw (ex-info "WIP: lookup-spec failed to lookup"
              {:spec quoted-spec}))))
 
