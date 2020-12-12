@@ -6,10 +6,10 @@
     [com.fulcrologic.copilot.artifacts :as cp.art]))
 
 (defn analyze:ifn-call!
-  [env {:as td ifn ::cp.art/original-expression} args-td]
-  ;; NOTE: unsure about using original-expression... and unwrap-meta is a temporary fix
-  {::cp.art/samples (set (map (partial apply (cp.art/unwrap-meta ifn))
-                           (cp.sampler/random-samples-from-each env args-td)))})
+  [env td args-td]
+  {::cp.art/samples (set (map (fn [[f & args]] (apply f args))
+                           (cp.sampler/random-samples-from-each env
+                             (cons td args-td))))})
 
 (defmethod cp.ana.disp/analyze-mm :ifn/call [env [ifn & args :as sexpr]]
   (let [ifn-td (cp.ana.disp/-analyze! env ifn)

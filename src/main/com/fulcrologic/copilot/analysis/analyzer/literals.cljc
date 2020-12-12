@@ -70,7 +70,7 @@
 
 (defn analyze-hashmap-entry
   [env acc map-key v]
-  (let [{:as kk ::cp.art/keys [samples]} (cp.ana.disp/-analyze! env map-key)]
+  (let [{::cp.art/keys [samples]} (cp.ana.disp/-analyze! env map-key)]
     (assert (and (first samples) (not (next samples))) "WIP: NOT IMPLEMENTED YET")
     (let [k (first samples)]
       (when (and (qualified-keyword? k) (nil? (cp.spec/lookup env k)))

@@ -41,7 +41,7 @@
       (symbol? head) (symbol-dispatch head)
       (quoted-symbol? head) :ifn/call
       (seq? head) :function.expression/call
-      (ifn? head) :ifn/call
+      (ifn? (cp.art/unwrap-meta head)) :ifn/call
       :else :unknown)))
 
 (defn analyze-dispatch [env sexpr]
