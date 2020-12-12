@@ -1,5 +1,6 @@
 (ns com.fulcrologic.copilot.analysis.analyzer
   (:require
+    com.fulcrologic.copilot.analysis.analyzer.functions
     com.fulcrologic.copilot.analysis.analyzer.hofs
     com.fulcrologic.copilot.analysis.analyzer.ifn
     com.fulcrologic.copilot.analysis.analyzer.literals

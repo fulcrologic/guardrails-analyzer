@@ -140,4 +140,5 @@
  {:date "2020-12-10" :description "partial & bug fixes" :timespans [[1707 1752]]}
  {:date "2020-12-10" :description "better failed generator error reporting" :timespans [[1752 1830]]}
  {:date "2020-12-11" :description "improved ns parsing & analysis" :timespans [[1120 1410] [1615 1740]]}
+ {:date "2020-12-11" :description "fixed ifn analysis, added get-in analysis" :timespans [[1800 1900]]}
  ]
