@@ -114,8 +114,8 @@
                                   :actual  p})
             (not p) (t/do-report {:type     :fail
                                   :message  (str "found an extra problem test case on line: " line)
-                                  :actual   c
-                                  :expected nil})
+                                  :actual   nil
+                                  :expected c})
             :else (check-test-case! c p))))
       (if (and (empty? binding-cases) (empty? bindings)) nil
         (doseq [[c b] (zip-fully binding-cases bindings)]

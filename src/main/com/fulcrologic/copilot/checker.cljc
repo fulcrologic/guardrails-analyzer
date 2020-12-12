@@ -2,6 +2,7 @@
   (:require
     com.fulcrologic.copilot.ftags.clojure-core
     com.fulcrologic.copilot.ftags.clojure-string
+    com.fulcrologic.copilot.ftags.clojure-spec-alpha
     [clojure.test.check.generators]
     [com.fulcrologic.copilot.analysis.analyzer :as cp.ana]
     [com.fulcrologic.copilot.analysis.spec :as cp.spec]
@@ -22,13 +23,15 @@
 
 (defn check!
   ([msg cb] (check! (cp.art/build-env) msg cb))
-  ([env {:as msg :keys [forms file NS]} cb]
+  ([env {:as msg :keys [forms file NS aliases refers]} cb]
    (let [on-done (fn []
                    (cp.analytics/report-analytics!)
                    (cb))
          env     (-> env
                    (assoc ::cp.art/checking-file file)
-                   (assoc ::cp.art/current-ns NS))]
+                   (assoc ::cp.art/current-ns NS)
+                   (assoc ::cp.art/aliases aliases)
+                   (assoc ::cp.art/refers refers))]
      (cp.art/clear-problems! file)
      (cp.art/clear-bindings! file)
      (cp.spec/with-empty-cache

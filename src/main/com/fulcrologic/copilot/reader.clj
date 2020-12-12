@@ -1,12 +1,13 @@
 (ns com.fulcrologic.copilot.reader
   (:require
+    [clojure.java.io :as io]
+    [clojure.spec.alpha :as s]
+    [com.fulcrologic.copilot.transit-handlers :as f.transit]
     [com.fulcrologicpro.clojure.tools.reader :as reader]
     [com.fulcrologicpro.clojure.tools.reader.reader-types :as readers]
-    [com.fulcrologic.copilot.transit-handlers :as f.transit]
-    [com.fulcrologicpro.com.rpl.specter :as $]
     [com.fulcrologicpro.taoensso.timbre :as log]
-    [clojure.java.io :as io]
-    [com.fulcrologic.copilot.artifacts :as cp.art])
+    [com.fulcrologic.copilot.artifacts :as cp.art]
+    [com.fulcrologicpro.taoensso.encore :as enc])
   (:import
     (java.io FileReader PushbackReader File)))
 
@@ -29,12 +30,42 @@
       (log/debug t "Failed to read ns decl from:" file)
       nil)))
 
-(defn parse-ns-aliases [ns-form]
-  (->> ns-form
-    ($/select [($/walker #(and (vector? %) (some #{:as} %)))])
-    (map (fn [[ns-sym & args]]
-           {(:as (apply hash-map args)) ns-sym}))
-   (reduce merge)))
+(defn parse:refers [lib [kind value]]
+  (case kind
+    :syms {:refers (into {}
+                     (map (fn [sym] [sym (symbol (str lib) (str sym))])
+                       value))}
+    {}))
+
+(defn parse:lib+opts [{:keys [lib options]}]
+  (cond-> {}
+    (:as options) (assoc :aliases {(:as options) lib})
+    (:refer options) (merge (parse:refers lib (:refer options)))))
+
+(defn parse:libspec [[kind value]]
+  (case kind
+    :lib+opts (parse:lib+opts value)
+    nil))
+
+(defn parse:require-clause [[kind value]]
+  (case kind
+    :libspec (parse:libspec value)
+    :prefix-list (let [{:keys [prefix libspecs]} value]
+                   (-> (->> libspecs
+                         (map parse:libspec)
+                         (into {}))
+                     (update :aliases (partial enc/map-keys
+                                        #(symbol (str prefix "." %))))
+                     (update :refers (partial enc/map-vals
+                                       #(symbol (str prefix "." %))))))
+    nil))
+
+(defn parse-ns [ns-form]
+  (let [conformed-ns (s/conform :clojure.core.specs.alpha/ns-form
+                       (cp.art/unwrap-meta (rest ns-form)))
+        requires (:body (:require (into {} (:ns-clauses conformed-ns))))]
+    (reduce enc/nested-merge {}
+      (map parse:require-clause requires))))
 
 (defn read-file [file reader-cond-branch]
   (let [eof     (new Object)
@@ -51,11 +82,11 @@
                       (.getAbsolutePath file)
                       "<input stream>")))
         NS      (create-ns (second ns-decl))
-        aliases (parse-ns-aliases ns-decl)
+        parsed-ns (parse-ns ns-decl)
         forms   (loop [forms []]
-                  (let [form (binding [reader/*alias-map* aliases, *ns* NS]
+                  (let [form (binding [*ns* NS, reader/*alias-map* (:aliases parsed-ns)]
                                (read-impl opts reader))]
                     (if (identical? form eof)
                       (do (.close reader) forms)
                       (recur (conj forms form)))))]
-    {:NS (str NS) :ns-decl ns-decl :forms forms}))
+    (merge parsed-ns {:NS (str NS) :forms forms})))

@@ -10,8 +10,8 @@
   (let [_ :a ; :binding/destr.simple-symbol
         ]))
 
-(s/def ::c int?) ; :problem/_
-(s/def ::f int?) ; :problem/_
+(s/def ::c int?)
+(s/def ::f int?)
 
 (>defn d:maps [] [=> any?]
   (let [{b :b}       {:b 1}  ; :binding/destr.map.simple-keyword
@@ -82,5 +82,5 @@
    :binding/destr.mixed.as
    {:expected {::cp.art/samples #{[{:x 13}]}}}
 
-   :binding/_ {} :problem/_ {}
+   :binding/_ {}
    })

@@ -212,9 +212,14 @@
   [env sym]
   [::env symbol? => symbol?]
   (cljc-rewrite-sym-ns
-    (get-in env [::externs-registry (::current-ns env)
-                 (::checking-sym env) sym ::extern-name]
-      #_:or sym)))
+    (or
+      (get-in env [::externs-registry (::current-ns env)
+                   (::checking-sym env) sym ::extern-name])
+      (when-let [fq-ns (some->> sym namespace symbol
+                         (get (::aliases env)))]
+        (symbol (str fq-ns) (name sym)))
+      (get (::refers env) sym)
+      sym)))
 
 (>defn function-detail [env sym]
   [::env symbol? => (? ::function)]

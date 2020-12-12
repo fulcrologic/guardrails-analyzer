@@ -16,6 +16,9 @@
   [::cp.art/env any? => ::cp.art/type-description]
   (cp.ana.disp/-analyze! env sexpr))
 
+(defmacro defanalyzer [disp arglist & body]
+  `(defmethod cp.ana.disp/analyze-mm '~disp ~arglist ~@body))
+
 (defmethod cp.ana.disp/analyze-mm :unknown [env sexpr]
   (log/error "Unknown expression:" (pr-str sexpr))
   (cp.ana.disp/unknown-expr env sexpr))

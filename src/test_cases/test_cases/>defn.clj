@@ -24,7 +24,7 @@
   ([x] ^:pure [int? => map?] {:pure x}))
 
 (>defn r4 [] [=> any?]
-  (let [_ (pure-2) ; :binding/defn.not-pure-2
+  (let [_ (pure-2)   ; :binding/defn.not-pure-2
         _ (pure-2 7) ; :binding/defn.pure-2
         ]))
 
