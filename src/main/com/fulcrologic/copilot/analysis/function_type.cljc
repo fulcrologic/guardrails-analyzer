@@ -127,8 +127,12 @@
   [::cp.art/env (s/or :function ::cp.art/function :lambda ::cp.art/lambda :invalid map?)
    (s/coll-of ::cp.art/type-description)
    => ::cp.art/type-description]
-  (if (not (::cp.art/arities function))
-    (cp.ana.disp/unknown-expr env function)
+  (cond
+    (::cp.art/unknown-expression function)
+    #_=> function
+    (not (::cp.art/arities function))
+    #_=> (cp.ana.disp/unknown-expr env function)
+    :else
     (let [{::cp.art/keys [arities] ::keys [partial-argtypes]} function
           argtypes      (concat partial-argtypes argtypes)
           {::cp.art/keys [gspec] :as arity} (cp.art/get-arity arities argtypes)

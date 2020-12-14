@@ -323,7 +323,7 @@
 
 (defmethod cp.ana.disp/analyze-mm 'clojure.core/juxt [env sexpr] (analyze-juxt! env sexpr))
 
-(defn >partial! [env [_ f & args] function args-td]
+(defn >partial! [env [_ f & args :as sexpr] function args-td]
   (let [ptd (update function ::cp.art/arities
               (partial utils/filter-vals
                 #(cp.fnt/valid-argtypes? env % args-td)))]
@@ -331,7 +331,7 @@
       (update ptd ::cp.fnt/partial-argtypes concat args-td)
       (do (cp.art/record-error! env args :error/invalid-partially-applied-arguments
             {:function (str (cp.art/unwrap-meta f))})
-          {}))))
+        (cp.ana.disp/unknown-expr env sexpr)))))
 
 (defn analyze-partial! [env [this-sym f & values :as sexpr]]
   (let [partial-td (cp.art/external-function-detail env this-sym)
@@ -343,7 +343,7 @@
             (cons function values-td))
           (cons function values-td))
       (>partial! env sexpr function values-td)
-      {})))
+      (cp.ana.disp/unknown-expr env f))))
 
 (defmethod cp.ana.disp/analyze-mm 'clojure.core/partial [env sexpr]
   (analyze-partial! env sexpr))

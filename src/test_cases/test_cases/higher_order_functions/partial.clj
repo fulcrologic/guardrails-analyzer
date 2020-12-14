@@ -9,11 +9,11 @@
   [int? int? => int?]
   (+ a b))
 
-(>defn g [] [=> any?]
+(>defn t [] [=> any?]
   (let [pf1 (partial f 23 55)
-        r1 (pf1)              ; :binding/partial.pf1.result
-        pf2 (partial f :foo)  ; :problem/partial.pf2.bad-arg
-        ;; TODO: (pf2) ; :binding/FIXME
+        r1  (pf1)              ; :binding/partial.pf1.result
+        pf2 (partial f :foo)   ; :problem/partial.pf2.bad-arg :problem/partial.pf2.failed
+        ;r2  (pf2) ; :binding/FIXME
         ]))
 
 (deftc
@@ -25,4 +25,8 @@
                 {::cp.art/problem-type :error/invalid-partially-applied-arguments
                  ::cp.art/original-expression (_/seq-matches?* [(_/embeds?* {:value :foo})])
                  ::cp.art/message-params {:function "f"}})}
+
+   :problem/partial.pf2.failed
+   {:expected {::cp.art/problem-type :info/failed-to-analyze-unknown-expression}}
+
    })
