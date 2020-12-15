@@ -1,14 +1,12 @@
 (ns com.fulcrologic.copilot.checkers.clojure
   (:require
     [clojure.string :as str]
-    [clojure.spec.alpha :as s]
     [clojure.tools.namespace.repl :as tools-ns :refer [refresh set-refresh-dirs]]
     [com.fulcrologic.copilot.checker :as cp.checker]
     [com.fulcrologic.copilot.checkers.sente-client :as ws]
-    [com.fulcrologic.copilot.generators :as cp.gen]
-    [com.fulcrologic.guardrails.core :refer [>defn >fdef => |]]
     [com.fulcrologic.guardrails.config :as gr.cfg]
-    [com.fulcrologicpro.taoensso.timbre :as log])
+    [com.fulcrologicpro.taoensso.timbre :as log]
+    [com.fulcrologic.copilot.logging :as cp.log])
   (:import
     (java.io FileNotFoundException)))
 
@@ -48,6 +46,10 @@
   (try (Integer/parseInt (slurp ".copilot/daemon.port"))
     (catch FileNotFoundException _ nil)))
 
+(defn configure-logging! []
+  (let [log-file ".copilot/logs/checker.clojure.%s.log"]
+    (cp.log/add-appender! log-file)))
+
 (defn start
   "Start the checker.
 
@@ -70,6 +72,7 @@
            "\nFor clj: add `-J-Dguardrails.mode=:copilot`"
            "\nFor deps.edn: add `:jvm-opts [\"-Dguardrails.mode=:copilot\"]"))))
    (prn ::start! opts)
+   (configure-logging!)
    (when-let [ns-sym (some-> main-ns symbol)]
      (require ns-sym))
    (when (seq src-dirs)
@@ -125,58 +128,6 @@
   []
   (stop!)
   (refresh :after `start))
-
-(>defn f [x]
-  [int? => string?]
-  (+ x 1))
-
-(s/def ::thing int?)
-
-(>defn h [a b]
-  [int? int? | #(< a b) => int?]
-  (+ a b))
-
-(>defn ma [a & rest]
-  [int? (s/* pos-int?) => int?]
-  (reduce + a rest))
-
-(s/def :person/name string?)
-(s/def :person/age int?)
-
-(>defn person []
-  [=> (s/keys :req [:person/name])]
-  {:person/name "Joe"})
-
-(>defn g [x]
-  [int? => int?]
-  (let [a (f (+ x 1))
-        {:person/keys [age]} (person)
-        m (h 8 9)
-        j (ma -1 -2 -3)
-        {::keys [thing]} {::thing 40}
-        b (f a)]
-    (if true
-      1
-      2)
-    a))
-
-(defprotocol DB
-  (q [this query]))
-
-(s/def :fake/db (cp.gen/stub-spec DB))
-
-(>fdef com.fulcrologic.copilot.checkers.clojure/q
-  [db query] [:fake/db vector? => any?])
-
-(>defn get-person-name [db id]
-  [:fake/db int? => string?]
-  (str db id "_name"))
-
-(>defn test-db [db]
-  [:fake/db => nil?]
-  (q :not-a-db [:stuff])
-  (q db :not-a-vec)
-  (get-person-name "NOT_A_DB" 1))
 
 (comment
   (reload!)
