@@ -67,6 +67,7 @@
   (let [dispatch (analyze-dispatch env sexpr)]
     (cp.analytics/with-analytics env sexpr
       (and (qualified-symbol? dispatch)
+        ;; TODO: if its defined in copilot ftags.*
         (#{"clojure.core"} (namespace dispatch)))
       #(as-> % env
          (assoc env ::dispatch dispatch)
@@ -78,7 +79,6 @@
 (defn analyze-statements! [env body]
   (doseq [expr (butlast body)]
     (-analyze! env expr))
-  ;; TODO maybe warn user if there is no body
   (if-not (last body)
     {::cp.art/samples #{nil}}
     (-analyze! env (last body))))

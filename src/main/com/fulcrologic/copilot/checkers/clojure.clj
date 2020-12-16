@@ -11,6 +11,7 @@
     (java.io FileNotFoundException)))
 
 (defn send-mutation! [env sym params]
+  (log/debug "Sending mutation:" sym)
   (ws/send! env
     [:fulcro.client/API [(list sym params)]]
     (fn [& args]
@@ -43,7 +44,8 @@
       (report-error! env ?err))))
 
 (defn ?find-port []
-  (try (Integer/parseInt (slurp ".copilot/daemon.port"))
+  (try (log/spy :debug "Found daemon running on port:"
+         (Integer/parseInt (slurp ".copilot/daemon.port")))
     (catch FileNotFoundException _ nil)))
 
 (defn configure-logging! []
@@ -71,8 +73,8 @@
          (str "JVM property `guardrails.mode` should be set to `:copilot`!"
            "\nFor clj: add `-J-Dguardrails.mode=:copilot`"
            "\nFor deps.edn: add `:jvm-opts [\"-Dguardrails.mode=:copilot\"]"))))
-   (prn ::start! opts)
    (configure-logging!)
+   (log/info "Starting checker with opts:" opts)
    (when-let [ns-sym (some-> main-ns symbol)]
      (require ns-sym))
    (when (seq src-dirs)

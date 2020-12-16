@@ -3,7 +3,8 @@
     [clojure.spec.alpha :as s]
     [com.fulcrologic.copilot.artifacts :as cp.art]
     [com.fulcrologic.copilot.analysis.spec :as cp.spec]
-    [com.fulcrologic.guardrails.core :as gr :refer [>defn >defn- =>]]))
+    [com.fulcrologic.guardrails.core :as gr :refer [>defn >defn- =>]]
+    [com.fulcrologicpro.taoensso.timbre :as log]))
 
 (s/def ::destructurable
   (s/or
@@ -106,7 +107,11 @@
 (>defn destructure! [env bind-sexpr value-type-desc]
   [::cp.art/env ::destructurable ::cp.art/type-description
    => (s/map-of symbol? ::cp.art/type-description)]
-  (let [bindings (-destructure! env bind-sexpr value-type-desc)]
-    (doseq [[sym td] bindings]
-      (cp.art/record-binding! env sym td))
-    bindings))
+  (try
+    (let [bindings (-destructure! env bind-sexpr value-type-desc)]
+      (doseq [[sym td] bindings]
+        (cp.art/record-binding! env sym td))
+      bindings)
+    (catch #?(:clj Exception :cljs :default) e
+      (log/error e "Error destructuring expression:" bind-sexpr "with value:" value-type-desc)
+      {})))

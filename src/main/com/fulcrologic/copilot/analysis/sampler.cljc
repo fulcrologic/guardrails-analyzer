@@ -40,10 +40,10 @@
   ([env gen extra]
    [::cp.art/env (? ::cp.art/generator) map? => ::cp.art/samples]
    (try
-     (if-not gen (throw (ex-info "derp" {::silent? true}))
+     (if-not gen (throw (ex-info "No generator provided!" {::silent? true}))
        (if-let [samples (seq (cp.spec/sample env gen))]
          (->samples (flatten-samples samples))
-         (throw (ex-info "No samples!?" {}))))
+         (throw (ex-info "Generator returned no samples!" {:gen gen}))))
      (catch #?(:clj Throwable :cljs :default) e
        (log/error (when-not (::silent? (ex-data e)) e) "Failed to generate samples!")
        (cp.art/record-error! env

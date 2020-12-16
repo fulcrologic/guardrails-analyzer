@@ -18,9 +18,10 @@
     keystore))
 
 (defn sha256 ^bytes [bytes] (.digest (MessageDigest/getInstance "SHA-256") bytes))
-(defn decrypt ^bytes [^Key key ^bytes bytes] (let [cipher (doto (Cipher/getInstance "RSA")
-                                                            (.init Cipher/DECRYPT_MODE key))]
-                                               (.doFinal cipher bytes)))
+(defn decrypt ^bytes [^Key key ^bytes bytes]
+  (let [cipher (doto (Cipher/getInstance "RSA")
+                 (.init Cipher/DECRYPT_MODE key))]
+    (.doFinal cipher bytes)))
 
 (defn license-details [keystore password license-string]
   (try
