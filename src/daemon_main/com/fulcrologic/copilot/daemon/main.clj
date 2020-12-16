@@ -5,5 +5,5 @@
     [mount.core :as mount])
   (:gen-class))
 
-(defn -main []
+(defn -main [args]
   (mount/start))
