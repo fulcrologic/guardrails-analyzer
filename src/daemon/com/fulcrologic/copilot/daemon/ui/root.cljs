@@ -27,5 +27,5 @@
   {:query         [:all-problems]
    :initial-state {:all-problems {:fake :problem}}}
   (dom/div
-    (dom/h2 "PROBLEMS:")
+    (dom/h2 "PROBLEMS")
     (ui-problems all-problems)))

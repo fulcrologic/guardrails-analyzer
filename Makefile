@@ -1,5 +1,5 @@
-CLJSSRC := $(shell find src -name '*.cljs' -o -name '*.cljc')
-CLJSRC := $(shell find src -name '*.clj' -o -name '*.cljc')
+DAEMONUI := $(shell find src/daemon* src/main -name '*.cljs' -o -name '*.cljc')
+DAEMON := $(shell find src/daemon* src/main -name '*.clj' -o -name '*.cljc')
 
 tests:
 	yarn
@@ -7,10 +7,10 @@ tests:
 	npx karma start --single-run
 	clojure -A:provided:cljs:dev:test:clj-tests -J-Dguardrails.config=guardrails-test.edn -J-Dguardrails.enabled
 
-resources/public/js/daemon-ui/main.js: $(CLJSSRC)
+resources/public/js/daemon-ui/main.js: $(DAEMONUI)
 	shadow-cljs release daemon-ui
 
-Copilot.jar: pom-daemon.xml resources/public/js/daemon-ui/main.js $(CLJSRC)
+Copilot.jar: pom-daemon.xml resources/public/js/daemon-ui/main.js $(DAEMON)
 	clojure -A:provided:cljs:daemon -X:uberjar
 
 deploy: Copilot.jar
