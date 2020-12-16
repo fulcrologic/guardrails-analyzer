@@ -92,5 +92,5 @@
  {:date "2020-12-11" :description "check-in, more schema design" :timespans [[810 1000] [1200 1230] [1800 1815]]}
  {:date "2020-12-12" :description "more schema" :timespans [[1800 2130]]}
  {:date "2020-12-14" :description "schema, sendmail, redis, email template" :timespans [[1730 1830] [2030 2230]]}
- {:date "2020-12-15" :description "first trial license in email!" :timespans [[1900 ]]}
+ {:date "2020-12-15" :description "first trial license in email! daemon deploy" :timespans [[1900 2200]]}
  ]
