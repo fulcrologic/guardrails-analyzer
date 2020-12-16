@@ -70,10 +70,6 @@
       <id>clojars</id>
       <url>https://repo.clojars.org/</url>
     </repository>
-    <repository>
-      <id>fulcrologic</id>
-      <url>https://mvn.fulcrologic.com</url>
-    </repository>
   </repositories>
   <dependencies>
     <dependency>
@@ -82,14 +78,24 @@
       <version>1.10.1</version>
     </dependency>
     <dependency>
-      <groupId>com.fulcrologic</groupId>
-      <artifactId>guardrails</artifactId>
-      <version>1.0.0-SNAPSHOT</version>
+      <groupId>com.wsscode</groupId>
+      <artifactId>pathom</artifactId>
+      <version>2.2.30</version>
     </dependency>
     <dependency>
-      <groupId>org.clojure</groupId>
-      <artifactId>clojurescript</artifactId>
-      <version>1.10.773</version>
+      <groupId>com.fulcrologic</groupId>
+      <artifactId>guardrails</artifactId>
+      <version>1.0.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.lsp4j</groupId>
+      <artifactId>org.eclipse.lsp4j</artifactId>
+      <version>0.9.0</version>
+    </dependency>
+    <dependency>
+      <groupId>ring</groupId>
+      <artifactId>ring-defaults</artifactId>
+      <version>0.3.2</version>
     </dependency>
     <dependency>
       <groupId>org.clojure</groupId>
@@ -97,9 +103,14 @@
       <version>1.0.0</version>
     </dependency>
     <dependency>
-      <groupId>org.clojure</groupId>
-      <artifactId>tools.reader</artifactId>
-      <version>1.3.3</version>
+      <groupId>mount</groupId>
+      <artifactId>mount</artifactId>
+      <version>0.1.12</version>
+    </dependency>
+    <dependency>
+      <groupId>bidi</groupId>
+      <artifactId>bidi</artifactId>
+      <version>2.1.6</version>
     </dependency>
     <dependency>
       <groupId>org.clojure</groupId>
@@ -109,7 +120,22 @@
     <dependency>
       <groupId>com.fulcrologic</groupId>
       <artifactId>alternate-deps</artifactId>
-      <version>1.0.0-SNAPSHOT</version>
+      <version>1.0.0</version>
+    </dependency>
+    <dependency>
+      <groupId>ring</groupId>
+      <artifactId>ring-core</artifactId>
+      <version>1.8.1</version>
+    </dependency>
+    <dependency>
+      <groupId>org.clojure</groupId>
+      <artifactId>core.async</artifactId>
+      <version>1.0.567</version>
+    </dependency>
+    <dependency>
+      <groupId>http-kit</groupId>
+      <artifactId>http-kit</artifactId>
+      <version>2.5.0</version>
     </dependency>
   </dependencies>
 </project>
