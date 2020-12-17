@@ -2,32 +2,47 @@
   #?(:cljs (:require-macros [com.fulcrologic.copilot.analytics]))
   (:require
     #?(:cljs [goog.object :as g.obj])
+    [com.fulcrologic.copilot.config :as cp.cfg]
     [com.fulcrologicpro.taoensso.timbre :as log]))
+
+(defonce config
+  (cp.cfg/load-config!))
+
+(def debug?
+  #?(:clj (some? (System/getProperty "copilot.analytics.debug"))
+     :cljs false))
+
+(defn analytics? []
+  (or debug? (:analytics? config false)))
 
 (defonce analyze-stats (atom []))
 
 (defn record-analyze! [env sym args]
-  (swap! analyze-stats conj
-    {::symbol sym
-     ::arity  (count args)}))
+  (when (analytics?)
+    (swap! analyze-stats conj
+      {::symbol sym
+       ::arity  (count args)})))
 
 (defonce problem-stats (atom {}))
 
 (defn record-problem! [env problem]
-  (swap! problem-stats update
-    (:com.fulcrologic.copilot.artifacts/problem-type problem)
-    (fnil inc 0)))
+  (when (analytics?)
+    (swap! problem-stats update
+      (:com.fulcrologic.copilot.artifacts/problem-type problem)
+      (fnil inc 0))))
 
 (defonce usage-stats (atom {}))
 
 (defn record-usage! [env]
-  (swap! usage-stats update
-    ::count (fnil inc 0)))
+  (when (analytics?)
+    (swap! usage-stats update
+      ::count (fnil inc 0))))
 
 (defonce profiling-info (atom {}))
 
 (defn record-profiling! [tag dt]
-  (swap! profiling-info update tag (fnil conj []) dt))
+  (when (analytics?)
+    (swap! profiling-info update tag (fnil conj []) dt)))
 
 (def now-nano*
   #?(:clj  #(System/nanoTime)
@@ -41,7 +56,7 @@
   `(let [before# (now-nano)
          return# ~body
          after#  (now-nano)]
-     (when now-nano*
+     (when (and before# after#)
        (record-profiling! ~tag (- after# before#)))
      return#))
 
@@ -60,16 +75,11 @@
   (reset! profiling-info {})
   (reset! usage-stats {}))
 
-(def debug?
-  #?(:clj (some? (System/getProperty "copilot.analytics.debug"))
-     :cljs false))
-
 (defn send-analytics! [analytics]
   (if debug?
     (log/debug "ANALYTICS:" analytics)
     ;; TODO FIXME should send to endpoint & on ack clear atoms
-    #?(:clj #(spit "/tmp/copilot-analytics.txt" (pr-str %) :append true)
-       :cljs tap>))
+    (println "TODO send-analytics!"))
   (clear-analytics!))
 
 (defonce last-report-time (atom nil))
@@ -79,12 +89,18 @@
         :clj  (System/currentTimeMillis))
     1000))
 
+(defonce report-interval (* 15 60))
+
 ;; CONTEXT: Runs after each check command
 (defn report-analytics! []
-  (let [now-s (now-in-seconds)
-        last-s @last-report-time]
-    (when (or debug? (nil? last-s)
-            (< (* 5 60) (- now-s last-s) ))
-      (let [analytics (gather-analytics!)]
-        (reset! last-report-time now-s)
-        (send-analytics! analytics)))))
+  (try (when (analytics?)
+         (let [now-s (now-in-seconds)
+               last-s @last-report-time]
+           (when (or debug? (nil? last-s)
+                   (< report-interval (- now-s last-s) ))
+             (let [analytics (gather-analytics!)]
+               (reset! last-report-time now-s)
+               (send-analytics! analytics)))))
+    (catch #?(:clj Exception :cljs :default) e
+      (log/error e "Failed to report analytics because:")
+      nil)))
