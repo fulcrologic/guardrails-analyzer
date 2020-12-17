@@ -145,4 +145,6 @@
  {:date "2020-12-14" :description "logging" :timespans [[1710 1855]]}
  {:date "2020-12-16" :description "logging" :timespans [[1430 1500]]}
  {:date "2020-12-16" :description "analytics" :timespans [[1500 1900]]}
+ {:date "2020-12-17" :description "delete old logs" :timespans [[1100 1125]]}
+ {:date "2020-12-17" :description "copilot config, for analytics" :timespans [[1125 1150]]}
  ]
