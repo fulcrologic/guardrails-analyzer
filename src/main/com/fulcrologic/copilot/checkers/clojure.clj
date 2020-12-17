@@ -49,8 +49,9 @@
     (catch FileNotFoundException _ nil)))
 
 (defn configure-logging! []
-  (let [log-file ".copilot/logs/checker.clojure.%s.log"]
-    (cp.log/add-appender! log-file)))
+  (let [log-dir ".copilot/logs"]
+    (cp.log/clear-old-logs! log-dir)
+    (cp.log/add-appender! log-dir "checker.clojure.%s.log")))
 
 (defn start
   "Start the checker.
