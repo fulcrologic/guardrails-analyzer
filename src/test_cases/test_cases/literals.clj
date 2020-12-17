@@ -2,7 +2,9 @@
   (:require
     [com.fulcrologic.copilot.artifacts :as cp.art]
     [com.fulcrologic.copilot.test-cases-runner :refer [deftc]]
-    [com.fulcrologic.guardrails.core :refer [>defn =>]]))
+    [com.fulcrologic.copilot.test-checkers :as tc]
+    [com.fulcrologic.guardrails.core :refer [>defn =>]]
+    [fulcro-spec.check :as _]))
 
 (>defn sets [] [=> any?]
   (let [_ #{"str" :kw 123} ; :binding/set
@@ -18,19 +20,19 @@
 
 (deftc
   {:binding/set
-   {:expected {::cp.art/samples #{#{"str" :kw 123}}}}
+   {:expected (_/embeds?* {::cp.art/samples (tc/subset?* #{#{"str" :kw 123}})})}
 
    :binding/set.mixed
-   {:expected {::cp.art/samples #{#{:always :a} #{:always :b}}}}
+   {:expected (_/embeds?* {::cp.art/samples (tc/subset?* #{#{:always :a} #{:always :b}})})}
 
    :binding/set.random
-   {:expected {::cp.art/samples #{#{1 :a} #{1 :b} #{2 :a} #{2 :b}}}}
+   {:expected (_/embeds?* {::cp.art/samples (tc/subset?* #{#{1 :a} #{1 :b} #{2 :a} #{2 :b}})})}
 
    :binding/map
-   {:expected {::cp.art/samples #{{:a {:b :c}}}}}
+   {:expected (_/embeds?* {::cp.art/samples (tc/subset?* #{{:a {:b :c}}})})}
 
    :binding/map.nested
-   {:expected {::cp.art/samples #{{:d {:a {:b :c}}}}}}
+   {:expected (_/embeds?* {::cp.art/samples (tc/subset?* #{{:d {:a {:b :c}}}})})}
 
    ; #_ :binding/map.random
    ; #_ {:expected {::cp.art/samples #{{:g 0} {:g 1} {:g 2}}}}
