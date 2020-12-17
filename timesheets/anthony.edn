@@ -147,4 +147,6 @@
  {:date "2020-12-16" :description "analytics" :timespans [[1500 1900]]}
  {:date "2020-12-17" :description "delete old logs" :timespans [[1100 1125]]}
  {:date "2020-12-17" :description "copilot config, for analytics" :timespans [[1125 1150]]}
+ {:date "2020-12-17" :description "walk & chat" :timespans [[1215 1245]]}
+ {:date "2020-12-17" :description "default config dialog" :timespans [[1320 1345]]}
  ]
