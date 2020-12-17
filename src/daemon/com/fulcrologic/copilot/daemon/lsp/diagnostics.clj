@@ -1,8 +1,7 @@
 (ns com.fulcrologic.copilot.daemon.lsp.diagnostics
   (:require
     [com.fulcrologic.copilot.artifacts :as cp.art]
-    [com.fulcrologicpro.com.rpl.specter :as $]
-    [com.fulcrologicpro.taoensso.timbre :as log])
+    [com.fulcrologicpro.com.rpl.specter :as $])
   (:import
     (org.eclipse.lsp4j
       Diagnostic DiagnosticSeverity
@@ -16,8 +15,8 @@
 
 (defn problem->diagnostic
   [{::cp.art/keys [problem-type message
-                    line-start line-end
-                    column-start column-end]}]
+                   line-start line-end
+                   column-start column-end]}]
   (new Diagnostic
     (new Range
       (new Position (dec line-start) (dec column-start))
@@ -41,11 +40,10 @@
   (when-let [uri @currently-open-uri]
     (let [file (.getPath (new URI uri))]
       (publish-problems-for uri
-        (log/spy :debug :update-problems!
-          ($/select
-            [($/walker ::cp.art/problem-type)
-             ($/pred (comp (partial = file) ::cp.art/file))]
-            problems))))))
+        ($/select
+          [($/walker ::cp.art/problem-type)
+           ($/pred (comp (partial = file) ::cp.art/file))]
+          problems)))))
 
 (defn report-error! [error]
   (doseq [[_ client] @clients]

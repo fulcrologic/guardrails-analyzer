@@ -68,25 +68,25 @@
       (map parse:require-clause requires))))
 
 (defn read-file [file reader-cond-branch]
-  (let [eof     (new Object)
-        reader  (readers/indexing-push-back-reader
-                  (new PushbackReader
-                    (io/reader file)))
-        opts    {:eof       eof
-                 :read-cond :allow
-                 :features  #{reader-cond-branch}}
-        ns-decl (cp.art/unwrap-meta (read-impl opts reader))
-        _       (assert (= 'ns (first ns-decl))
-                  (format "First form in file <%s> was not a ns declaration!"
-                    (if (instance? File file)
-                      (.getAbsolutePath file)
-                      "<input stream>")))
-        NS      (create-ns (second ns-decl))
+  (let [eof       (new Object)
+        reader    (readers/indexing-push-back-reader
+                    (new PushbackReader
+                      (io/reader file)))
+        opts      {:eof       eof
+                   :read-cond :allow
+                   :features  #{reader-cond-branch}}
+        ns-decl   (cp.art/unwrap-meta (read-impl opts reader))
+        _         (assert (= 'ns (first ns-decl))
+                    (format "First form in file <%s> was not a ns declaration!"
+                      (if (instance? File file)
+                        (.getAbsolutePath file)
+                        "<input stream>")))
+        NS        (create-ns (second ns-decl))
         parsed-ns (parse-ns ns-decl)
-        forms   (loop [forms []]
-                  (let [form (binding [*ns* NS, reader/*alias-map* (:aliases parsed-ns)]
-                               (read-impl opts reader))]
-                    (if (identical? form eof)
-                      (do (.close reader) forms)
-                      (recur (conj forms form)))))]
-    (merge parsed-ns {:NS (str NS) :forms forms})))
+        forms     (loop [forms []]
+                    (let [form (binding [*ns* NS, reader/*alias-map* (:aliases parsed-ns)]
+                                 (read-impl opts reader))]
+                      (if (identical? form eof)
+                        (do (.close reader) forms)
+                        (recur (conj forms form)))))]
+    (merge parsed-ns {:file (str file) :NS (str NS) :forms forms})))

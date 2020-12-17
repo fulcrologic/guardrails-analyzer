@@ -7,6 +7,7 @@
     [clojure.test.check.generators :as tc.gen]
     [clojure.test.check.random :as tc.random]
     [clojure.test.check.rose-tree :as tc.rose]
+    [com.fulcrologic.copilot.analytics :as cp.analytics]
     [com.fulcrologicpro.taoensso.timbre :as log]))
 
 (defn make-size-range-seq [max-size]
@@ -61,7 +62,7 @@
                   (->ClojureSpecAlpha opts))))))
 
 (defn lookup [env value] (-lookup (::impl env) value))
-(defn valid? [env spec value] (-valid? (::impl env) spec value))
+(defn valid? [env spec value] (cp.analytics/profile ::valid? (-valid? (::impl env) spec value)))
 (defn explain [env spec value] (-explain (::impl env) spec value))
 (defn generator [env spec]
   (try (-generator (::impl env) spec)
@@ -77,11 +78,12 @@
     (let [spec (::spec gen gen)]
       (if-let [samples (get @cache spec)]
         (do (log/debug "Using cached samples for" spec)
-            samples)
-        (let [samples (-sample (::impl env) gen)]
-          (log/debug "Caching new samples for:" spec)
-          (swap! cache assoc spec samples)
-          samples)))))
+          samples)
+        (cp.analytics/profile ::new-samples
+          (let [samples (-sample (::impl env) gen)]
+            (log/debug "Caching new samples for:" spec)
+            (swap! cache assoc spec samples)
+            samples))))))
 
 (defn with-empty-cache [f & args]
   (reset! cache {})

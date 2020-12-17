@@ -25,29 +25,31 @@
   ([msg cb] (check! (cp.art/build-env) msg cb))
   ([env {:as msg :keys [forms file NS aliases refers]} cb]
    (log/debug "Running check command on:" (dissoc msg :forms))
-   (let [on-done (fn []
-                   (cp.analytics/report-analytics!)
-                   (cb))
-         env     (-> env
-                   (assoc ::cp.art/checking-file file)
-                   (assoc ::cp.art/current-ns NS)
-                   (assoc ::cp.art/aliases aliases)
-                   (assoc ::cp.art/refers refers))]
-     (cp.art/clear-problems! file)
-     (cp.art/clear-bindings! file)
-     (cp.spec/with-empty-cache
-       #?(:cljs (fn check-forms! [[form & forms]]
-                  (if-not form (on-done)
-                               (js/setTimeout
-                                 (fn []
-                                   (check-form! env form)
-                                   (check-forms! forms))
-                                 100)))
-          :clj  (fn [forms]
-                  (doseq [form forms]
-                    (check-form! env form))
-                  (on-done)))
-       (cp.forms/interpret forms)))))
+   (cp.analytics/record-usage! env)
+   (cp.analytics/profile ::check!
+     (let [on-done (fn []
+                     (cp.analytics/report-analytics!)
+                     (cb))
+           env     (-> env
+                     (assoc ::cp.art/checking-file file)
+                     (assoc ::cp.art/current-ns NS)
+                     (assoc ::cp.art/aliases aliases)
+                     (assoc ::cp.art/refers refers))]
+       (cp.art/clear-problems! file)
+       (cp.art/clear-bindings! file)
+       (cp.spec/with-empty-cache
+         #?(:cljs (fn check-forms! [[form & forms]]
+                    (if-not form (on-done)
+                      (js/setTimeout
+                        (fn []
+                          (check-form! env form)
+                          (check-forms! forms))
+                        100)))
+            :clj  (fn [forms]
+                    (doseq [form forms]
+                      (check-form! env form))
+                    (on-done)))
+         (cp.forms/interpret forms))))))
 
 (defn prepare-check! [msg cb]
   (reset! prepared-check [msg cb]))
@@ -64,7 +66,7 @@
          ::cp.art/literal-value ::cp.art/original-expression)
        (assoc ::cp.art/samples (set (map pr-str (::cp.art/samples %))))
        (assoc ::cp.art/expression
-         (str (cp.art/unwrap-meta (::cp.art/original-expression %)))))
+         (pr-str (cp.art/unwrap-meta (::cp.art/original-expression %)))))
     problems))
 
 (defn gather-analysis! []

@@ -20,10 +20,8 @@
 (defn check-file! [ws path opts]
   (notify-checkers! ws (opts->check-type opts)
     (fn [{:keys [checker-type]}]
-      (let [{:keys [NS forms]} (cp.reader/read-file path checker-type)]
-        {:forms (cp.forms/form-expression forms)
-         :file  path
-         :NS    NS}))))
+      (-> (cp.reader/read-file path checker-type)
+        (update :forms cp.forms/form-expression)))))
 
 (defn root-form-at? [cursor-line ?form]
   (let [{:keys [line end-line]} (meta ?form)]
@@ -32,9 +30,8 @@
 (defn check-root-form! [ws path line opts]
   (notify-checkers! ws (opts->check-type opts)
     (fn [{:keys [checker-type]}]
-      (let [{:keys [NS forms]} (cp.reader/read-file path checker-type)]
-        {:forms (->> forms
-                  (filter (partial root-form-at? line))
-                  (cp.forms/form-expression))
-         :file path
-         :NS   NS}))))
+      (-> (cp.reader/read-file path checker-type)
+        (update :forms
+          #(->> %
+             (filter (partial root-form-at? line))
+             (cp.forms/form-expression)))))))

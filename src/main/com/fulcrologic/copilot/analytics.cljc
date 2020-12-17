@@ -2,30 +2,27 @@
   #?(:cljs (:require-macros [com.fulcrologic.copilot.analytics]))
   (:require
     #?(:cljs [goog.object :as g.obj])
-    [com.fulcrologic.copilot.artifacts :as cp.art]))
+    [com.fulcrologicpro.taoensso.timbre :as log]))
 
 (defonce analyze-stats (atom []))
 
-(defn record-analyze-stats!
-  [{::cp.art/keys [current-ns checking-sym]} sexpr problems]
-  (when (seq? sexpr)
-    (swap! analyze-stats conj
-      (cond-> {:analyzing (first sexpr)
-               :arity     (count (rest sexpr))
-               :problems  problems}
-        (and current-ns checking-sym)
-        (assoc :in-defn (hash (symbol current-ns (str checking-sym))))))))
+(defn record-analyze! [env sym args]
+  (swap! analyze-stats conj
+    {::symbol sym
+     ::arity  (count args)}))
 
-(defmacro with-analytics [env sexpr condition body-fn]
-  `(let [problems# (atom [])
-         env#      (cp.art/with-problem-observer ~env
-                     #(swap! problems# conj
-                        (select-keys %
-                          [::cp.art/problem-type])))
-         result#   (~body-fn env#)]
-     (when ~condition
-       (record-analyze-stats! env# ~sexpr @problems#))
-     result#))
+(defonce problem-stats (atom {}))
+
+(defn record-problem! [env problem]
+  (swap! problem-stats update
+    (:com.fulcrologic.copilot.artifacts/problem-type problem)
+    (fnil inc 0)))
+
+(defonce usage-stats (atom {}))
+
+(defn record-usage! [env]
+  (swap! usage-stats update
+    ::count (fnil inc 0)))
 
 (defonce profiling-info (atom {}))
 
@@ -51,12 +48,29 @@
 (defn get-customer-id [] "TODO")
 
 (defn gather-analytics! []
-  (let [info @profiling-info
-        stats @analyze-stats
-        cid (get-customer-id)]
-    {:customer-id cid
-     :profiling-info info
-     :analyze-stats stats}))
+  {::customer-id    (get-customer-id)
+   ::analyze-stats  @analyze-stats
+   ::problem-stats  @problem-stats
+   ::profiling-info @profiling-info
+   ::usage-stats    @usage-stats})
+
+(defn clear-analytics! []
+  (reset! analyze-stats [])
+  (reset! problem-stats {})
+  (reset! profiling-info {})
+  (reset! usage-stats {}))
+
+(def debug?
+  #?(:clj (some? (System/getProperty "copilot.analytics.debug"))
+     :cljs false))
+
+(defn send-analytics! [analytics]
+  (if debug?
+    (log/debug "ANALYTICS:" analytics)
+    ;; TODO FIXME should send to endpoint & on ack clear atoms
+    #?(:clj #(spit "/tmp/copilot-analytics.txt" (pr-str %) :append true)
+       :cljs tap>))
+  (clear-analytics!))
 
 (defonce last-report-time (atom nil))
 
@@ -65,16 +79,12 @@
         :clj  (System/currentTimeMillis))
     1000))
 
+;; CONTEXT: Runs after each check command
 (defn report-analytics! []
   (let [now-s (now-in-seconds)
         last-s @last-report-time]
-    (when (or (nil? last-s)
+    (when (or debug? (nil? last-s)
             (< (* 5 60) (- now-s last-s) ))
       (let [analytics (gather-analytics!)]
         (reset! last-report-time now-s)
-        (reset! profiling-info {})
-        (reset! analyze-stats [])
-        ;; TODO FIXME should send to endpoint & on ack clear stats
-        (#?(:clj #(spit "/tmp/cp-analytics.txt" (pr-str %) :append true)
-            :cljs tap>)
-          analytics)))))
+        (send-analytics! analytics)))))

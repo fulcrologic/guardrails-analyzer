@@ -5,6 +5,7 @@
     [clojure.spec.alpha :as s]
     [clojure.test.check.generators :as gen]
     [com.fulcrologic.copilot.analysis.spec :as cp.spec]
+    [com.fulcrologic.copilot.analytics :as cp.analytics]
     [com.fulcrologic.guardrails.core :refer [>defn => ?]]
     [com.fulcrologic.guardrails.registry :as gr.reg]
     [com.fulcrologic.guardrails.impl.externs :as gr.externs]
@@ -332,15 +333,9 @@
        ::sym  (::checking-sym env)
        ::NS   (::current-ns env)})))
 
-(defn with-problem-observer [env f]
-  (update env ::problem-observers (fnil conj []) f))
-
-(defn notify-problem-observers! [env problem]
-  (doseq [obs (::problem-observers env)]
-    (obs problem)))
-
 (defn record-problem! [env problem]
   (log/debug :record-problem! problem)
+  (cp.analytics/record-problem! env problem)
   (swap! problems conj
     (merge problem (env-location env problem))))
 
@@ -355,7 +350,6 @@
                        ::message-params message-params}))
   ([env error]
    [::env (s/keys :req [::problem-type ::original-expression]) => nil?]
-   (notify-problem-observers! env error)
    (record-problem! env error)
    nil))
 
@@ -370,7 +364,6 @@
                          ::message-params message-params}))
   ([env warning]
    [::env (s/keys :req [::problem-type ::original-expression]) => nil?]
-   (notify-problem-observers! env warning)
    (record-problem! env warning)
    nil))
 
@@ -385,7 +378,6 @@
                       ::message-params message-params}))
   ([env info]
    [::env (s/keys :req [::problem-type ::original-expression]) => nil?]
-   (notify-problem-observers! env info)
    (record-problem! env info)
    nil))
 

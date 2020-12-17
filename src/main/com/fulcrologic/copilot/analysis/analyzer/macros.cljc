@@ -27,9 +27,7 @@
         (analyze-single-arity! env defn-sym arity))))
   {})
 
-(defmethod cp.ana.disp/analyze-mm '>defn     [env sexpr] (analyze:>defn! env sexpr))
 (defmethod cp.ana.disp/analyze-mm `gr/>defn  [env sexpr] (analyze:>defn! env sexpr))
-(defmethod cp.ana.disp/analyze-mm '>defn-    [env sexpr] (analyze:>defn! env sexpr))
 (defmethod cp.ana.disp/analyze-mm `gr/>defn- [env sexpr] (analyze:>defn! env sexpr))
 
 (defmethod cp.ana.disp/analyze-mm 'clojure.core/do [env [_ & body]]

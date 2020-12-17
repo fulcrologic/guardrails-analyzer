@@ -37,11 +37,10 @@
     (cp.fnt/analyze-function-call! env function argtypes)))
 
 (defmethod cp.ana.disp/analyze-mm :function.external/call [env [f & args :as sexpr]]
-  (cp.analytics/with-analytics env sexpr true
-    (fn [env]
-      (let [function (cp.art/external-function-detail env f)
-            argtypes (mapv (partial cp.ana.disp/-analyze! env) args)]
-        (cp.fnt/analyze-function-call! env function argtypes)))))
+  (cp.analytics/record-analyze! env f args)
+  (let [function (cp.art/external-function-detail env f)
+        argtypes (mapv (partial cp.ana.disp/-analyze! env) args)]
+    (cp.fnt/analyze-function-call! env function argtypes)))
 
 (defmethod cp.ana.disp/analyze-mm :function/call [env [f & arguments]]
   (let [function (cp.art/function-detail env f)

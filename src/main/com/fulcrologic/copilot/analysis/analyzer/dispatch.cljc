@@ -64,17 +64,19 @@
 (>defn -analyze!
   [env sexpr]
   [::cp.art/env any? => ::cp.art/type-description]
-  (let [dispatch (analyze-dispatch env sexpr)]
-    (cp.analytics/with-analytics env sexpr
-      (and (qualified-symbol? dispatch)
-        ;; TODO: if its defined in copilot ftags.*
-        (#{"clojure.core"} (namespace dispatch)))
-      #(as-> % env
-         (assoc env ::dispatch dispatch)
-         (cp.art/sync-location env sexpr)
-         (cp.analytics/profile ::analyze-mm
-           (assoc (analyze-mm env sexpr)
-             ::cp.art/original-expression sexpr))))))
+  (let [dispatch (analyze-dispatch env sexpr)
+        env (-> env
+              (assoc ::dispatch dispatch)
+              (cp.art/sync-location sexpr))]
+    (when (and (qualified-symbol? dispatch)
+            ;; TODO: if its defined in copilot ftags.*
+            (#{"clojure.core"}
+              (namespace dispatch)))
+      (cp.analytics/record-analyze! env dispatch
+        (when (seqable? sexpr) (rest sexpr))))
+    (cp.analytics/profile ::analyze-mm
+      (assoc (analyze-mm env sexpr)
+        ::cp.art/original-expression sexpr))))
 
 (defn analyze-statements! [env body]
   (doseq [expr (butlast body)]
