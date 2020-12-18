@@ -3,15 +3,15 @@
     [com.fulcrologic.copilot.artifacts :as cp.art]
     [com.fulcrologicpro.com.rpl.specter :as $]))
 
-(defonce bindings (atom nil))
+(defonce bindings (atom {}))
 
-(defn get! [] @bindings)
+(defn get! [cid] (get @bindings cid))
 
-(defn set! [new-bindings]
-  (reset! bindings new-bindings))
+(defn set! [cid new-bindings]
+  (swap! bindings assoc cid new-bindings))
 
-(defn clear! []
-  (reset! bindings {}))
+(defn clear! [cid]
+  (swap! bindings assoc cid {}))
 
 (defn default-encoder [binds] binds)
 

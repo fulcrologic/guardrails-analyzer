@@ -7,27 +7,22 @@
     [org.httpkit.server :as http-kit]
     [com.fulcrologicpro.taoensso.timbre :as log]))
 
-(defn upsearch-file
-  [^java.io.File start-dir port-file-name]
-  (loop [dir start-dir]
-    (let [config-file (io/file dir "guardrails.edn")]
-      (if (.exists config-file)
-        (io/file dir ".copilot" port-file-name)
-        (if-let [parent (.getParentFile dir)]
-          (recur parent)
-          (throw (ex-info "Failed to find project configuration!"
-                   {:start-dir start-dir})))))))
-
 (defn write-port-to-file! [file port]
   (io/make-parents file)
   (spit file port))
+
+(defonce port-file
+  (io/file (System/getProperty "user.home")
+    ".copilot/daemon.port"))
 
 (defstate http-server
   :start
   (let [cfg (::http-kit/config config)]
     (log/info "Starting HTTP Server with config: " (pr-str cfg))
-    (let [port-file (upsearch-file "." "daemon.port")]
-      (.deleteOnExit port-file)
-      (write-port-to-file! port-file (:port cfg)))
+    (when (.exists port-file)
+      (log/error "Found an already running daemon!")
+      (System/exit 1))
+    (.deleteOnExit port-file)
+    (write-port-to-file! port-file (:port cfg))
     (http-kit/run-server middleware cfg))
   :stop (http-server))

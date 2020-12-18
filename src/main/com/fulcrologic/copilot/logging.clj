@@ -37,3 +37,8 @@
                    (file-seq (io/file log-dir)))]
     (doseq [f old-logs]
       (.delete f))))
+
+(defn configure-logging! [log-file-format]
+  (let [log-dir ".copilot/logs"]
+    (clear-old-logs! log-dir)
+    (add-appender! log-dir log-file-format)))

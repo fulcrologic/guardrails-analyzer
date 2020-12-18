@@ -3,18 +3,17 @@ function! s:FindProjectRoot(b)
   return l:cfg == '' ? l:cfg : fnamemodify(l:cfg, ":h")
 endfunction
 
-function! s:FindProjectAddress(b)
-  let root = s:FindProjectRoot(a:b)
-  let port_file = l:root . '/.copilot/lsp-server.port'
+function! s:FindLspServerPort(b)
+  let port_file = $HOME . '/.copilot/lsp-server.port'
   if filereadable(l:port_file)
     let l:port = readfile(l:port_file)[0]
-    return 'localhost:'.l:port
+    return 'localhost:' . l:port
   endif
 endfunction
 
 call ale#linter#Define('clojure', {
       \   'name': 'copilot',
       \   'lsp': 'socket',
-      \   'address': function('s:FindProjectAddress'),
+      \   'address': function('s:FindLspServerPort'),
       \   'project_root': function('s:FindProjectRoot'),
       \})

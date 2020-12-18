@@ -1,5 +1,6 @@
 (ns com.fulcrologic.copilot.checkers.clojure
   (:require
+    [clojure.java.io :as io]
     [clojure.string :as str]
     [clojure.tools.namespace.repl :as tools-ns :refer [refresh set-refresh-dirs]]
     [com.fulcrologic.copilot.checker :as cp.checker]
@@ -44,14 +45,12 @@
       (report-error! env ?err))))
 
 (defn ?find-port []
-  (try (log/spy :debug "Found daemon running on port:"
-         (Integer/parseInt (slurp ".copilot/daemon.port")))
+  (try (some->> ".copilot/daemon.port"
+         (io/file (System/getProperty "user.home"))
+         (slurp)
+         (Integer/parseInt)
+         (log/spy :debug "Found daemon running on port:"))
     (catch FileNotFoundException _ nil)))
-
-(defn configure-logging! []
-  (let [log-dir ".copilot/logs"]
-    (cp.log/clear-old-logs! log-dir)
-    (cp.log/add-appender! log-dir "checker.clojure.%s.log")))
 
 (defn start
   "Start the checker.
@@ -74,7 +73,7 @@
          (str "JVM property `guardrails.mode` should be set to `:copilot`!"
            "\nFor clj: add `-J-Dguardrails.mode=:copilot`"
            "\nFor deps.edn: add `:jvm-opts [\"-Dguardrails.mode=:copilot\"]"))))
-   (configure-logging!)
+   (cp.log/configure-logging! "checker.clojure.%s.log")
    (log/info "Starting checker with opts:" opts)
    (when-let [ns-sym (some-> main-ns symbol)]
      (require ns-sym))
@@ -87,7 +86,8 @@
         :on-connect (fn [env]
                       (try
                         (send-mutation! env 'daemon/register-checker
-                          {:checker-type :clj})
+                          {:checker-type :clj
+                           :project-dir  (System/getProperty "user.dir")})
                         (catch Exception e
                           (log/error e "Failed to register with daemon!"))))
         :on-message (fn [env [dispatch msg]]
@@ -143,10 +143,5 @@
                                      :main-ns
                                      ;`com.fulcrologic.fulcro.application
                                                `com.fulcrologic.copilot.checkers.clojure
-                                     #_'dataico.server-components.middleware})
-  (reset! ws/default-client-options {:host     "localhost"
-                                     :port     3001
-                                     :src-dirs ["src/main" "src/test"]
-                                     :main-ns  `com.fulcrologic.copilot.checkers.clojure
                                      #_'dataico.server-components.middleware})
   (start))

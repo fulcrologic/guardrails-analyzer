@@ -4,53 +4,68 @@
     [com.fulcrologic.copilot.daemon.server.bindings :as bindings]
     [com.fulcrologic.copilot.daemon.server.checkers :as daemon.check]
     [com.fulcrologic.copilot.daemon.server.config :refer [config]]
-    [com.fulcrologic.copilot.daemon.server.connection-management :as cmgmt]
+    [com.fulcrologic.copilot.daemon.server.connection-management :as cp.conn]
     [com.fulcrologic.copilot.daemon.server.problems :as problems]
     [com.wsscode.pathom.connect :as pc]
     [com.wsscode.pathom.core :as p]
     [mount.core :refer [defstate]]
     [com.fulcrologicpro.taoensso.timbre :as log]))
 
-(pc/defresolver all-problems [_env _params]
+;; CONTEXT: web ui (viewer) queries for all problems
+(pc/defresolver all-problems
+  [{viewer-cid :cid} _params]
   {::pc/output [:all-problems]}
-  {:all-problems (problems/get!)})
+  {:all-problems (problems/get! (cp.conn/viewer->checker viewer-cid))})
 
-(pc/defmutation report-error [{:keys [websockets]} {:keys [error]}]
+;; CONTEXT: checker reports error
+(pc/defmutation report-error
+  [{checker-cid :cid :keys [websockets]} {:keys [error]}]
   {::pc/sym 'daemon/report-error}
-  (cmgmt/report-error! websockets error)
-  (lsp.diag/report-error! error)
+  (cp.conn/report-error! websockets checker-cid error)
+  (let [checker-info (get @cp.conn/registered-checkers checker-cid)]
+    (lsp.diag/report-error! checker-info error))
   {})
 
-(pc/defmutation report-analysis [{:keys [websockets]} {:keys [bindings problems]}]
-  {::pc/sym    'daemon/report-analysis
-   ::pc/output [:result]}
-  (problems/set! problems)
-  (bindings/set! bindings)
-  (cmgmt/update-viewers! websockets)
-  (lsp.diag/update-problems! problems)
+;; CONTEXT: checker reports analysis
+(pc/defmutation report-analysis
+  [{checker-cid :cid :keys [websockets]} {:keys [bindings problems]}]
+  {::pc/sym 'daemon/report-analysis}
+  (problems/set! checker-cid problems)
+  (bindings/set! checker-cid bindings)
+  (cp.conn/update-viewers-for! websockets checker-cid)
+  (let [checker-info (get @cp.conn/registered-checkers checker-cid)]
+    (lsp.diag/update-problems! checker-info problems))
   {})
 
-(pc/defmutation subscribe [{:keys [websockets cid]} viewer-info]
+;; CONTEXT: viewers subscribe to problems & bindings (eg: IJ, lsp clients, web ui)
+(pc/defmutation subscribe
+  [{viewer-cid :cid :keys [websockets]} viewer-info]
   {::pc/sym 'daemon/subscribe}
-  (log/info "Client subscribed to error updates: " cid)
-  (swap! cmgmt/subscribed-viewers assoc cid viewer-info)
-  (cmgmt/update-viewers! websockets [cid viewer-info])
+  (log/debug "Client subscribed to error updates: " viewer-cid)
+  (swap! cp.conn/subscribed-viewers assoc viewer-cid viewer-info)
+  (cp.conn/update-viewer! websockets viewer-cid viewer-info)
   {})
 
-(pc/defmutation register-checker [{:keys [cid]} checker-info]
+;; CONTEXT: checkers register with their capabilities / project directory
+(pc/defmutation register-checker
+  [{checker-cid :cid} checker-info]
   {::pc/sym 'daemon/register-checker}
-  (log/info "Checker registered: " cid)
-  (swap! cmgmt/registered-checkers assoc cid checker-info)
+  (log/debug "Checker registered: " checker-cid)
+  (swap! cp.conn/registered-checkers assoc checker-cid checker-info)
   {})
 
-(pc/defmutation check-current-file [{:keys [websockets]} {:keys [file opts]}]
+(pc/defmutation check-current-file
+  [{viewer-cid :cid :keys [websockets]} {:keys [file opts]}]
   {::pc/sym 'daemon/check-current-file}
-  (daemon.check/check-file! websockets file opts)
+  (let [checker-cid (cp.conn/viewer->checker viewer-cid)]
+    (daemon.check/check-file! websockets checker-cid file opts))
   {})
 
-(pc/defmutation check-root-form [{:keys [websockets]} {:keys [file line opts]}]
+(pc/defmutation check-root-form
+  [{viewer-cid :cid :keys [websockets]} {:keys [file line opts]}]
   {::pc/sym 'daemon/check-root-form}
-  (daemon.check/check-root-form! websockets file line opts)
+  (let [checker-cid (cp.conn/viewer->checker viewer-cid)]
+    (daemon.check/check-root-form! websockets checker-cid file line opts))
   {})
 
 (def all-resolvers [all-problems report-analysis report-error

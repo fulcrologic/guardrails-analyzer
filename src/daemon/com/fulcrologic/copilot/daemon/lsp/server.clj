@@ -47,30 +47,20 @@
     (log/info "didChangeWatchedFiles:" params)
     nil))
 
-(deftype LSPTextDocumentService []
+(deftype LSPTextDocumentService [client-id-atom]
   TextDocumentService
   (^void didOpen [_ ^DidOpenTextDocumentParams params]
     (let [document (.getTextDocument params)
           uri (.getUri document)]
-      #_(log/info "didOpen:" uri)
-      (reset! lsp.diag/currently-open-uri uri))
-    nil)
-  (^void didChange [_ ^DidChangeTextDocumentParams params]
-    (let [document (.getTextDocument params)
-          uri (.getUri document)]
-      #_(log/info "didChange:" uri))
-    nil)
-  (^void didSave [_ ^DidSaveTextDocumentParams params]
-    (let [document (.getTextDocument params)
-          uri (.getUri document)]
-      #_(log/info "didSave:" uri))
+      (swap! lsp.diag/client-id->open-uri assoc @client-id-atom uri))
     nil)
   (^void didClose [_ ^DidCloseTextDocumentParams params]
     (let [document (.getTextDocument params)
           uri (.getUri document)]
-      #_(log/info "didClose:" uri)
-      (reset! lsp.diag/currently-open-uri nil))
-    nil))
+      (swap! lsp.diag/client-id->open-uri dissoc @client-id-atom))
+    nil)
+  (^void didChange [_ ^DidChangeTextDocumentParams params] nil)
+  (^void didSave [_ ^DidSaveTextDocumentParams params] nil))
 
 (defn new-server [launcher]
   (let [client-id (atom nil)]
@@ -78,7 +68,9 @@
       (^CompletableFuture initialize [^InitializeParams params]
         (let [id (UUID/randomUUID)]
           (log/info "initialize server!" {:id id})
-          (swap! lsp.diag/clients assoc id (.getRemoteProxy @launcher))
+          (swap! lsp.diag/clients
+            assoc id {:remote (.getRemoteProxy @launcher)
+                      :project-dir (.getRootPath params)})
           (reset! client-id id))
         (CompletableFuture/completedFuture
           (new InitializeResult
@@ -99,20 +91,13 @@
       (^void exit []
         (log/info "exit!"))
       (getTextDocumentService []
-        (new LSPTextDocumentService))
+        (new LSPTextDocumentService client-id))
       (getWorkspaceService []
         (new LSPWorkspaceService)))))
 
-(defn find-port-file
-  [^java.io.File start-dir]
-  (loop [dir start-dir]
-    (let [config-file (io/file dir "guardrails.edn")]
-      (if (.exists config-file)
-        (io/file dir ".copilot" "lsp-server.port")
-        (if-let [parent (.getParentFile dir)]
-          (recur parent)
-          (throw (ex-info "Failed to find project configuration!"
-                   {:start-dir start-dir})))))))
+(def port-file
+  (io/file (System/getProperty "user.home")
+    ".copilot/lsp-server.port"))
 
 (defn write-port-to-file! [file port]
   (io/make-parents file)
@@ -127,8 +112,7 @@
 (defn start-lsp []
   (log/info "Starting copilot LSP server!")
   (let [server-socket (doto (new ServerSocket 0)
-                        (.setSoTimeout 1000))
-        port-file (find-port-file ".")]
+                        (.setSoTimeout 1000))]
     (.deleteOnExit port-file)
     (write-port-to-file! port-file
       (.getLocalPort server-socket))

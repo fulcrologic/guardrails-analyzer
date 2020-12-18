@@ -149,4 +149,6 @@
  {:date "2020-12-17" :description "copilot config, for analytics" :timespans [[1125 1150]]}
  {:date "2020-12-17" :description "walk & chat" :timespans [[1215 1245]]}
  {:date "2020-12-17" :description "default config dialog" :timespans [[1320 1345]]}
+ {:date "2020-12-17" :description "singleton daemon" :timespans [[1500 1545] [1610 1815]]}
+ {:date "2020-12-18" :description "singleton daemon" :timespans [[1130 1155]]}
  ]

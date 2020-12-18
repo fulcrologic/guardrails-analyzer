@@ -11,7 +11,7 @@
 
 (defonce clients (atom {}))
 
-(defonce currently-open-uri (atom nil))
+(defonce client-id->open-uri (atom {}))
 
 (defn problem->diagnostic
   [{::cp.art/keys [problem-type message
@@ -30,24 +30,28 @@
       DiagnosticSeverity/Error)
     "guardrails.copilot"))
 
-(defn publish-problems-for [uri problems]
-  (doseq [[_ client] @clients]
-    (.publishDiagnostics client
-      (new PublishDiagnosticsParams uri
-        (mapv problem->diagnostic problems)))))
+(defn publish-problems-for [remote uri problems]
+  (.publishDiagnostics remote
+    (new PublishDiagnosticsParams uri
+      (mapv problem->diagnostic problems))))
 
-(defn update-problems! [problems]
-  (when-let [uri @currently-open-uri]
-    (let [file (.getPath (new URI uri))]
-      (publish-problems-for uri
-        ($/select
-          [($/walker ::cp.art/problem-type)
-           ($/pred (comp (partial = file) ::cp.art/file))]
-          problems)))))
+(defn client-for-project? [project-dir [_ client-info]]
+  (= project-dir (:project-dir client-info)))
 
-(defn report-error! [error]
-  (doseq [[_ client] @clients]
-    (.showMessage client
+(defn update-problems! [{:keys [project-dir]} problems]
+  (doseq [[client-id {:keys [remote]}]
+          (filter (partial client-for-project? project-dir) @clients)]
+    (when-let [uri (get @client-id->open-uri client-id)]
+      (let [file (.getPath (new URI uri))]
+        (publish-problems-for remote uri
+          ($/select
+            [($/walker ::cp.art/problem-type)
+             ($/pred (comp (partial = file) ::cp.art/file))]
+            problems))))))
+
+(defn report-error! [{:keys [project-dir]} error]
+  (doseq [[_ {:keys [remote]}] (filter (partial client-for-project? project-dir) @clients)]
+    (.showMessage remote
       (new MessageParams
-          MessageType/Error
-          error))))
+        MessageType/Error
+        error))))

@@ -80,7 +80,7 @@
         (when on-error
           (on-error (assoc env ::client this) e)))
       (onClose [code reason remote-caused?]
-        (log/info "disconnected:" {:code code :reason reason :remote? remote-caused?})
+        (log/trace "disconnected:" {:code code :reason reason :remote? remote-caused?})
         (try
           (when on-disconnect
            (on-disconnect (assoc env ::client this) code reason remote-caused?))
@@ -89,11 +89,12 @@
         (when (pos? code)
           (let [client this]
             (future
+              (log/info "Disconnected from daemon, attempting to reconnect...")
               (loop []
                 (if (= @active-client client)
                   (do
                     (Thread/sleep 2000)
-                    (log/info "Attempting to reconnect...")
+                    (log/trace "Attempting to reconnect...")
                     (if (reconnect! client)
                       (log/info "Reconnected.")
                       (recur)))

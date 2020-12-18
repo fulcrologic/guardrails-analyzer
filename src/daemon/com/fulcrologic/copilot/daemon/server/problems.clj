@@ -3,15 +3,15 @@
     [com.fulcrologic.copilot.artifacts :as cp.art]
     [com.fulcrologicpro.com.rpl.specter :as $]))
 
-(defonce problems (atom nil))
+(defonce problems (atom {}))
 
-(defn get! [] @problems)
+(defn get! [cid] (get @problems cid))
 
-(defn set! [new-problems]
-  (reset! problems new-problems))
+(defn set! [cid new-problems]
+  (swap! problems assoc cid new-problems))
 
-(defn clear! []
-  (reset! problems {}))
+(defn clear! [cid]
+  (swap! problems assoc cid {}))
 
 (defn default-encoder [problems] problems)
 
