@@ -75,3 +75,10 @@
     (doseq [[viewer-cid viewer-info] @subscribed-viewers]
       (when (same-project? viewer-info checker-info)
         (wsp/push websockets viewer-cid :error error)))))
+
+(defn report-no-checker! [websockets viewer-cid file]
+  (wsp/push websockets viewer-cid :error
+    (let [fmt "Failed to find any checkers for that project! Make sure one is running for `%s`."
+          msg (format fmt file)]
+      (log/error msg)
+      msg)))

@@ -57,15 +57,17 @@
 (pc/defmutation check-current-file
   [{viewer-cid :cid :keys [websockets]} {:keys [file opts]}]
   {::pc/sym 'daemon/check-current-file}
-  (let [checker-cid (cp.conn/viewer->checker viewer-cid)]
-    (daemon.check/check-file! websockets checker-cid file opts))
+  (if-let [checker-cid (cp.conn/viewer->checker viewer-cid)]
+    (daemon.check/check-file! websockets checker-cid file opts)
+    (cp.conn/report-no-checker! websockets viewer-cid file))
   {})
 
 (pc/defmutation check-root-form
   [{viewer-cid :cid :keys [websockets]} {:keys [file line opts]}]
   {::pc/sym 'daemon/check-root-form}
-  (let [checker-cid (cp.conn/viewer->checker viewer-cid)]
-    (daemon.check/check-root-form! websockets checker-cid file line opts))
+  (if-let [checker-cid (cp.conn/viewer->checker viewer-cid)]
+    (daemon.check/check-root-form! websockets checker-cid file line opts)
+    (cp.conn/report-no-checker! websockets viewer-cid file))
   {})
 
 (def all-resolvers [all-problems report-analysis report-error

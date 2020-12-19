@@ -1,7 +1,8 @@
 (ns com.fulcrologic.copilot.daemon.lsp.diagnostics
   (:require
     [com.fulcrologic.copilot.artifacts :as cp.art]
-    [com.fulcrologicpro.com.rpl.specter :as $])
+    [com.fulcrologicpro.com.rpl.specter :as $]
+    [com.fulcrologicpro.taoensso.timbre :as log])
   (:import
     (org.eclipse.lsp4j
       Diagnostic DiagnosticSeverity
@@ -9,7 +10,7 @@
       Position PublishDiagnosticsParams Range)
     (java.net URI)))
 
-(defonce clients (atom {}))
+(defonce client:id->info (atom {}))
 
 (defonce client-id->open-uri (atom {}))
 
@@ -40,7 +41,7 @@
 
 (defn update-problems! [{:keys [project-dir]} problems]
   (doseq [[client-id {:keys [remote]}]
-          (filter (partial client-for-project? project-dir) @clients)]
+          (filter (partial client-for-project? project-dir) @client:id->info)]
     (when-let [uri (get @client-id->open-uri client-id)]
       (let [file (.getPath (new URI uri))]
         (publish-problems-for remote uri
@@ -50,8 +51,15 @@
             problems))))))
 
 (defn report-error! [{:keys [project-dir]} error]
-  (doseq [[_ {:keys [remote]}] (filter (partial client-for-project? project-dir) @clients)]
+  (doseq [[_ {:keys [remote]}]
+          (filter (partial client-for-project? project-dir) @client:id->info)]
     (.showMessage remote
       (new MessageParams
         MessageType/Error
         error))))
+
+(defn report-no-checker! [client-id path]
+  (let [fmt "Failed to find any checkers for that project! Make sure one is running for `%s`."
+        msg (format fmt path)]
+    (log/error msg)
+    (report-error! (get @client:id->info client-id) msg)))

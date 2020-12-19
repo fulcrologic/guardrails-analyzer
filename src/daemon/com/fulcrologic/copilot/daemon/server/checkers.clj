@@ -6,7 +6,7 @@
     [com.fulcrologicpro.fulcro.networking.websocket-protocols :as wsp]
     [com.fulcrologicpro.taoensso.timbre :as log]))
 
-(defn notify-checker-for! [ws checker-cid event checker-info->data]
+(defn notify-checker! [ws checker-cid event checker-info->data]
   (log/debug "notifiying checkers of event:" event)
   (when-let [checker-info (get @cp.conn/registered-checkers checker-cid)]
     (log/debug "notifying checker:" checker-cid checker-info)
@@ -17,7 +17,7 @@
   (if refresh? :refresh-and-check! :check!))
 
 (defn check-file! [ws checker-cid path opts]
-  (notify-checker-for! ws checker-cid (opts->check-type opts)
+  (notify-checker! ws checker-cid (opts->check-type opts)
     (fn [{:keys [checker-type]}]
       (-> (cp.reader/read-file path checker-type)
         (update :forms cp.forms/form-expression)))))
@@ -27,7 +27,7 @@
     (<= line cursor-line end-line)))
 
 (defn check-root-form! [ws checker-cid path line opts]
-  (notify-checker-for! ws checker-cid (opts->check-type opts)
+  (notify-checker! ws checker-cid (opts->check-type opts)
     (fn [{:keys [checker-type]}]
       (-> (cp.reader/read-file path checker-type)
         (update :forms

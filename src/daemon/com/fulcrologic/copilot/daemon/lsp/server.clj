@@ -30,14 +30,14 @@
 (defn read-json [x]
   (json/read-str (str x) :key-fn keyword))
 
-(deftype LSPWorkspaceService []
+(deftype LSPWorkspaceService [client-id-atom]
   WorkspaceService
   (^CompletableFuture executeCommand [_ ^ExecuteCommandParams params]
     (let [cmd (.getCommand params)
           args (.getArguments params)]
       (log/info "executeCommand" cmd "&" args)
       (if-let [f (get lsp.cmds/commands cmd)]
-        (apply f (map read-json args))
+        (apply f @client-id-atom (map read-json args))
         (log/warn "Unrecognized command:" cmd)))
     (CompletableFuture/completedFuture 0))
   (^void didChangeConfiguration [_ ^DidChangeConfigurationParams params]
@@ -68,7 +68,7 @@
       (^CompletableFuture initialize [^InitializeParams params]
         (let [id (UUID/randomUUID)]
           (log/info "initialize server!" {:id id})
-          (swap! lsp.diag/clients
+          (swap! lsp.diag/client:id->info
             assoc id {:remote (.getRemoteProxy @launcher)
                       :project-dir (.getRootPath params)})
           (reset! client-id id))
@@ -85,7 +85,7 @@
         (log/info "client initialized!"))
       (^CompletableFuture shutdown []
         (log/info "shutdown!" @client-id)
-        (swap! lsp.diag/clients dissoc @client-id)
+        (swap! lsp.diag/client:id->info dissoc @client-id)
         (reset! client-id nil)
         (CompletableFuture/completedFuture 0))
       (^void exit []
@@ -93,7 +93,7 @@
       (getTextDocumentService []
         (new LSPTextDocumentService client-id))
       (getWorkspaceService []
-        (new LSPWorkspaceService)))))
+        (new LSPWorkspaceService client-id)))))
 
 (def port-file
   (io/file (System/getProperty "user.home")
@@ -124,7 +124,7 @@
                         (async/timeout 1000) nil))
           (do (log/info "Received stop signal, shutting down copilot LSP server!")
             (.close server-socket)
-            (reset! lsp.diag/clients {})
+            (reset! lsp.diag/client:id->info {})
             (doseq [s @sockets]
               (shutdown-socket s))
             (reset! sockets []))
