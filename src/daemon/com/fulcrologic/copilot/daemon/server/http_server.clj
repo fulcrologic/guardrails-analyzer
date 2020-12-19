@@ -19,9 +19,6 @@
   :start
   (let [cfg (::http-kit/config config)]
     (log/info "Starting HTTP Server with config: " (pr-str cfg))
-    (when (.exists port-file)
-      (log/error "Found an already running daemon!")
-      (System/exit 1))
     (.deleteOnExit port-file)
     (write-port-to-file! port-file (:port cfg))
     (http-kit/run-server middleware cfg))
