@@ -1,17 +1,18 @@
 (ns com.fulcrologic.copilot.analytics
   #?(:cljs (:require-macros [com.fulcrologic.copilot.analytics]))
   (:require
-    #?(:cljs [goog.object :as g.obj])
-    #?(:clj [com.fulcrologic.copilot.licensing :as cp.license])
-    #?(:clj [org.httpkit.client :as http])
-    [com.fulcrologic.copilot.config :as cp.cfg]
+    #?@(:cljs [[goog.object :as g.obj]]
+        :clj  [[com.fulcrologic.copilot.config :as cp.cfg]
+               [org.httpkit.client :as http]
+               [com.fulcrologic.copilot.licensing :as cp.license]])
     [com.fulcrologicpro.taoensso.timbre :as log]))
 
 (defonce config
-  (cp.cfg/load-config!))
+  #?(:clj  (cp.cfg/load-config!)
+     :cljs {}))
 
 (def dev?
-  #?(:clj (some? (System/getProperty "dev"))
+  #?(:clj  (some? (System/getProperty "dev"))
      :cljs false))
 
 (defn analytics? []
@@ -64,7 +65,7 @@
      return#))
 
 (defn gather-analytics! []
-  {:license/number #?(:clj (cp.license/get-license-number) :cljs nil)
+  {:license/number  #?(:clj (cp.license/get-license-number) :cljs nil)
    ::analyze-stats  @analyze-stats
    ::problem-stats  @problem-stats
    ::profiling-info @profiling-info
@@ -80,17 +81,17 @@
   (if dev?
     (log/debug "analytics:" analytics)
     #?(:cljs nil
-       :clj (try
-              (let [{:keys [status] :as resp}
-                    @(http/post "https://fulcrologic.com/analytics"
-                       {:multipart [{:name "password" :content "!!!uploadenzie"}
-                                    {:name "number" :content (str (:license/number analytics))}
-                                    {:name "file" :content (pr-str analytics) :filename "analytics"}]})]
-                (if (= status 200)
-                  (clear-analytics!)
-                  (log/error "Failed to send analytics to server because:" resp)))
-              (catch Exception e
-                (log/error e "Failed to send analytics!"))))))
+       :clj  (try
+               (let [{:keys [status] :as resp}
+                     @(http/post "https://fulcrologic.com/analytics"
+                        {:multipart [{:name "password" :content "!!!uploadenzie"}
+                                     {:name "number" :content (str (:license/number analytics))}
+                                     {:name "file" :content (pr-str analytics) :filename "analytics"}]})]
+                 (if (= status 200)
+                   (clear-analytics!)
+                   (log/error "Failed to send analytics to server because:" resp)))
+               (catch Exception e
+                 (log/error e "Failed to send analytics!"))))))
 
 (defonce last-report-time (atom nil))
 
@@ -104,13 +105,13 @@
 ;; CONTEXT: Runs after each check command
 (defn report-analytics! []
   (try (when (analytics?)
-         (let [now-s (now-in-seconds)
+         (let [now-s  (now-in-seconds)
                last-s @last-report-time]
            (when (or dev? (nil? last-s)
-                   (< report-interval (- now-s last-s) ))
+                   (< report-interval (- now-s last-s)))
              (let [analytics (gather-analytics!)]
                (reset! last-report-time now-s)
                (send-analytics! analytics)))))
-    (catch #?(:clj Exception :cljs :default) e
-      (log/error e "Failed to report analytics because:")
-      nil)))
+       (catch #?(:clj Exception :cljs :default) e
+         (log/error e "Failed to report analytics because:")
+         nil)))
