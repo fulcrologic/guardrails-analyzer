@@ -38,7 +38,7 @@
       (line-seq (io/reader file)))))
 
 (defn read-test-case [file tests]
-  (let [file-info (cp.reader/read-file file {:checker-type :test-case})]
+  (let [file-info (cp.reader/read-file file :clj)]
     (-> file-info
       (assoc :file-length (count (line-seq (io/reader file))))
       (assoc :file (str file))

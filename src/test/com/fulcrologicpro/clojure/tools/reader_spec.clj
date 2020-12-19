@@ -6,10 +6,12 @@
     [fulcro-spec.check :as _]
     [fulcro-spec.core :refer [specification assertions]]))
 
-(defn test:read [string]
-  (->> string
-    (readers/indexing-push-back-reader)
-    (reader/read)))
+(defn test:read
+  ([string] (test:read string {}))
+  ([string opts]
+   (->> string
+     (readers/indexing-push-back-reader)
+     (reader/read opts))))
 
 (specification "literals are wrapped with location metadata"
   (assertions
@@ -61,3 +63,13 @@
                {:com.fulcrologic.copilot/meta-wrapper? true
                 :value :foo
                 :metadata {:column 1 :end-column 5}})))
+
+(specification "can still read"
+  (assertions
+    "reader conditionals"
+    (test:read "#?(:clj 1 :cljs 2)"
+      {:read-cond :allow
+       :features #{:clj}})
+    =check=> (_/embeds?*
+               {:com.fulcrologic.copilot/meta-wrapper? true
+                :value 1})))

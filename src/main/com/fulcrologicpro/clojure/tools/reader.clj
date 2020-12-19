@@ -443,8 +443,11 @@
 
 (defn- has-feature?
   [rdr feature opts]
-  (if (keyword? feature)
-    (or (= :default feature) (contains? (get opts :features) feature))
+  (if (and (:com.fulcrologic.copilot/meta-wrapper? feature)
+        (keyword? (:value feature)))
+    (let [feature-kw (:value feature)]
+      (or (= :default feature-kw)
+        (contains? (get opts :features) feature-kw)))
     (err/throw-feature-not-keyword rdr feature)))
 
 ;; WIP, move to errors in the future
@@ -455,7 +458,8 @@
 
 (defn- check-reserved-features
   [rdr form]
-  (when (get RESERVED_FEATURES form)
+  (when (and (:com.fulcrologic.copilot/meta-wrapper? form)
+          (get RESERVED_FEATURES (:value form)))
     (err/reader-error rdr "Feature name " form " is reserved")))
 
 (defn- check-invalid-read-cond

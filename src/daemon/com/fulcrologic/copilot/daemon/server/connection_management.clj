@@ -63,9 +63,8 @@
 
 ;; CONTEXT: updates viewers for checker-cid's project
 (defn update-viewers-for! [websockets checker-cid]
-  (let [viewers @subscribed-viewers
-        checker-info (get @registered-checkers checker-cid)]
-    (doseq [[viewer-cid viewer-info] viewers]
+  (let [checker-info (get @registered-checkers checker-cid)]
+    (doseq [[viewer-cid viewer-info] @subscribed-viewers]
       (when (same-project? viewer-info checker-info)
         (update-viewer! websockets viewer-cid viewer-info)))))
 
