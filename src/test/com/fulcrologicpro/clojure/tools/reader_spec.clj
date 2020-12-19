@@ -1,9 +1,10 @@
 (ns com.fulcrologicpro.clojure.tools.reader-spec
   (:require
+    [com.fulcrologic.copilot.test-checkers :as tc]
     [com.fulcrologicpro.clojure.tools.reader :as reader]
     [com.fulcrologicpro.clojure.tools.reader.reader-types :as readers]
-    [fulcro-spec.core :refer [specification assertions]]
-    [fulcro-spec.check :as _]))
+    [fulcro-spec.check :as _]
+    [fulcro-spec.core :refer [specification assertions]]))
 
 (defn test:read [string]
   (->> string
@@ -52,7 +53,7 @@
     (test:read "#\"foo\"")
     =check=> (_/embeds?*
                {:com.fulcrologic.copilot/meta-wrapper? true
-                :value (_/fmap* str (_/equals?* "foo"))
+                :value (tc/fmap* str (_/equals?* "foo"))
                 :metadata {:column 2 :end-column 7}})
     "keyword"
     (test:read ":foo")
