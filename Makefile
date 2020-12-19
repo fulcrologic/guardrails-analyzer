@@ -14,4 +14,4 @@ Copilot.jar: pom-daemon.xml resources/public/js/daemon-ui/main.js $(DAEMON)
 	clojure -A:provided:cljs:daemon -X:uberjar
 
 deploy: Copilot.jar
-	mvn deploy:deploy-file -Dfile=Copilot.jar -DpomFile=pom-daemon.xml -DrepositoryId=fulcrologic -Durl=https://mvn.fulcrologic.com/mvn
+	mvn deploy:deploy-file -Dfile=Copilot.jar -DpomFile=pom-daemon.xml -DrepositoryId=fulcrologic-publish -Durl=https://mvn.fulcrologic.com/mvn
