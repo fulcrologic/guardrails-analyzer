@@ -9,6 +9,10 @@
     (java.io ByteArrayInputStream ByteArrayOutputStream)
     (java.util.zip GZIPInputStream)))
 
+(def license-file
+  (io/file (System/getProperty "user.home")
+    ".copilot/copilot.license"))
+
 (def keystore-alias "license")
 
 (defn load!
@@ -47,3 +51,8 @@
         :valid? (Arrays/equals expected-hash actual-hash)))
     (catch Exception _
       {:valid? false})))
+
+(defn get-license-number []
+  (get (license-details "private/client.p12" "letmein"
+         (slurp license-file))
+    :license/number 0))

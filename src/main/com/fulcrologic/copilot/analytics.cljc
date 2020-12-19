@@ -2,26 +2,28 @@
   #?(:cljs (:require-macros [com.fulcrologic.copilot.analytics]))
   (:require
     #?(:cljs [goog.object :as g.obj])
+    #?(:clj [com.fulcrologic.copilot.licensing :as cp.license])
+    #?(:clj [org.httpkit.client :as http])
     [com.fulcrologic.copilot.config :as cp.cfg]
     [com.fulcrologicpro.taoensso.timbre :as log]))
 
 (defonce config
   (cp.cfg/load-config!))
 
-(def debug?
-  #?(:clj (some? (System/getProperty "copilot.analytics.debug"))
+(def dev?
+  #?(:clj (some? (System/getProperty "dev"))
      :cljs false))
 
 (defn analytics? []
-  (or debug? (:analytics? config false)))
+  (or dev? (:analytics? config false)))
 
 (defonce analyze-stats (atom []))
 
 (defn record-analyze! [env sym args]
   (when (analytics?)
     (swap! analyze-stats conj
-      {::symbol sym
-       ::arity  (count args)})))
+      {:symbol sym
+       :arity  (count args)})))
 
 (defonce problem-stats (atom {}))
 
@@ -33,10 +35,11 @@
 
 (defonce usage-stats (atom {}))
 
-(defn record-usage! [env]
+(defn record-usage! [env forms-count]
   (when (analytics?)
-    (swap! usage-stats update
-      ::count (fnil inc 0))))
+    (swap! usage-stats
+      update :number-of-top-level-forms-checked
+      (fnil + 0) forms-count)))
 
 (defonce profiling-info (atom {}))
 
@@ -60,10 +63,8 @@
        (record-profiling! ~tag (- after# before#)))
      return#))
 
-(defn get-customer-id [] "TODO")
-
 (defn gather-analytics! []
-  {::customer-id    (get-customer-id)
+  {:license/number #?(:clj (cp.license/get-license-number) :cljs nil)
    ::analyze-stats  @analyze-stats
    ::problem-stats  @problem-stats
    ::profiling-info @profiling-info
@@ -76,11 +77,20 @@
   (reset! usage-stats {}))
 
 (defn send-analytics! [analytics]
-  (if debug?
-    (log/debug "ANALYTICS:" analytics)
-    ;; TODO FIXME should send to endpoint & on ack clear atoms
-    (println "TODO send-analytics!"))
-  (clear-analytics!))
+  (if dev?
+    (log/debug "analytics:" analytics)
+    #?(:cljs nil
+       :clj (try
+              (let [{:keys [status] :as resp}
+                    @(http/post "https://fulcrologic.com/analytics"
+                       {:multipart [{:name "password" :content "!!!uploadenzie"}
+                                    {:name "number" :content (str (:license/number analytics))}
+                                    {:name "file" :content (pr-str analytics) :filename "analytics"}]})]
+                (if (= status 200)
+                  (clear-analytics!)
+                  (log/error "Failed to send analytics to server because:" resp)))
+              (catch Exception e
+                (log/error e "Failed to send analytics!"))))))
 
 (defonce last-report-time (atom nil))
 
@@ -96,7 +106,7 @@
   (try (when (analytics?)
          (let [now-s (now-in-seconds)
                last-s @last-report-time]
-           (when (or debug? (nil? last-s)
+           (when (or dev? (nil? last-s)
                    (< report-interval (- now-s last-s) ))
              (let [analytics (gather-analytics!)]
                (reset! last-report-time now-s)

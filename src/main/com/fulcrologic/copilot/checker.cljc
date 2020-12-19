@@ -25,7 +25,7 @@
   ([msg cb] (check! (cp.art/build-env) msg cb))
   ([env {:as msg :keys [forms file NS aliases refers]} cb]
    (log/debug "Running check command on:" (dissoc msg :forms))
-   (cp.analytics/record-usage! env)
+   (cp.analytics/record-usage! env (count forms))
    (cp.analytics/profile ::check!
      (let [on-done (fn []
                      (cp.analytics/report-analytics!)
