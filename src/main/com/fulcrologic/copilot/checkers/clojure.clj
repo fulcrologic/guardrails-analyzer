@@ -3,6 +3,7 @@
     [clojure.java.io :as io]
     [clojure.string :as str]
     [clojure.tools.namespace.repl :as tools-ns :refer [refresh set-refresh-dirs]]
+    [com.fulcrologic.copilot.analytics :as cp.analytics]
     [com.fulcrologic.copilot.checker :as cp.checker]
     [com.fulcrologic.copilot.checkers.sente-client :as ws]
     [com.fulcrologic.guardrails.config :as gr.cfg]
@@ -11,12 +12,12 @@
   (:import
     (java.io FileNotFoundException)))
 
-(defn send-mutation! [env sym params]
+(defn send-mutation! [env sym params & [cb]]
   (log/debug "Sending mutation:" sym)
   (ws/send! env
     [:fulcro.client/API [(list sym params)]]
-    (fn [& args]
-      (log/info :on-mut sym :resp/args args))))
+    (or cb (fn [& args]
+             (log/info :on-mut sym :resp/args args)))))
 
 (defn report-analysis! [env]
   (let [analysis (cp.checker/gather-analysis!)]
@@ -29,16 +30,24 @@
                        (str "Cause: " cause))
                "See checker logs for more detailed information."])}))
 
+(defn on-check-done! [env]
+  (send-mutation! env 'daemon/report-analytics
+    (cp.analytics/gather-analytics!)
+    (fn [& args]
+      ;; TASK: if status ok -> cp.analytics/clear-analytics!
+      (log/info "RESPONSE FROM DAEMON ABOUT REPORTING ANALYTICS:" args)))
+  (report-analysis! env))
+
 (defn check! [env {:as msg :keys [NS]}]
   (when (try (require (symbol NS) :reload) true
           (catch Exception e
             (log/error e "Failed to reload:")
             (report-error! env e)
             false))
-    (cp.checker/check! msg (partial report-analysis! env))) )
+    (cp.checker/check! msg (partial on-check-done! env))) )
 
 (defn refresh-and-check! [env msg]
-  (cp.checker/prepare-check! msg (partial report-analysis! env))
+  (cp.checker/prepare-check! msg (partial on-check-done! env))
   (let [?err (refresh :after 'com.fulcrologic.copilot.checker/run-prepared-check!)]
     (when (instance? Throwable ?err)
       (log/error ?err "Failed to reload:")

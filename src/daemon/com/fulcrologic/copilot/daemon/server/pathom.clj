@@ -1,15 +1,17 @@
 (ns com.fulcrologic.copilot.daemon.server.pathom
   (:require
+    [com.fulcrologic.copilot.config :as cp.cfg]
     [com.fulcrologic.copilot.daemon.lsp.diagnostics :as lsp.diag]
     [com.fulcrologic.copilot.daemon.server.bindings :as bindings]
     [com.fulcrologic.copilot.daemon.server.checkers :as daemon.check]
     [com.fulcrologic.copilot.daemon.server.config :refer [config]]
     [com.fulcrologic.copilot.daemon.server.connection-management :as cp.conn]
     [com.fulcrologic.copilot.daemon.server.problems :as problems]
+    [com.fulcrologicpro.taoensso.timbre :as log]
     [com.wsscode.pathom.connect :as pc]
     [com.wsscode.pathom.core :as p]
     [mount.core :refer [defstate]]
-    [com.fulcrologicpro.taoensso.timbre :as log]))
+    [org.httpkit.client :as http]))
 
 ;; CONTEXT: web ui (viewer) queries for all problems
 (pc/defresolver all-problems
@@ -70,9 +72,33 @@
     (cp.conn/report-no-checker! websockets viewer-cid file))
   {})
 
-(def all-resolvers [all-problems report-analysis report-error
+(pc/defmutation report-analytics
+  [{:keys [dot-config]} analytics]
+  {::pc/sym 'daemon/report-analytics}
+  (try
+    (let [{:keys [status] :as resp}
+          (if (System/getProperty "dev")
+            (do (log/debug "analytics:" analytics)
+              {:status 200})
+            (if (get dot-config :analytics? false)
+              @(http/post "https://fulcrologic.com/analytics"
+                 {:multipart [{:name "password" :content "!!!uploadenzie"}
+                              {:name "number" :content (str (:license/number analytics))}
+                              {:name "file" :content (pr-str analytics) :filename "analytics"}]})
+              {:status 200}))]
+      (if (= status 200)
+        {:status :ok}
+        (do (log/error "Failed to send analytics to server because:" resp)
+          {:status :failed})))
+    (catch Exception e
+      (log/error e "Failed to send analytics!")
+      {:status :error})))
+
+(def all-resolvers [all-problems
+                    report-analysis report-error
                     subscribe register-checker
-                    check-current-file check-root-form])
+                    check-current-file check-root-form
+                    report-analytics])
 
 (defn preprocess-parser-plugin [f]
   {::p/wrap-parser
@@ -100,7 +126,8 @@
                                                               p/env-placeholder-reader]
                                     ::p/placeholder-prefixes #{">"}
                                     ::p/process-error        log-error
-                                    :config                  config}
+                                    :config                  config
+                                    :dot-config              (cp.cfg/load-config!)}
                        ::p/plugins [(pc/connect-plugin {::pc/register all-resolvers})
                                     (preprocess-parser-plugin log-requests)
                                     p/error-handler-plugin
