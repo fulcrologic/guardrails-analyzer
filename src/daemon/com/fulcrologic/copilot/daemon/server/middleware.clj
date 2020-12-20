@@ -1,6 +1,6 @@
 (ns com.fulcrologic.copilot.daemon.server.middleware
   (:require
-    [com.fulcrologicpro.fulcro.networking.websockets :as f.ws]
+    [com.fulcrologicpro.fulcro.networking.websockets-client :as f.ws]
     [com.fulcrologicpro.fulcro.server.api-middleware :as f.api]
     [com.fulcrologic.copilot.daemon.server.config :refer [config]]
     [com.fulcrologic.copilot.daemon.server.pathom :refer [parser]]
