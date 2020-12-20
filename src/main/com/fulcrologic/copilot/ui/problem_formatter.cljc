@@ -64,7 +64,8 @@
   {:message (format "The expression %s does not conform to the declared spec %s."
               (format-actual problem)
               (format-expected problem))
-   :tooltip (format "The expression: <b>%s</b><br/>does not conform to the declared spec <b>%s</b>."
+   :tooltip (format "The expression <b>%s</b> could potentially have the value <b>%s</b>, which does not conform to the declared spec of <b>%s</b>."
+              (html-escape (format-expr problem))
               (html-escape (format-actual problem))
               (html-escape (format-expected problem)))})
 
@@ -73,7 +74,7 @@
   {:message (format "The Return spec is %s, but it is possible to return a value like %s."
               (format-expected problem)
               (format-actual problem))
-   :tooltip (format "The function's return type is declared <b>%s</b><br/>It is possible for it to return a value like <b>%s</b>"
+   :tooltip (format "The function's return spec is declared <b>%s</b><br/>It is possible for it to return a value like <b>%s</b>"
               (html-escape (format-expected problem))
               (html-escape (format-actual problem)))})
 
@@ -111,10 +112,10 @@
 
 (defmethod format-problem-mm :error/invalid-partially-applied-arguments
   [problem params]
-  {:message (format "The partial application of the arguments %s to function %s violates one or more of that functions expected argument types."
+  {:message (format "The partial application of the arguments %s to function %s violates one or more of that functions expected argument specs."
               (format-expr problem)
               (:function params))
-   :tooltip (format "The partial application of the arguments <b>%s</b> to <b>%s</b> violates one or more of that functions expected argument types."
+   :tooltip (format "The partial application of the arguments <b>%s</b> to <b>%s</b> violates one or more of that functions expected argument specs."
               (html-escape (format-expr problem))
               (html-escape (:function params)))})
 
