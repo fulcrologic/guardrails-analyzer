@@ -142,10 +142,13 @@
   (format "The else branch is potentially unreachable. The samples of expression %s never yielded a false or nil value."
     (format-expr problem)))
 
-(defmethod format-problem-mm :warning/failed-to-find-keyword-in-hashmap-samples
+(defmethod format-problem-mm :warning/destructured-map-entry-may-not-be-present
   [problem params]
-  (format "Failed to find value for keyword <%s> in samples."
-    (format-expr problem)))
+  {:message (format "The destructured symbol `%s` may not exist in the source map."
+              (format-expr problem))
+   :tooltip (format "The destructured symbol <code>%s</code> may not be present in the source map. This may indicate a
+   typo in your destructuring or in the spec. It could also mean the key in question is optional at this point in the code."
+              (html-escape (format-expr problem)))})
 
 (defmethod format-problem-mm :warning/qualified-keyword-missing-spec
   [problem params]

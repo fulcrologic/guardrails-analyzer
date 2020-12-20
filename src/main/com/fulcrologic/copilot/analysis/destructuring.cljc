@@ -22,7 +22,7 @@
     (do
       (when-not (some #(and (associative? %) (contains? % kw)) samples)
         (cp.art/record-warning! env
-          #::cp.art{:problem-type        :warning/failed-to-find-keyword-in-hashmap-samples
+          #::cp.art{:problem-type        :warning/destructured-map-entry-may-not-be-present
                     :expected            #::cp.art{:spec spec :type (pr-str kw)}
                     :actual              {::cp.art/failing-samples samples}
                     :original-expression (or orig-expr kw)}))
