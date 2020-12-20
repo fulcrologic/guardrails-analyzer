@@ -1,7 +1,7 @@
 (ns com.fulcrologic.copilot.daemon.server.websockets
   (:require
     [com.fulcrologicpro.fulcro.networking.websocket-protocols :as wsp]
-    [com.fulcrologicpro.fulcro.networking.websockets-client :as fws]
+    [com.fulcrologicpro.fulcro.networking.websockets :as fws]
     [com.fulcrologic.copilot.daemon.server.connection-management :as cp.conn]
     [com.fulcrologic.copilot.daemon.server.pathom :refer [parser]]
     [mount.core :refer [defstate]]

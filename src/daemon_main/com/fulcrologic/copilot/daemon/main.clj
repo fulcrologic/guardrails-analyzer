@@ -17,3 +17,6 @@
     (log/error "Found an already running daemon!")
     (System/exit 1))
   (mount/start))
+
+(comment
+  (-main))
