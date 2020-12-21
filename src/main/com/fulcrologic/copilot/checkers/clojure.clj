@@ -43,7 +43,7 @@
 (defmutation report-analytics [_]
   (ok-action [{{:keys [status-code body]} :result :as env}]
     (when (and (= 200 status-code)
-            (= :ok (get body ['daemon/report-analytics :status])))
+            (= :ok (get-in body ['daemon/report-analytics :status])))
       (cp.analytics/clear-analytics!)))
   (remote [env]
     (m/with-server-side-mutation env 'daemon/report-analytics)))
