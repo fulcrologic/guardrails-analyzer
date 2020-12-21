@@ -3,8 +3,8 @@
 Copilot uses generators based on your specs in order to do its work. This
 means that good specs will drastically enhance your experience, and bad
 specs can make the tool completely useless. It is in your best
-interest to learn about writing good specs, and also note some
-of the common pitfalls that you should avoid.
+interest to learn about writing good specs, and note
+the common pitfalls that you should avoid.
 
 Writing good specs is a skill just like any other significant
 programming task. You should *definitely* read the official
@@ -31,7 +31,7 @@ reads your database in a spec then you're doing it wrong.
 Use narrow specs for arguments::
 There is a tendency to do Object-Oriented data
 specifications and use them everywhere. This is a mistake. Spec 2
-moved these to "Schemas" and "Selections", but we do not yet have
+moves these to "Schemas" and "Selections", but we do not yet have
 a finalized API. We recommend saying only what your function *needs*
 on input. For example, if a function allows you to pass a map,
 and that map is commonly represents `Person` but all you need is their
@@ -63,7 +63,7 @@ For example:
 (s/def :person/name ::non-empty-string)
 -----
 +
-might given samples like "sd98u723klb  lkj", "a", and "8998fnn(".
+might give samples like "sd98u723klb  lkj", "a", and "8998fnn(".
 This will result in messages like `The value at this location could have
 a value like "8998fnn(" which does not match the spec int?`
 +
@@ -77,7 +77,7 @@ If you instead write the spec as:
                                            "Betty White"})))
 -----
 +
-your checker messages will be a whole lot more readable.
+your checker messages will be a lot more readable.
 
 === Protocols
 

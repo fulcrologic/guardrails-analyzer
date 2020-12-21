@@ -62,8 +62,7 @@ do this in the global deps.edn file (once), or on each project individually:
 
 === Running the Copilot Daemon
 
-You have two choices when running
-the Copilot Daemon: Use the `clojure` command or a runnable jar.
+You have two choices when running the Copilot Daemon: Use the `clojure` command or a runnable jar.
 
 ==== Runnable JAR
 
@@ -113,7 +112,7 @@ be best if the checker *not* run in your development REPL (even though it has ev
 *You* still need to work at full speed, and you should not have tooling interfering with your ability to start/stop
 your REPL, or otherwise block your normal development progress.
 
-We were also careful to minimize the checker's runtime dependencies so they do not conflict with things you use. We did not
+We were also careful to minimize the checker's runtime dependencies, so they do not conflict with things you use. We did not
 want you to have to juggle the version of libraries you use in order to run Copilot!
 
 The primary dependency is the most recent version of https://github.com/fulcrologic/guardrails[Guardrails]. You cannot
@@ -129,10 +128,10 @@ The Copilot checker for Clojure also includes the following dependencies on the 
            org.clojure/tools.namespace    {:mvn/version "1.0.0"}}
 -----
 
-and requires at least Clojure 1.9.
+Copilot requires at least Clojure 1.9.
 
 These libraries tend to follow the "higher version means better" philosophy, so we hope they do not
-conflict in a bad way with your application. Please let us know if these dependencies cause problems with
+conflict with your application. Please let us know if these dependencies cause problems with
 starting or running the checker.
 
 === Clojure
@@ -148,7 +147,7 @@ The easiest way to set up a Clojure checker is to add the following to your `dep
 
 // TASK: Anthony, do we need src-dirs???  Seems like all the file locating could be done via io/resource, and then
 // leveraging the URL it returns.
-At the moment the `src-dirs` option is required and indicates the base classpath location for any files you will
+The `src-dirs` option is required, and indicates the base classpath location for any files you will
 check.  Future releases will derive this information automatically.
 
 ==== Initial Namespace
@@ -157,7 +156,7 @@ The checker loads pretty much like any other Clojure program. You use deps to co
 some namespace (optionally) gets loaded.
 
 Since we want the checker to know about your specs and code it is a good idea to create a namespace that
-contains requires for the main bits of your application. This will cause them to all load at startup and ensure
+contains requires for the main bits of your application. This will cause them to all load at checker startup and ensure
 the checker has all the information it needs.
 
 For example, you might create:
