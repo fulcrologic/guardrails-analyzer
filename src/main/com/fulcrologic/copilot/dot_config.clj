@@ -10,26 +10,26 @@
   (io/file (System/getProperty "user.home")
     ".copilot/config.edn"))
 
-(def default-config
-  {:analytics? true})
+(def default-config {:logging/config {:min-level :info}})
 
 (defn show-create-config-dialog []
   (let [options (to-array ["Yes" "No"])
         user-chose (JOptionPane/showOptionDialog
                      (doto (new JFrame)
                        (.setAlwaysOnTop true))
-                     (str "Could not find config file at " config-file
-                       "\nWould you like copilot to create a default config for you?"
-                       "\n\nDefault config:\n"
-                       (pr-str default-config))
-                     "Copilot Create Default Config"
+                     (str "Could not find config file at " config-file "."
+                       "\nCopilot will create a default config for you.\n"
+                       "\nWould you like to enable analytics to help us better improve Copilot?")
+                     "Copilot: Enable Analytics?"
                      JOptionPane/DEFAULT_OPTION JOptionPane/QUESTION_MESSAGE
-                     nil options nil)]
-    (case (get options user-chose false)
-      "Yes" (do (io/make-parents config-file)
-              (spit config-file (pr-str default-config))
-              default-config)
-      {})))
+                     nil options nil)
+        config (merge default-config
+                 (case (get options user-chose false)
+                   "Yes" {:analytics? true}
+                   {}))]
+    (io/make-parents config-file)
+    (spit config-file (pr-str config))
+    config))
 
 (defn load-config! []
   (try
