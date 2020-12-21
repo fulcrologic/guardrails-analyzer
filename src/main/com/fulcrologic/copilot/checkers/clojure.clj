@@ -41,12 +41,10 @@
     (comp/transact! APP [(report-error params)])))
 
 (defmutation report-analytics [_]
-  (ok-action [env]
-    ;;TASK : reset analytics if response is OK
-    (log/info "OK" (keys env)))
-  (error-action [env]
-    ;; TASK: network errors will go here
-    (log/info "ERROR" (keys env)))
+  (ok-action [{{:keys [status-code body]} :result :as env}]
+    (when (and (= 200 status-code)
+            (= :ok (get body ['daemon/report-analytics :status])))
+      (cp.analytics/clear-analytics!)))
   (remote [env]
     (m/with-server-side-mutation env 'daemon/report-analytics)))
 
@@ -109,15 +107,16 @@
      (if-let [port (port-fn)]
        (do
          (log/info "Checker looking for Daemon on port " port)
-         (app/set-remote! APP :remote (fws/fulcro-websocket-remote {:host          (str "localhost:" port)
-                                                                    :sente-options {:csrf-token-fn (fn [] nil)}
-                                                                    :push-handler  (fn [msg]
-                                                                                     (log/spy :info msg)
-                                                                                     (binding [*ns* root-ns]
-                                                                                       (case (:topic msg)
-                                                                                         :check! (check! (:msg msg))
-                                                                                         :refresh-and-check! (refresh-and-check! (:msg msg))
-                                                                                         nil)))}))
+         (app/set-remote! APP :remote
+           (fws/fulcro-websocket-remote
+             {:host          (str "localhost:" port)
+              :sente-options {:csrf-token-fn (fn [] nil)}
+              :push-handler  (fn [{:keys [topic msg]}]
+                               (binding [*ns* root-ns]
+                                 (case topic
+                                   :check! (check! msg)
+                                   :refresh-and-check! (refresh-and-check! msg)
+                                   nil)))}))
          (comp/transact! APP [(register-checker {:checker-type :clj
                                                  :project-dir  (System/getProperty "user.dir")})])
          true)
