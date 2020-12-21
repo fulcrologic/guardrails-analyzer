@@ -58,3 +58,5 @@ docs/.jekyll-metadata
 resources/public/workspaces
 !.idea/runConfigurations
 .copilot
+docs/user-guide/UserGuide.html
+docs/user-guide/images/copilot-arch.png

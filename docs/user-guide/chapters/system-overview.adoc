@@ -1,0 +1,39 @@
+== General Overview
+
+In order to obtain the most accurate results the checkers themselves must run in the real runtime environment of your
+application. This allows the tool to leverage your real code instead of it being a pure source-level analysis. These
+low-level checkers connect to a central daemon. The daemon serves several roles:
+
+* An LSP (language server protocol) server for arbitrary editors.
+* Runtime file I/O (browser cljs environments cannot read the filesystem)
+* A central common place to run a UI for centralized configuration and control outside of editors.
+
+The overall system diagram looks like this:
+
+[ditaa, target="copilot-arch"]
+-----
+   +------------------+ +------------------+
+   | Checker (CLJ)    | | Checker (CLJS)   |
+   | In JVM           | | Browser/Node/??? |
+   +------------------+ +------------------+
+                  ^         ^
+                  |         |
+                  +----+----+
+                       |
+                       v
+                   +--------+
+                   | Daemon |
+                   +--------+
+                       ^
+                       |
+          +---------+--+-------+
+          |         |          |
+          v         v          v
+   +---------+ +---------+
+   | Editor  | | Editor  | ...
+   +---------+ +---------+
+-----
+
+The IntelliJ plugin is pre-configured to understand how to connect to the daemon. Other editos have to
+be configured to work with the LSP support. Please see the relevant chapter in this guide for more
+information on each of these elements.

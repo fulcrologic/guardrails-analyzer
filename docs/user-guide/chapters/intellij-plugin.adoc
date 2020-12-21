@@ -1,0 +1,35 @@
+== IntelliJ Plugin
+
+Our IntelliJ plugin provide the best overall experience for editor
+integration. You can download and install it from the IntelliJ
+Marketplace. It is listed as the "Guardrails Copilot". It should work with
+the Community and Ultimate editions, but it *does* require the "Cursive" plugin
+as well.
+
+The plugin will automatically connect to the Copilot Daemon when it is running.
+The IDE commands that invoke Copilot logic actually send instructions to the daemon,
+and it communicates with one or more checkers to coordinate and accomplis the
+checking task(s).
+
+=== Available Actions
+
+The menu for controlling Copilot is in the `Tools` menu under Copilot.
+We recommend you add a key binding for the actions you use the most.
+
+The check commands have two variants: Ones that refresh the entire
+checker runtime, and ones that just reload the file you are checking.
+
+The actions that start with "Refresh" should be used when
+you feel that files (other than the current one) may need to
+be reloaded by the checker for it to have a correct understanding of
+your program. Refreshing everything can be quite slow, so only use
+these variants if you think things have gotten out-of-sync.
+
+Check Namespace:: Checks everything possible in the current namespace. This
+is probably the most commonly used command, and should work well for
+constant use. Large namespaces, however, may respond more slowly than
+is acceptable.
+
+Check Top-Level Form:: Large namespaces can be slow to check. This command
+still has to reload the current namespace, but it will only run checks on
+the top-level form under your cursor.

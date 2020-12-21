@@ -1,0 +1,105 @@
+== Writing Specs and Annotating Functions
+
+Copilot uses generators based on your specs in order to do its work. This
+means that good specs will drastically enhance your experience, and bad
+specs can make the tool completely useless. It is in your best
+interest to learn about writing good specs, and also note some
+of the common pitfalls that you should avoid.
+
+Writing good specs is a skill just like any other significant
+programming task. You should *definitely* read the official
+https://clojure.org/guides/spec[Guide to Clojure Spec], and try
+to run many of the examples found there.
+
+Here are some general guidelines for people that have a passing familiarity
+with specs that will help ensure you have a good experience while using
+Copilot.
+
+=== Spec Guidelines
+
+Specs *should* include generators when the values are expensive to find randomly::
+If a generator is too slow, then Copilot will give up trying
+to find sample values, and will not be able to check the code that
+uses those values.
+
+Specs *MUST NOT* side-effect::
+If you are using a predicate that
+reads your database in a spec then you're doing it wrong.
+
+=== Function Guidelines
+
+Use narrow specs for arguments::
+There is a tendency to do Object-Oriented data
+specifications and use them everywhere. This is a mistake. Spec 2
+moved these to "Schemas" and "Selections", but we do not yet have
+a finalized API. We recommend saying only what your function *needs*
+on input. For example, if a function allows you to pass a map,
+and that map is commonly represents `Person` but all you need is their
+name, then the proper spec is `(s/keys :req [:person/name])`, NOT
+`::person`.
+
+Be careful not to overly constrain return types::
+This is particularly important when you're returning maps in which
+data can flow *through* the function from an input to an output. A
+function like `select-keys` is a valid example of a function that
+*can* be specific about the limits of the returned value; however,
+a function like `assoc` knows it added something, but doesn't know
+what was already there.
+
+=== Copilot-Specific Spec Recommendations
+
+Add human-readable samples to generators that have normal predictable values::
+Part of the power of specs is that they can randomly generate samples that
+might find errors when doing generative testing. However, Copilot also
+uses generated samples to show you the shape of data when you hover
+over symbols. This will make data flow hover messages easier to read. If you
+do this, make sure to include data that hits boundaries that might matter
+(nil, 0, -1, empty string, etc.).
++
+For example:
++
+[source]
+-----
+(s/def :person/name ::non-empty-string)
+-----
++
+might given samples like "sd98u723klb  lkj", "a", and "8998fnn(".
+This will result in messages like `The value at this location could have
+a value like "8998fnn(" which does not match the spec int?`
++
+If you instead write the spec as:
++
+[source]
+-----
+(s/def :person/name
+  (s/with-gen ::non-empty-string #(s/gen #{"Bob Jones"
+                                           "Sally Chang"
+                                           "Betty White"})))
+-----
++
+your checker messages will be a whole lot more readable.
+
+=== Protocols
+
+Protocols place their methods in the namespace of their declaration, so you can
+create a spec for a protocol that will work with Copilot as follows:
+
+[source]
+-----
+(ns com.fulcrologic.sample
+  (:require
+    [clojure.spec.alpha :as s]
+    [clojure.string :as str]
+    [com.fulcrologic.guardrails.core :refer [>defn => >fdef]]))
+
+(defprotocol A
+  (method [this x] "Do thing"))
+
+;; Make sure to give a generator. The instance only needs to type check, so you can
+;; leave out implementations of all the methods.
+(s/def ::A (s/with-gen #(satisfies? A %) #(s/gen #{(reify A)})))
+
+;; The methods of the protocol are in the namespace of their declaration, so use
+;; >fdef just like you were writing it as a function, just without the body.
+(>fdef com.fulcrologic.sample/method [this x] [::A boolean? => int?])
+-----

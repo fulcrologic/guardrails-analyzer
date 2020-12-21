@@ -1,0 +1,103 @@
+= Copilot User Guide
+:author: Fulcrologic, LLC
+:email: support@fulcrologic.com
+:imagesdir: ./images
+:source-language: clojure
+
+include::chapters/system-overview.adoc[]
+
+include::chapters/getting-started.adoc[]
+
+include::chapters/intellij-plugin.adoc[]
+
+include::chapters/writing-specs.adoc[]
+
+include::chapters/emacs-and-vim.adoc[]
+
+== Writing Good Function Signatures
+
+You'll get the best results from the checker if you follow some guidelines about writing good specs and function
+signatures. The following sections contain some general rules to follow that will help you get started.
+
+
+=== Rule 1 – Keep Specifications Constrained to Data that is Used
+
+Be specific about exactly what the function *itself* uses. Don't overspec just because some data *might* flow in or out
+of a function that the function itself doesn't care about.
+
+For example, say you have a spec for an entity that goes in your database. This spec is used to ensure you never put
+invalid data in the database:
+
+[source]
+-----
+(s/def ::person (s/keys :req [:person/first-name :person/family-name :person/address :person/spouse :person/children]))
+-----
+
+When writing functions you should almost never use the `::person` spec to indicate an argument's "type". The
+obvious exception is for a function that puts the thing in a database, as it obviously requires exactly
+that spec. Instead, you should carefully select the data you need (if using spec 2 you would use schema/select):
+
+[source]
+-----
+(>defn with-full-name [{:person/keys [first-name last-name] :as person}]
+  [(s/keys :req [:person/first-name :person/last-name]) => (s/keys :req [:person/full-name])]
+  (assoc person :person/full-name (str first-name " " last-name)))
+-----
+
+This practice has several benefits:
+
+1. The checker won't try to explore generating keys for this function that are not even used by it.
+2. Usages of the function won't generate checker messages about "missing" or "incorrect" values that *might* be in the
+map passed as a parameter (for which the target function has no use).
+
+=== Rule 2 - Leverage the Pure Annotation Heavily
+
+One of the biggest helpers when writing specs is to tell the checker that it can use the function itself as a tool
+to propagate samples through the code when running checks. Not only does this give you much more accurate results, but
+it also fixes the "generality vs. specificity" problem for general type signatures.
+
+Consider the function from the prior section. When used in a context like so:
+
+[source]
+-----
+(>defn calculate-package-price [{:person/keys [age]}]
+ [(s/keys :req [:person/age]) => number?]
+ ...)
+
+(>defn some-helper [person]
+  [(s/keys :req [:person/first-name :person/last-name :person/age]) => (s/keys :req [:person/full-name :insurance/cost])]
+  (let [p2 (with-full-name person)
+        price (calculate-package-price p2)]
+    (assoc ps :insurance/cost price)))
+-----
+
+It the checker does not know that `with-full-name` flows information through to `p2`, then it will issue an error that
+required data in `calculate-package-cost` *might* not be satisfied. If the `with-full-name` is declare as a pure function
+then it will understand the data flow and not issue such errors.
+
+[source]
+-----
+(>defn with-full-name [{:person/keys [first-name last-name] :as person}]
+  ^:pure [(s/keys :req [:person/first-name :person/last-name]) => (s/keys :req [:person/full-name])]
+  (assoc person :person/full-name (str first-name " " last-name)))
+-----
+
+In cases where your function flows data *and* has side-effects you can use metadata on the
+function signature to write a pure version of the function for checking purposes.
+
+[source]
+-----
+(>defn launch-rocket! [target]
+  ^{:pure-fn (fn [target] true)}
+  [::geocoordinate => boolean?]
+  ...)
+-----
+
+This allows you to help the system understand how the data flows without actually causing side effects during the checks
+themselves. The checker will *never* run your code unless you declare it pure somehow.
+
+WARNING: If you declare a function as pure then the checker will consider it safe to run. It does no recursive checking
+to make sure you have not accidentally caused a nested side-effect. We hope to address this in an upcoming version.
+
+// NOTE: We can probably have the `>defn` macro emit no body in functions that are not declared pure. This would eliminate
+// the danger.
