@@ -79,7 +79,6 @@
   "Start the checker.
 
     :host - The IP where the checker daemon is running. Defaults to localhost.
-    :port - An integer. The daemon port. Usually found automatically using the .copilot generated folder.
     :src-dirs - A vector of strings. The directories that contain source. If not supplied this assumes you will manually set-refresh-dirs from
               tools ns repl before starting the checker.
     :main-ns - A symbol. The main ns of the software being checked. This ensures the tree of deps are required into the env at startup.
@@ -87,7 +86,7 @@
     Sets an atom in this ns with the resulting websocket handler, so it can be shutdown for safe ns refresh.
     "
   ([] (start {}))
-  ([{:keys [host port src-dirs main-ns]
+  ([{:keys [host src-dirs main-ns]
      :or   {host "localhost"}
      :as   opts}]
    (when-not (#{:pro :copilot :all} (:mode (gr.cfg/get-env-config)))
@@ -102,9 +101,8 @@
      (require ns-sym))
    (when (seq src-dirs)
      (apply set-refresh-dirs src-dirs))
-   (let [root-ns *ns*
-         port-fn (if port (constantly port) ?find-port)]
-     (if-let [port (port-fn)]
+   (let [root-ns *ns*]
+     (if-let [port (?find-port)]
        (do
          (log/info "Checker looking for Daemon on port " port)
          (app/set-remote! APP :remote

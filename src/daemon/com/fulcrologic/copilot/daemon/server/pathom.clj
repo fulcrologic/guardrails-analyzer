@@ -1,12 +1,11 @@
 (ns com.fulcrologic.copilot.daemon.server.pathom
   (:require
-    [com.fulcrologic.copilot.config :as cp.cfg]
     [com.fulcrologic.copilot.daemon.lsp.diagnostics :as lsp.diag]
     [com.fulcrologic.copilot.daemon.server.bindings :as bindings]
     [com.fulcrologic.copilot.daemon.server.checkers :as daemon.check]
-    [com.fulcrologic.copilot.daemon.server.config :refer [config]]
     [com.fulcrologic.copilot.daemon.server.connection-management :as cp.conn]
     [com.fulcrologic.copilot.daemon.server.problems :as problems]
+    [com.fulcrologic.copilot.dot-config :as cp.cfg]
     [com.fulcrologicpro.taoensso.timbre :as log]
     [com.wsscode.pathom.connect :as pc]
     [com.wsscode.pathom.core :as p]
@@ -126,7 +125,6 @@
                                                               p/env-placeholder-reader]
                                     ::p/placeholder-prefixes #{">"}
                                     ::p/process-error        log-error
-                                    :config                  config
                                     :dot-config              (cp.cfg/load-config!)}
                        ::p/plugins [(pc/connect-plugin {::pc/register all-resolvers})
                                     (preprocess-parser-plugin log-requests)

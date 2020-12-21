@@ -1,4 +1,4 @@
-(ns com.fulcrologic.copilot.config
+(ns com.fulcrologic.copilot.dot-config
   (:require
     [clojure.edn :as edn]
     [clojure.java.io :as io])

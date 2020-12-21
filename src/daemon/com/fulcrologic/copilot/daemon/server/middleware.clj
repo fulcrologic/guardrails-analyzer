@@ -1,14 +1,13 @@
 (ns com.fulcrologic.copilot.daemon.server.middleware
   (:require
-    [com.fulcrologicpro.fulcro.networking.websockets :as f.ws]
-    [com.fulcrologicpro.fulcro.server.api-middleware :as f.api]
-    [com.fulcrologic.copilot.daemon.server.config :refer [config]]
     [com.fulcrologic.copilot.daemon.server.pathom :refer [parser]]
     [com.fulcrologic.copilot.daemon.server.websockets :refer [websockets]]
     [com.fulcrologic.copilot.transit-handlers :as cp.transit]
+    [com.fulcrologicpro.fulcro.networking.websockets :as f.ws]
+    [com.fulcrologicpro.fulcro.server.api-middleware :as f.api]
+    [com.fulcrologicpro.taoensso.timbre :as log]
     [mount.core :refer [defstate]]
-    [ring.middleware.defaults :refer [wrap-defaults]]
-    [com.fulcrologicpro.taoensso.timbre :as log]))
+    [ring.middleware.defaults :refer [wrap-defaults]]))
 
 (def ^:private not-found-handler
   (fn [_req]
@@ -24,10 +23,26 @@
         (fn [tx] (parser {:ring/request request} tx)))
       (handler request))))
 
+(def defaults-config
+  {:params    {:keywordize true
+               :multipart  true
+               :nested     true
+               :urlencoded true}
+   :cookies   true
+   :responses {:absolute-redirects     true
+               :content-types          true
+               :default-charset        "utf-8"
+               :not-modified-responses true}
+   :static    {:resources "public"}
+   :security  {:anti-forgery   true
+               :hsts           true
+               :ssl-redirect   false
+               :frame-options  :sameorigin
+               :xss-protection false}})
+
 (defstate middleware
   :start
-  (let [defaults-config     (:ring.middleware/defaults-config config)
-        transit-writer-opts {:opts {:default-handler cp.transit/default-write-handler}}]
+  (let [transit-writer-opts {:opts {:default-handler cp.transit/default-write-handler}}]
     (log/info "Starting with ring defaults config" defaults-config)
     (-> not-found-handler
       (wrap-api "/api")

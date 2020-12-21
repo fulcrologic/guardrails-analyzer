@@ -110,12 +110,12 @@
     (.shutdownOutput s)))
 
 (defn start-lsp []
-  (log/info "Starting copilot LSP server!")
   (let [server-socket (doto (new ServerSocket 0)
-                        (.setSoTimeout 1000))]
+                        (.setSoTimeout 1000))
+        port (.getLocalPort server-socket)]
+    (log/info "Starting Copilot Daemon LSP server on:" port)
     (.deleteOnExit port-file)
-    (write-port-to-file! port-file
-      (.getLocalPort server-socket))
+    (write-port-to-file! port-file port)
     (let [sockets (atom [])
           stop-chan (async/chan)]
       (async/go-loop []

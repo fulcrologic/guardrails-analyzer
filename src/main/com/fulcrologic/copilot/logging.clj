@@ -1,6 +1,7 @@
 (ns com.fulcrologic.copilot.logging
   (:require
     [clojure.java.io :as io]
+    [com.fulcrologic.copilot.dot-config :as cp.cfg]
     [com.fulcrologicpro.taoensso.timbre :as log])
   (:import
     (java.text SimpleDateFormat)
@@ -39,6 +40,8 @@
       (.delete f))))
 
 (defn configure-logging! [log-file-format]
+  (log/merge-config! (merge (:logging/config (cp.cfg/load-config!))
+                       {:min-level :info}))
   (let [log-dir ".copilot/logs"]
     (clear-old-logs! log-dir)
     (add-appender! log-dir log-file-format)))
