@@ -25,10 +25,14 @@
 
 (defonce usage-stats (atom {}))
 
-(defn record-usage! [env forms-count]
-  (swap! usage-stats
-    update :number-of-top-level-forms-checked
-    (fnil + 0) forms-count))
+(defn record-usage! [env {:keys [forms check-command-type]}]
+  (let [forms-count (count forms)]
+    (swap! usage-stats
+      #(-> %
+         (update :number-of-top-level-forms-checked
+           (fnil + 0) forms-count)
+         (update-in [:usage-by-check-command check-command-type]
+           (fnil inc 0))))))
 
 (defonce profiling-info (atom {}))
 

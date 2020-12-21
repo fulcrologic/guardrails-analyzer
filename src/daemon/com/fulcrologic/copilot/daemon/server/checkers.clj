@@ -17,20 +17,24 @@
   (if refresh? :refresh-and-check! :check!))
 
 (defn check-file! [ws checker-cid path opts]
-  (notify-checker! ws checker-cid (opts->check-type opts)
-    (fn [{:keys [checker-type]}]
-      (-> (cp.reader/read-file path checker-type)
-        (update :forms cp.forms/form-expression)))))
+  (let [check-type (opts->check-type opts)]
+    (notify-checker! ws checker-cid check-type
+      (fn [{:keys [checker-type]}]
+        (-> (cp.reader/read-file path checker-type)
+          (update :forms cp.forms/form-expression)
+          (assoc :check-command-type [check-type :file]))))))
 
 (defn root-form-at? [cursor-line ?form]
   (let [{:keys [line end-line]} (meta ?form)]
     (<= line cursor-line end-line)))
 
 (defn check-root-form! [ws checker-cid path line opts]
-  (notify-checker! ws checker-cid (opts->check-type opts)
-    (fn [{:keys [checker-type]}]
-      (-> (cp.reader/read-file path checker-type)
-        (update :forms
-          #(->> %
-             (filter (partial root-form-at? line))
-             (cp.forms/form-expression)))))))
+  (let [check-type (opts->check-type opts)]
+    (notify-checker! ws checker-cid check-type
+      (fn [{:keys [checker-type]}]
+        (-> (cp.reader/read-file path checker-type)
+          (update :forms
+            #(->> %
+               (filter (partial root-form-at? line))
+               (cp.forms/form-expression)))
+          (assoc :check-command-type [check-type :root-form]))))))
