@@ -98,5 +98,5 @@
  {:date "2020-12-18" :description "webapp/website refinement." :timespans [[1300 1730]]}
  {:date "2020-12-19" :description "pairing w/Anthony, website features" :timespans [[1040 1620] [1730 2050]]}
  {:date "2020-12-20" :description "User Guide" :timespans [[1200 1300] [1700 2000]]}
- {:date "2020-12-21" :description "check-in" :timespans [[1215 1345]]}
+ {:date "2020-12-21" :description "check-in, guardrails async trial" :timespans [[1215 1345] [1700 2130]]}
  ]
