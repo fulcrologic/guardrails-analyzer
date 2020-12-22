@@ -25,7 +25,7 @@
                 ;; NOTE: a local symbol resolves first
                 (cp.art/symbol-detail env sym)
                 #_=> :symbol.local/call
-                ;; NOTE: analyze methods resolve before any >defn / >ftag definitions
+                ;; NOTE: analyze methods resolve before any >defn / >fdef definitions
                 (get (methods analyze-mm) cljc-symbol)
                 #_=> cljc-symbol
                 (when core-symbol (get (methods analyze-mm) core-symbol))
@@ -69,7 +69,7 @@
               (assoc ::dispatch dispatch)
               (cp.art/sync-location sexpr))]
     (when (and (qualified-symbol? dispatch)
-            ;; TODO: if its defined in copilot ftags.*
+            ;; TODO: if its defined in copilot fdefs.*
             (#{"clojure.core"}
               (namespace dispatch)))
       (cp.analytics/record-analyze! env dispatch

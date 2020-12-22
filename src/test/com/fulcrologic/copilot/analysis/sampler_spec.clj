@@ -67,7 +67,7 @@
       => #{:a :b :c :d :e [:f :g]})))
 
 (specification "get-args"
-  (let [env (cp.art/build-env)]
+  (let [env (tf/test-env)]
     (assertions
       (cp.sampler/get-args env {})
       =throws=> #"Failed to get samples"
@@ -83,7 +83,7 @@
       => #{123})))
 
 (specification "samples-gen"
-  (let [env (cp.art/build-env)]
+  (let [env (tf/test-env)]
     (assertions
       (gen/sample (cp.sampler/args-gen env [#{:a :b :c}]))
       =check=> (_/every?*
@@ -106,7 +106,7 @@
                     (_/is?* #{:a :b :c})])))))
 
 (specification "params-gen" :WIP
-  (let [env (cp.art/build-env)]
+  (let [env (tf/test-env)]
     (when-mocking
       (cp.sampler/get-gspec _ _) => {::cp.art/sampler     ::cp.sampler/pure
                                      ::cp.art/return-spec int?}
@@ -120,7 +120,7 @@
                       :return-sample-fn (checker [f] ((_/is?* int?) (f)))}))))))
 
 (specification "propagate-samples!"
-  (let [env (cp.art/build-env)]
+  (let [env (tf/test-env)]
     (component "default"
       (assertions
         (cp.sampler/propagate-samples! env nil
@@ -197,7 +197,7 @@
                      (_/every?* (_/is?* number?))))))))
 
 (specification "random-samples-from"
-  (let [env (cp.art/build-env)]
+  (let [env (tf/test-env)]
     (assertions
       (cp.sampler/random-samples-from env
         {::cp.art/samples #{1 2 3}}

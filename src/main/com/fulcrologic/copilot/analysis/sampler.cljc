@@ -105,7 +105,8 @@
   [::cp.art/env
    (s/keys :req [::cp.art/arities
                  (or ::cp.art/fn-ref ::cp.art/env->fn)
-                 (or ::cp.art/fn-name ::cp.art/var-name ::cp.art/lambda-name)])
+                 (or ::cp.art/fn-name ::cp.art/var-name ::cp.art/lambda-name
+                   ::cp.art/original-expression)])
    (s/coll-of ::cp.art/type-description)
    => ::cp.art/samples]
   (let [{::cp.art/keys [sampler] :as gspec} (get-gspec fd argtypes)
@@ -115,7 +116,8 @@
                       (assoc params :args args)))]
     (try-sampling! env generator
       {::cp.art/original-expression
-       ((some-fn ::cp.art/fn-name ::cp.art/var-name ::cp.art/lambda-name) fd)})))
+       (or ((some-fn ::cp.art/fn-name ::cp.art/var-name ::cp.art/lambda-name) fd)
+         (::cp.art/original-expression fd))})))
 
 (defmethod propagate-samples-mm! ::pure
   [env x {:keys [fn-ref args argtypes]}]

@@ -29,13 +29,12 @@
      (reset! test-logs [])
      ~@body))
 
-(defn test-env [& args]
-  (-> (cp.art/build-env)
+(defn test-env []
+  (-> (cp.art/build-env {:NS   "fake-ns"
+                         :file "fake-file"})
     (merge {::cp.art/checking-sym  'fake-sym
-            ::cp.art/checking-file "fake-file"
-            ::cp.art/current-ns    "fake-ns"
             ::cp.art/location      #::cp.art{:line-start   1
-                                               :column-start 1}})
+                                             :column-start 1}})
     (cp.spec/with-spec-impl :clojure.spec.alpha
       {:cache-samples? false})))
 

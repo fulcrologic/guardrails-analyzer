@@ -6,7 +6,6 @@
     [com.fulcrologicpro.fulcro.mutations :as f.m]
     [com.fulcrologicpro.fulcro.networking.websockets :as fws]
     [com.fulcrologicpro.fulcro.routing.dynamic-routing :as dr :refer [defrouter]]
-    [com.fulcrologic.copilot.artifacts :as cp.art]
     [com.fulcrologic.copilot.checker :as cp.checker]
     [com.fulcrologic.copilot.ui.shared :as ui.shared]
     [com.fulcrologicpro.taoensso.timbre :as log]))
@@ -40,10 +39,7 @@
 
 (defonce app (atom nil))
 
-;; TODO: remove or config + disabled by default
-(defn DBG_ENV! []
-  (let [env (cp.art/build-env)]
-    (js/setTimeout #(tap> env) 2000)))
+(defn DBG_ENV! [])
 
 (defn report-analysis! []
   (let [analysis (cp.checker/gather-analysis!)]

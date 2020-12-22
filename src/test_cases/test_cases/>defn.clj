@@ -1,5 +1,7 @@
 (ns test-cases.>defn
   (:require
+    [clojure.spec.alpha :as s :refer [tuple]]
+    [clojure.spec.gen.alpha :as gen]
     [com.fulcrologic.copilot.artifacts :as cp.art]
     [com.fulcrologic.copilot.test-cases-runner :refer [deftc]]
     [com.fulcrologic.copilot.test-checkers :as tc]
@@ -28,8 +30,20 @@
         _ (pure-2 7) ; :binding/defn.pure-2
         ]))
 
+(>defn r5 [] [=> (s/keys :req [::foo])]
+  {:foo 5}) ; :problem/defn.not-req-key
+
+(s/def ::zero (s/with-gen zero? #(gen/return 0)))
+(s/def ::one  (s/with-gen #(= % 1) #(gen/return 1)))
+
+(>defn r6 [[x y :as t]] ; :binding/_ :binding/_ :binding/defn.referred
+  [(tuple ::zero ::one) => int?]
+  (pr-str [x y :as t])) ; :problem/defn.destructuring
+
 (deftc
-  {:problem/defn.literal
+  {:binding/_ {}
+
+   :problem/defn.literal
    {:expected (_/embeds?* {::cp.art/original-expression {:value "abc"}})}
 
    :problem/defn.expr
@@ -49,4 +63,16 @@
 
    :binding/defn.pure-2
    {:message "A defn's specific arity can be marked pure"
-    :expected {::cp.art/samples #{{:pure 7}}}}})
+    :expected {::cp.art/samples #{{:pure 7}}}}
+
+   :problem/defn.not-req-key
+   {:message "A defn return value did not contain a required key"
+    :expected {::cp.art/problem-type :error/bad-return-value}}
+
+   :binding/defn.referred
+   {:expected {::cp.art/samples #{[0 1]}}}
+
+   :problem/defn.destructuring
+   {:expected {::cp.art/problem-type :error/bad-return-value
+               ::cp.art/actual {::cp.art/failing-samples #{"[0 1 :as [0 1]]"}}}}
+   })

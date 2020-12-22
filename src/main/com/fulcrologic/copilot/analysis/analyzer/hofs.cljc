@@ -10,24 +10,23 @@
     [com.fulcrologic.guardrails.utils :as utils]
     [com.fulcrologicpro.com.rpl.specter :as $]))
 
-;; TODO potential duplication with >defn
-(defn analyze-single-arity! [env [arglist gspec & body]]
-  (let [gspec  (cp.fnt/interpret-gspec env arglist gspec)
+(defn analyze-single-arity! [env lambda-td [arglist _ & body]]
+  (let [gspec  (get-in lambda-td [::cp.art/arities (count arglist) ::cp.art/gspec])
         env    (cp.fnt/bind-argument-types env arglist gspec)
         result (cp.ana.disp/analyze-statements! env body)]
     (cp.fnt/check-return-type! env gspec result)))
 
 (defn location-of-lambda [lambda]
-  ((juxt :line :column) (meta (first lambda))))
+  ((juxt :line :column) (meta lambda)))
 
 (defn analyze-lambda! [env lambda]
   (let [{::cp.art/keys [lambdas]} (cp.art/function-detail env (::cp.art/checking-sym env))
         lambda-td (get lambdas (location-of-lambda lambda) {})
         arities   (drop-while (complement vector?) lambda)]
     (if (vector? (first arities))
-      (analyze-single-arity! env arities)
+      (analyze-single-arity! env lambda-td arities)
       (doseq [arity arities]
-        (analyze-single-arity! env arity)))
+        (analyze-single-arity! env lambda-td arity)))
     lambda-td))
 
 (defmethod cp.ana.disp/analyze-mm `gr/>fn [env sexpr] (analyze-lambda! env sexpr))

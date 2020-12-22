@@ -12,8 +12,9 @@
 
 (defmethod cp.ana.disp/analyze-mm 'comment [env sexpr] {})
 
-(defn analyze-single-arity! [env defn-sym [arglist gspec & body]]
-  (let [gspec  (cp.fnt/interpret-gspec env arglist gspec)
+(defn analyze-single-arity! [env defn-sym [arglist _ & body]]
+  (let [gspec  (get-in (cp.art/function-detail env defn-sym)
+                 [::cp.art/arities (count arglist) ::cp.art/gspec])
         env    (cp.fnt/bind-argument-types env arglist gspec)
         result (cp.ana.disp/analyze-statements! env body)]
     (cp.fnt/check-return-type! env gspec result)))

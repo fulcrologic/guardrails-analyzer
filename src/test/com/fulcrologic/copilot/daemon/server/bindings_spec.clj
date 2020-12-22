@@ -1,6 +1,5 @@
 (ns com.fulcrologic.copilot.daemon.server.bindings-spec
   (:require
-    com.fulcrologic.copilot.ftags.clojure-core ;; NOTE: required
     [com.fulcrologic.copilot.analysis.analyze-test-utils :as cp.atu]
     [com.fulcrologic.copilot.artifacts :as cp.art]
     [com.fulcrologic.copilot.daemon.server.bindings :refer [encode-for]]

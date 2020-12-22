@@ -8,20 +8,6 @@
     [com.fulcrologic.copilot.artifacts :as cp.art]
     [com.fulcrologic.guardrails.core :as gr :refer [>defn =>]]))
 
-(>defn interpret-gspec [env arglist gspec]
-  [::cp.art/env ::cp.art/arglist (s/coll-of ::cp.art/form :kind vector?) => ::cp.art/gspec]
-  (let [[argument-specs gspec] (split-with (complement #{:st '| `gr/| :ret '=> `gr/=>}) gspec)
-        [argument-predicates gspec] (split-with (complement #{:ret '=> `gr/=>}) gspec)
-        [return-spec gspec] (split-with (complement #{:st '| `gr/|}) gspec)
-        [return-predicates generator] (split-with (complement #{:gen '<- `gr/<-}) gspec)]
-    ;; ? TODO: generator
-    #::cp.art{:argument-specs      (mapv (partial cp.art/lookup-spec env) argument-specs)
-               :argument-types      (mapv pr-str argument-specs)
-               :argument-predicates (vec (rest argument-predicates))
-               :return-spec         (cp.art/lookup-spec env (second return-spec))
-               :return-type         (pr-str (second return-spec))
-               :return-predicates   (vec (rest return-predicates))}))
-
 (>defn bind-type-desc
   [env typename clojure-spec err]
   [::cp.art/env ::cp.art/type ::cp.art/spec map? => ::cp.art/type-description]
@@ -32,7 +18,7 @@
 
 (>defn bind-argument-types
   [env arglist gspec]
-  [::cp.art/env (s/coll-of symbol? :kind vector?) ::cp.art/gspec => ::cp.art/env]
+  [::cp.art/env vector? ::cp.art/gspec => ::cp.art/env]
   (let [{::cp.art/keys [argument-types argument-specs]} gspec]
     (reduce
       (fn [env [bind-sexpr argument-type argument-spec]]

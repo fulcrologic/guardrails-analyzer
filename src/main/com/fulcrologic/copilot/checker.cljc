@@ -1,8 +1,8 @@
 (ns com.fulcrologic.copilot.checker
   (:require
-    com.fulcrologic.copilot.ftags.clojure-core
-    com.fulcrologic.copilot.ftags.clojure-string
-    com.fulcrologic.copilot.ftags.clojure-spec-alpha
+    com.fulcrologic.copilot.analysis.fdefs.clojure-core
+    com.fulcrologic.copilot.analysis.fdefs.clojure-string
+    com.fulcrologic.copilot.analysis.fdefs.clojure-spec-alpha
     [clojure.test.check.generators]
     [com.fulcrologic.copilot.analysis.analyzer :as cp.ana]
     [com.fulcrologic.copilot.analysis.spec :as cp.spec]
@@ -22,33 +22,28 @@
       (log/error t "Failed to analyze form:" form))))
 
 (defn check!
-  ([msg on-done] (check! (cp.art/build-env) msg on-done))
-  ([env msg on-done]
+  ([msg on-done]
    (log/debug "Running check command on:" (dissoc msg :forms))
-   (let [{:as msg :keys [forms file NS aliases refers]}
+   (let [env (cp.art/build-env msg)
+         {:as msg :keys [forms file aliases refers]}
          (update msg :forms cp.forms/interpret)]
      (cp.analytics/record-usage! env msg)
+     (cp.art/clear-problems! file)
+     (cp.art/clear-bindings! file)
      (cp.analytics/profile ::check!
-       (let [env     (-> env
-                       (assoc ::cp.art/checking-file file)
-                       (assoc ::cp.art/current-ns NS)
-                       (assoc ::cp.art/aliases aliases)
-                       (assoc ::cp.art/refers refers))]
-         (cp.art/clear-problems! file)
-         (cp.art/clear-bindings! file)
-         (cp.spec/with-empty-cache
-           #?(:cljs (fn check-forms! [[form & forms]]
-                      (if-not form (on-done)
-                        (js/setTimeout
-                          (fn []
-                            (check-form! env form)
-                            (check-forms! forms))
-                          100)))
-              :clj  (fn [forms]
-                      (doseq [form forms]
-                        (check-form! env form))
-                      (on-done)))
-           forms))))))
+       (cp.spec/with-empty-cache
+         #?(:cljs (fn check-forms! [[form & forms]]
+                    (if-not form (on-done)
+                      (js/setTimeout
+                        (fn []
+                          (check-form! env form)
+                          (check-forms! forms))
+                        100)))
+            :clj  (fn [forms]
+                    (doseq [form forms]
+                      (check-form! env form))
+                    (on-done)))
+         forms)))))
 
 (defn prepare-check! [msg cb]
   (reset! prepared-check [msg cb]))

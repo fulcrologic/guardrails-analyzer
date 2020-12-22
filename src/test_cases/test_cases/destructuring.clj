@@ -36,51 +36,51 @@
 
 (deftc
   {:binding/destr.simple-symbol
-              {:expected {::cp.art/samples #{:a}}}
+   {:expected {::cp.art/samples #{:a}}}
 
    :binding/destr.map.simple-keyword
-              {:expected {::cp.art/samples #{1}}}
+   {:expected {::cp.art/samples #{1}}}
 
    :binding/destr.map.nsed-keyword
-              {:expected {::cp.art/samples #{2}}}
+   {:expected {::cp.art/samples #{2}}}
 
    :binding/destr.map.as
-              {:expected {::cp.art/samples #{{:d 3}}}}
+   {:expected {::cp.art/samples #{{:d 3}}}}
 
    :binding/destr.map.nsed-keys
-              {:expected {::cp.art/samples #{5}}}
+   {:expected {::cp.art/samples #{5}}}
 
    :problem/destr.map.nsed-keyword.no-spec
-              {:expected (_/embeds?*
-                           {::cp.art/original-expression {:value ::g}
-                            ::cp.art/problem-type        :warning/qualified-keyword-missing-spec})}
+   {:expected (_/embeds?*
+                {::cp.art/original-expression {:value ::g}
+                 ::cp.art/problem-type        :warning/qualified-keyword-missing-spec})}
 
    :problem/destr.map.nsed-keyword.missing
-              {:expected (_/embeds?*
-                           {::cp.art/original-expression {:value ::c}
-                            ::cp.art/problem-type        :warning/destructured-map-entry-may-not-be-present
-                            ::cp.art/expected            {::cp.art/type (str ::c)}})}
+   {:expected (_/embeds?*
+                {::cp.art/original-expression {:value ::c}
+                 ::cp.art/problem-type        :warning/destructured-map-entry-may-not-be-present
+                 ::cp.art/expected            {::cp.art/type (str ::c)}})}
 
    :binding/destr.vec.one
-              {:expected {::cp.art/samples #{6}}}
+   {:expected {::cp.art/samples #{6}}}
 
    :binding/destr.vec.two
-              {:expected {::cp.art/samples #{7}}}
+   {:expected {::cp.art/samples #{7}}}
 
    :binding/destr.vec.missing
-              {:expected {::cp.art/samples #{nil}}}
+   {:expected {::cp.art/samples #{nil}}}
 
    :binding/destr.vec.amp
-              {:expected {::cp.art/samples #{[9 10]}}}
+   {:expected {::cp.art/samples #{[9 10]}}}
 
    :binding/destr.vec.as
-              {:expected {::cp.art/samples #{[11 12]}}}
+   {:expected {::cp.art/samples #{[11 12]}}}
 
    :binding/destr.mixed.x
-              {:expected {::cp.art/samples #{13}}}
+   {:expected {::cp.art/samples #{13}}}
 
    :binding/destr.mixed.as
-              {:expected {::cp.art/samples #{[{:x 13}]}}}
+   {:expected {::cp.art/samples #{[{:x 13}]}}}
 
    :binding/_ {}
    })

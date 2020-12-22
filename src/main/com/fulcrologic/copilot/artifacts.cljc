@@ -112,7 +112,7 @@
 (s/def ::env->fn (s/with-gen fn? #(gen/let [any gen/any] (fn [env] (constantly any)))))
 (s/def ::lambda-name simple-symbol?)
 (s/def ::lambda (s/keys :req [(or ::fn-ref ::env->fn) ::arities] :opt [::lambda-name]))
-(s/def ::lambdas (s/every-kv symbol? ::lambda
+(s/def ::lambdas (s/every-kv (s/tuple posint? posint?) ::lambda
                    :gen-max 3))
 (s/def ::fn-name symbol?)
 (s/def ::var-name qualified-symbol?)
@@ -153,7 +153,9 @@
                      ::checking-sym
                      ::current-form
                      ::current-ns
-                     ::location]))
+                     ::location
+                     ::aliases
+                     ::refers]))
 
 (>defn get-arity
   [arities args]
@@ -171,13 +173,10 @@
 
 (>defn lookup-spec [env quoted-spec]
   [(s/keys :req [::spec-registry]) ::form => ::spec]
-  (or (get-in env [::spec-registry (unwrap-meta quoted-spec)])
-    (throw (ex-info "WIP: lookup-spec failed to lookup"
-             {:spec quoted-spec}))))
+  (get (::spec-registry env) (unwrap-meta quoted-spec)))
 
-(defn resolve-quoted-specs [spec-registry registry]
-  (let [env {::spec-registry spec-registry}
-        RESOLVE (fn [m]
+(defn resolve-quoted-specs [env registry]
+  (let [RESOLVE (fn [m]
                   (cond-> m
                     (::quoted.argument-specs m)
                     #_=> (assoc ::argument-specs
@@ -187,27 +186,28 @@
                     #_=> (assoc ::return-spec
                            (lookup-spec env
                              (::quoted.return-spec m)))))]
-    ($/transform ($/walker (some-fn ::quoted.argument-specs ::quoted.return-spec))
+    ($/transform [($/walker (some-fn ::quoted.argument-specs ::quoted.return-spec))]
       RESOLVE registry)))
 
 (>defn build-env
-  ([] [=> ::env] (build-env @gr.externs/function-registry))
-  ([function-registry] [map? => ::env]
-   (build-env function-registry @gr.externs/external-function-registry))
-  ([function-registry external-function-registry]
-   [map? map? => ::env]
-   (let [spec-registry (->> @gr.externs/spec-registry
-                         (fix-kw-nss)
-                         (#(resolve-quoted-specs % %)))]
-     (-> {::external-function-registry (->> external-function-registry
-                                         (fix-kw-nss)
-                                         (resolve-quoted-specs spec-registry))
-          ::externs-registry           (fix-kw-nss @gr.externs/externs-registry)
-          ::function-registry          (->> function-registry
-                                         (fix-kw-nss)
-                                         (resolve-quoted-specs spec-registry))
-          ::spec-registry              spec-registry}
-       (cp.spec/with-spec-impl :clojure.spec.alpha)))))
+  [{:keys [NS file aliases refers]}]
+  [map? => ::env]
+  (let [env {::aliases          aliases
+             ::checking-file    file
+             ::current-ns       NS
+             ::externs-registry (fix-kw-nss @gr.externs/externs-registry)
+             ::refers           refers
+             ::spec-registry    (fix-kw-nss @gr.externs/spec-registry)}]
+    (-> env
+      (merge {::external-function-registry
+              (->> @gr.externs/external-function-registry
+                (fix-kw-nss)
+                (resolve-quoted-specs env))
+              ::function-registry
+              (->> @gr.externs/function-registry
+                (fix-kw-nss)
+                (resolve-quoted-specs env))})
+      (cp.spec/with-spec-impl :clojure.spec.alpha))))
 
 (>defn qualify-extern
   [env sym]

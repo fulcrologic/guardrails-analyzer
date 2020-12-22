@@ -148,8 +148,13 @@
       (cp.art/clear-problems!)
       (cp.art/clear-bindings!)
       (require (symbol (:NS tc-info)) :reload)
-      (cp.checker/check! tc-info
-        (partial run-test-cases! tc-file tc-info)))))
+      (try
+        (cp.checker/check! tc-info
+          (partial run-test-cases! tc-file tc-info))
+        (catch Exception e
+          (log/error e "Unexpected error running test-case <" tc-file ">:")
+          (t/do-report {:type :error
+                        :actual (ex-data e)}))))))
 
 ;; LANDMARK: PUBLIC API BELOW
 

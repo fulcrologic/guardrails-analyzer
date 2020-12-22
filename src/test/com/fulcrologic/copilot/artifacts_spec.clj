@@ -23,13 +23,15 @@
 
 (specification "resolve-quoted-specs"
   (let [spec-registry {'int? int?
-                       'string? string?}]
+                       'string? string?}
+        test-env {::cp.art/spec-registry spec-registry
+                  ::cp.art/externs-registry {}}]
     (assertions
-      (#'cp.art/resolve-quoted-specs spec-registry
+      (#'cp.art/resolve-quoted-specs test-env
         {::cp.art/quoted.argument-specs '[int?]})
       => {::cp.art/quoted.argument-specs '[int?]
           ::cp.art/argument-specs [int?]}
-      (#'cp.art/resolve-quoted-specs spec-registry
+      (#'cp.art/resolve-quoted-specs test-env
         {::cp.art/quoted.argument-specs '[int?]
          ::cp.art/quoted.return-spec 'string?})
       => {::cp.art/quoted.argument-specs '[int?]

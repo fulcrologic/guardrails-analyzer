@@ -1,4 +1,4 @@
-(ns com.fulcrologic.copilot.ftags.clojure-spec-alpha
+(ns com.fulcrologic.copilot.analysis.fdefs.clojure-spec-alpha
   (:require
     clojure.test.check.generators
     [clojure.spec.alpha :as s]
