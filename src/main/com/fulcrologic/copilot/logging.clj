@@ -40,8 +40,8 @@
       (.delete f))))
 
 (defn configure-logging! [log-file-format]
-  (log/merge-config! (merge (:logging/config (cp.cfg/load-config!))
-                       {:min-level :info}))
+  (log/merge-config! (merge {:min-level :info}
+                       (:logging/config (cp.cfg/load-config!))))
   (let [log-dir ".copilot/logs"]
     (clear-old-logs! log-dir)
     (add-appender! log-dir log-file-format)))

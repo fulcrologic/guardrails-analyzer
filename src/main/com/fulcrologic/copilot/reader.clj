@@ -5,11 +5,10 @@
     [com.fulcrologic.copilot.transit-handlers :as f.transit]
     [com.fulcrologicpro.clojure.tools.reader :as reader]
     [com.fulcrologicpro.clojure.tools.reader.reader-types :as readers]
-    [com.fulcrologicpro.taoensso.timbre :as log]
     [com.fulcrologic.copilot.artifacts :as cp.art]
     [com.fulcrologicpro.taoensso.encore :as enc])
   (:import
-    (java.io FileReader PushbackReader File)))
+    (java.io PushbackReader File)))
 
 (defn default-data-reader [tag value]
   (f.transit/->UnknownTaggedValue tag value))
@@ -17,18 +16,6 @@
 (defn read-impl [& args]
   (binding [reader/*default-data-reader-fn* default-data-reader]
     (apply reader/read args)))
-
-(defn read-ns-decl [file]
-  (try
-    (let [ns-decl (read-impl
-                    {:read-cond :allow}
-                    (new PushbackReader
-                      (new FileReader file)))]
-      (assert (= 'ns (first ns-decl)))
-      (second ns-decl))
-    (catch Throwable t
-      (log/debug t "Failed to read ns decl from:" file)
-      nil)))
 
 (defn parse:refers [lib [kind value]]
   (case kind

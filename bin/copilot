@@ -1,8 +1,0 @@
-#!/usr/bin/env sh
-
-# TODO: read port file
-curl --get \
-  --data-urlencode "file=$1" \
-  --data-urlencode "editor=$2" \
-  localhost:3000/problems \
-  || echo '[]'

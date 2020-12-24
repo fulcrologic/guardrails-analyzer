@@ -3,6 +3,7 @@
     [clojure.java.io :as io]
     [clojure.set :as set]
     [clojure.test :as t]
+    [com.fulcrologic.copilot.analysis.analyzer :refer [defanalyzer]]
     [com.fulcrologic.copilot.artifacts :as cp.art]
     [com.fulcrologic.copilot.checker :as cp.checker]
     [com.fulcrologic.copilot.reader :as cp.reader]
@@ -12,11 +13,6 @@
     [fulcro-spec.check :as _]
     [fulcro-spec.core :refer [specification]]
     [clojure.string :as str]))
-
-(defn get-test-case-files [dir]
-  (->> (io/file dir)
-    (file-seq)
-    (filter #(.isFile %))))
 
 (defn test-case-keyword? [x]
   (and (keyword? x) (#{"problem" "binding"} (namespace x))))
@@ -48,22 +44,22 @@
 (defn subset-of? [expected actual]
   (set/subset? (set expected) (set actual)))
 
-(defn check-test-case! [{:keys [message expected]} x]
+(defn check-test-case! [report! {:keys [message expected]} x]
   (t/testing (str "TEST CASE: " message)
     (cond
       (nil? expected) nil
       (map? expected)
       (when-not (subset-of? expected x)
-        (t/do-report
+        (report!
           {:type     :fail
            :actual   x
            :expected expected}))
       (_/checker? expected)
       (doseq [f ((_/all* expected) x)]
-        (t/do-report
+        (report!
           (merge {:type :fail} f)))
       :else
-      (t/do-report
+      (report!
         {:type     :error
          :actual   expected
          :expected `(some-fn map? _/checker?)}))))
@@ -73,10 +69,8 @@
     (apply map vector
       (map #(concat % (repeat nil)) colls))))
 
-(defn test-plan [{:keys [tests file-length]} test-cases]
-  (let [problems           @cp.art/problems
-        bindings           @cp.art/bindings
-        test-cases-by-line (group-by :line test-cases)
+(defn test-plan [{:keys [tests file-length problems bindings]} test-cases]
+  (let [test-cases-by-line (group-by :line test-cases)
         bindings-by-line   (enc/map-vals #(sort-by ::cp.art/column-start %)
                              (group-by ::cp.art/line-start bindings))
         problems-by-line   (enc/map-vals #(sort-by ::cp.art/column-start %)
@@ -102,44 +96,45 @@
                   #_=> (assoc-in [line :binding-cases] binding-cases))))
       {} (range 1 (inc file-length)))))
 
-(defn run-test-cases! [tc-file {:as tc-info :keys [tests]}]
+(defn run-test-cases!
+  [{:as env :keys [report! tc-file]} {:as tc-info :keys [tests]}]
   (let [test-cases (find-test-cases tc-file)]
-    (doseq [[line {:keys [problem-cases binding-cases problems bindings]}]
+    (doseq [[line {:as tp :keys [problem-cases binding-cases problems bindings]}]
             (sort-by key (test-plan tc-info test-cases))]
       (if (and (empty? problem-cases) (empty? problems)) nil
         (doseq [[c p] (zip-fully problem-cases problems)]
           (cond
-            (not c) (t/do-report {:type    :fail
-                                  :message (str "found an extra problem on line: " line)
-                                  :actual  p})
-            (not p) (t/do-report {:type     :fail
-                                  :message  (str "found an extra problem test case on line: " line)
-                                  :actual   nil
-                                  :expected c})
-            :else (check-test-case! c p))))
+            (not c) (report! {:type    :fail
+                              :message (str "found an extra problem on line: " line)
+                              :actual  p})
+            (not p) (report! {:type     :fail
+                              :message  (str "found an extra problem test case on line: " line)
+                              :actual   nil
+                              :expected c})
+            :else (check-test-case! report! c p))))
       (if (and (empty? binding-cases) (empty? bindings)) nil
         (doseq [[c b] (zip-fully binding-cases bindings)]
           (if (not b)
-            (t/do-report {:type     :fail
-                          :message  (str "found an extra binding test case on line: " line)
-                          :actual   c
-                          :expected nil})
-            (check-test-case! c b)))))
+            (report! {:type     :fail
+                      :message  (str "found an extra binding test case on line: " line)
+                      :actual   c
+                      :expected nil})
+            (check-test-case! report! c b)))))
     (when-let [non-existant-test-cases
                (seq (set/difference
                       (set (mapcat :cases test-cases))
                       (set (keys tests))))]
-      (t/do-report {:type     :error
-                    :actual   non-existant-test-cases
-                    :expected (set (keys tests))
-                    :message  (str "Found test cases that do not exist in <" tc-file "> !")}))
+      (report! {:type     :error
+                :actual   non-existant-test-cases
+                :expected (set (keys tests))
+                :message  (str "Found test cases that do not exist in <" tc-file "> !")}))
     (when-let [unused-test-cases
                (seq (set/difference
                       (set (keys tests))
                       (set (mapcat :cases test-cases))))]
-      (t/do-report {:type    :error
-                    :actual  (into {} (map #(vector % (get tests %)) unused-test-cases))
-                    :message (str "Found unused test cases in <" tc-file "> !")}))))
+      (report! {:type    :error
+                :actual  (into {} (map #(vector % (get tests %)) unused-test-cases))
+                :message (str "Found unused test cases in <" tc-file "> !")}))))
 
 (defn test-file! [tc-file tests]
   (t/is (= true true))
@@ -150,13 +145,35 @@
       (require (symbol (:NS tc-info)) :reload)
       (try
         (cp.checker/check! tc-info
-          (partial run-test-cases! tc-file tc-info))
+          #(run-test-cases! {:tc-file tc-file :report! t/do-report}
+             (assoc tc-info
+               :problems @cp.art/problems
+               :bindings @cp.art/bindings)))
         (catch Exception e
           (log/error e "Unexpected error running test-case <" tc-file ">:")
-          (t/do-report {:type :error
-                        :actual (ex-data e)}))))))
+          (t/do-report {:type :error :actual e}))))))
+
+(defn tests-for [tc-file]
+  (let [{:keys [NS]} (cp.reader/read-file tc-file :clj)]
+    (require (symbol NS))
+    (let [test-case-datas
+          (map var-get
+            (filter #(:test-case-data (meta %))
+              (vals (ns-interns (symbol NS)))))]
+      (assert (= 1 (count test-case-datas))
+        "There can only be one deftc in a test case file")
+      (first test-case-datas))))
 
 ;; LANDMARK: PUBLIC API BELOW
+
+(defn run-tc-file! [report-fn tc-file {:keys [problems bindings]}]
+  (try (run-test-cases! {:tc-file tc-file :report! report-fn}
+    (assoc (read-test-case tc-file
+             (tests-for tc-file))
+      :problems problems
+      :bindings bindings))
+    (catch Exception e
+      (report-fn {:type :error :actual e}))))
 
 (defmacro deftc [& args]
   (let [suffix (last (str/split *file* #"[.]"))
@@ -165,6 +182,10 @@
                    (str/replace #"[.]" "/")
                    (str/replace #"[-]" "_"))
                  "." suffix)]
-    `(specification ~(str "running assertions for: " f)
-       :test-case ~@(butlast args)
-       (test-file! (io/resource ~f) ~(last args)))))
+    `(let [tc# ~(last args)]
+       (def ~(with-meta (gensym) {:test-case-data true}) tc#)
+       (specification ~(str "running assertions for: " f)
+         :test-case ~@(butlast args)
+         (test-file! (io/resource ~f) tc#)))))
+
+(defanalyzer com.fulcrologic.copilot.test-cases-runner/deftc [env sexpr] {})

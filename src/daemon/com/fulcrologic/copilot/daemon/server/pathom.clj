@@ -60,16 +60,14 @@
   {::pc/sym 'daemon/check-current-file}
   (if-let [checker-cid (cp.conn/viewer->checker viewer-cid)]
     (daemon.check/check-file! websockets checker-cid file opts)
-    (cp.conn/report-no-checker! websockets viewer-cid file))
-  {})
+    (cp.conn/report-no-checker! websockets viewer-cid file)))
 
 (pc/defmutation check-root-form
   [{viewer-cid :cid :keys [websockets]} {:keys [file line opts]}]
   {::pc/sym 'daemon/check-root-form}
   (if-let [checker-cid (cp.conn/viewer->checker viewer-cid)]
     (daemon.check/check-root-form! websockets checker-cid file line opts)
-    (cp.conn/report-no-checker! websockets viewer-cid file))
-  {})
+    (cp.conn/report-no-checker! websockets viewer-cid file)))
 
 (pc/defmutation report-analytics
   [{:keys [dot-config]} analytics]

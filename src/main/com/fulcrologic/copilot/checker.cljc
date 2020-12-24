@@ -52,16 +52,17 @@
   (apply check! @prepared-check)
   (reset! prepared-check nil))
 
+(defn- encode-problem [p]
+  (-> p
+    ;; TODO: recursive-description
+    (dissoc ::cp.art/actual ::cp.art/expected ::cp.art/spec
+      ::cp.art/literal-value ::cp.art/original-expression)
+    (assoc ::cp.art/samples (set (map pr-str (::cp.art/samples p))))
+    (assoc ::cp.art/expression
+      (pr-str (cp.art/unwrap-meta (::cp.art/original-expression p))))))
+
 (defn- transit-safe-problems [problems]
-  ($/transform [$/ALL]
-    #(-> %
-       ;; TODO: recursive-description
-       (dissoc ::cp.art/actual ::cp.art/expected ::cp.art/spec
-         ::cp.art/literal-value ::cp.art/original-expression)
-       (assoc ::cp.art/samples (set (map pr-str (::cp.art/samples %))))
-       (assoc ::cp.art/expression
-         (pr-str (cp.art/unwrap-meta (::cp.art/original-expression %)))))
-    problems))
+  ($/transform [$/ALL] encode-problem problems))
 
 (defn gather-analysis! []
   {:problems (-> @cp.art/problems format-problems transit-safe-problems)

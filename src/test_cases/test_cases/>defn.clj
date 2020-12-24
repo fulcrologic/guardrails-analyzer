@@ -49,6 +49,7 @@
    :problem/defn.expr
    {:expected (_/embeds?* {::cp.art/original-expression
                            (_/seq-matches?* ['str (_/embeds?* {:value 2})])})}
+
    :problem/defn.pure
    {:message "A defn can be marked pure on its symbol name"
     :expected (_/in* [::cp.art/actual ::cp.art/failing-samples]

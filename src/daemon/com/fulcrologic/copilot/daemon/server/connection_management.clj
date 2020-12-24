@@ -40,14 +40,12 @@
     (ffirst)))
 
 (defn update-problems!
-  "Send the updated problem list to subscribed websocket viewers."
   [websockets viewer-cid viewer-info]
   (wsp/push websockets viewer-cid :new-problems
     (problems/encode-for viewer-info
       (problems/get! (viewer->checker viewer-cid)))))
 
 (defn update-visible-bindings!
-  "Sends updated bindings to all viewers"
   [websockets viewer-cid viewer-info]
   (wsp/push websockets viewer-cid :new-bindings
     (bindings/encode-for viewer-info
@@ -81,4 +79,5 @@
     (let [fmt "Failed to find any checkers for that project! Make sure one is running for `%s`."
           msg (format fmt file)]
       (log/error msg)
-      msg)))
+      msg))
+  {:error :no-checkers})

@@ -26,7 +26,7 @@
 ;; ========== HELPERS ============
 
 (defn unwrap-meta [x]
-  ($/transform [($/walker :com.fulcrologic.copilot/meta-wrapper?)] :value x))
+  ($/transform ($/walker :com.fulcrologic.copilot/meta-wrapper?) :value x))
 
 ;; ========== ARTIFACTS ==========
 

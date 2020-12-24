@@ -5,13 +5,13 @@
     [clojure.tools.namespace.repl :as tools-ns :refer [refresh set-refresh-dirs]]
     [com.fulcrologic.copilot.analytics :as cp.analytics]
     [com.fulcrologic.copilot.checker :as cp.checker]
+    [com.fulcrologic.copilot.logging :as cp.log]
     [com.fulcrologic.guardrails.config :as gr.cfg]
-    [com.fulcrologicpro.taoensso.timbre :as log]
-    [com.fulcrologicpro.fulcro.networking.websockets-client :as fws]
-    [com.fulcrologicpro.fulcro.mutations :as m :refer [defmutation]]
     [com.fulcrologicpro.fulcro.application :as app]
     [com.fulcrologicpro.fulcro.components :as comp]
-    [com.fulcrologic.copilot.logging :as cp.log])
+    [com.fulcrologicpro.fulcro.mutations :as m :refer [defmutation]]
+    [com.fulcrologicpro.fulcro.networking.websockets-client :as fws]
+    [com.fulcrologicpro.taoensso.timbre :as log])
   (:import
     (java.io FileNotFoundException)))
 
@@ -73,7 +73,7 @@
          (slurp)
          (Integer/parseInt)
          (log/spy :debug "Found daemon running on port:"))
-       (catch FileNotFoundException _ nil)))
+    (catch FileNotFoundException _ nil)))
 
 (defn start
   "Start the checker.
@@ -127,7 +127,6 @@
    you want to regain the thread; however, if you exit that thread the JVM can exit.
 
   :host - The IP where the checker daemon is running. Defaults to localhost.
-  :port - An integer. The daemon port. Usually found automatically using the .copilot generated folder.
   :src-dirs - A vector of strings. The directories that contain source. If not supplied this assumes you will manually set-refresh-dirs from
             tools ns repl before starting the checker.
   :main-ns - A symbol. The main ns of the software being checked. This ensures the tree of deps are required into the env at startup.

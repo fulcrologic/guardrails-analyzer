@@ -11,7 +11,8 @@
   (when-let [checker-info (get @cp.conn/registered-checkers checker-cid)]
     (log/debug "notifying checker:" checker-cid checker-info)
     (wsp/push ws checker-cid event
-      (checker-info->data checker-info))))
+      (checker-info->data checker-info)))
+  {})
 
 (defn opts->check-type [{:keys [refresh?]}]
   (if refresh? :refresh-and-check! :check!))

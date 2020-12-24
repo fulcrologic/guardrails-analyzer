@@ -1,0 +1,79 @@
+#!/bin/bash
+
+function daemon() {
+  clojure -X:gr-dev:daemon:test:system-test \
+    com.fulcrologic.copilot.system-test.daemon-main/start! &
+  DAEMON_PID=$!
+  echo "DAEMON PID: $DAEMON_PID"
+}
+
+function checker() {
+  clojure \
+    -J-Dguardrails.enabled=true -J-Dguardrails.mode=:copilot \
+    -X:gr-dev:test:system-test com.fulcrologic.copilot.checkers.clojure/start! \
+    :main-ns com.fulcrologic.copilot.system-test &
+  CHECKER_PID=$!
+  echo "CHECKER PID: $CHECKER_PID"
+}
+
+function waitfor() {
+  while [ ! -e "$1" ]; do
+    sleep 1 & wait $!
+  done
+}
+
+function test_system() {
+  clojure -X:test:system-test \
+    com.fulcrologic.copilot.system-test/start \
+    :port $(cat ~/.copilot/daemon.port) &
+  TESTER_PID=$!
+  echo "TESTER PID: $TESTER_PID"
+}
+
+function main() {
+  daemon
+  waitfor ~/.copilot/daemon.port
+  checker
+  test_system
+  wait $TESTER_PID
+}
+
+function handle_chld() {
+  if [ -n "$DAEMON_PID" ]; then
+    if ! ps -p $DAEMON_PID > /dev/null; then
+      wait $DAEMON_PID
+      local EXIT=$?
+      exit $EXIT
+    fi
+  fi
+  if [ -n "$CHECKER_PID" ]; then
+    if ! ps -p $CHECKER_PID > /dev/null; then
+      wait $CHECKER_PID
+      local EXIT=$?
+      exit $EXIT
+    fi
+  fi
+  if [ -n "$TESTER_PID" ]; then
+    if ! ps -p $TESTER_PID > /dev/null; then
+      wait $TESTER_PID
+      local EXIT=$?
+      exit $EXIT
+    fi
+  fi
+}
+
+set -o monitor
+trap 'handle_chld' CHLD
+
+function shutdown() {
+  [ -n "$DAEMON_PID"  ] && ps -p $DAEMON_PID > /dev/null \
+    && echo kill DAEMON[$DAEMON_PID] && kill $DAEMON_PID
+  [ -n "$CHECKER_PID" ] && ps -p $CHECKER_PID > /dev/null \
+    && echo kill CHECKER[$CHECKER_PID] && kill $CHECKER_PID
+  [ -n "$TESTER_PID"  ] && ps -p $TESTER_PID > /dev/null \
+    && echo kill TESTER[$TESTER_PID] && kill $TESTER_PID
+}
+
+trap 'shutdown' EXIT
+
+main
