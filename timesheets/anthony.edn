@@ -152,4 +152,12 @@
  {:date "2020-12-17" :description "singleton daemon" :timespans [[1500 1545] [1610 1815]]}
  {:date "2020-12-18" :description "singleton daemon" :timespans [[1130 1155]]}
  {:date "2020-12-19" :description "pairing!" :timespans [[1040 1620]]}
+ {:date "2020-12-21" :description "analytics" :timespans [[1055 1125]]}
+ {:date "2020-12-21" :description "dot-config" :timespans [[1125 1230]]}
+ {:date "2020-12-21" :description "walk n talk" :timespans [[1245 1345]]}
+ {:date "2020-12-21" :description "analytics dialog" :timespans [[1500 1505]]}
+ {:date "2020-12-21" :description "spec registry" :timespans [[1505 1615] [1800 1910] [1950 2140]]}
+ {:date "2020-12-22" :description "spec registry, >fn, bug fixes" :timespans [[1015 1300]]}
+ {:date "2020-12-22" :description "system test" :timespans [[1535 1555] [1620 1840]]}
+ {:date "2020-12-23" :description "system test" :timespans [[1430 1535] [1615 1945]]}
  ]
