@@ -1,8 +1,8 @@
 {:paths   ["src/main"]
 
- :deps    {com.fulcrologic/guardrails     {:mvn/version "1.0.0"}
+ :deps    {com.fulcrologic/guardrails     {:mvn/version "1.1.0"}
            org.clojure/core.async         {:mvn/version "1.0.567"}
-           com.fulcrologic/alternate-deps {:mvn/version "1.0.1-SNAPSHOT"}
+           com.fulcrologic/alternate-deps {:mvn/version "1.0.1"}
            org.clojure/test.check         {:mvn/version "1.1.0"}
            org.clojure/tools.namespace    {:mvn/version "1.0.0"}}
 
