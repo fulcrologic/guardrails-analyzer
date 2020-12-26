@@ -43,7 +43,7 @@ And in `~/.m2/settings.xml`:
 Auth is controlled by `/etc/nginx/mvn.htpasswd`. The upload URL is `https://mvn.fulcrologic.com/mvn`. The pom.xml
 contains the right distro settings in GRP.
 
-`mvn deploy` will do the right thing if you have proper credentials in `settings.xml`.
+Add the proper credentials in `settings.xml`.
 
 [source, xml]
 -----
@@ -51,9 +51,29 @@ contains the right distro settings in GRP.
     <servers>
         <server>
             <id>fulcrologic-publish</id>
-            <username>tony</username>
+            <username>tony@fulcrolog.com</username>
             <password>publish password</password>
         </server>
     </servers>
 </settings>
+-----
+
+== Deploying a New Version
+
+. Update pom.xml and pom-daemon.xml. Use `clj -Spom` to update deps in pom, and make sure version is what you want.
+. Use Makefile to build/deploy the jars:
+
+[source, bash]
+-----
+make deploy-checker
+make deploy-daemon
+-----
+
+== Build and Deploy User Guide
+
+Edit the adoc file(s), and use the Makefile. You will need asciidoctor installed, along with ditaa.
+
+[source, bash]
+-----
+make publish
 -----
