@@ -4,7 +4,7 @@
   <groupId>com.fulcrologic</groupId>
   <artifactId>copilot</artifactId>
   <packaging>jar</packaging>
-  <version>0.9.0-SNAPSHOT</version>
+  <version>0.9.0</version>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
@@ -20,6 +20,7 @@
     <url>https://github.com/fulcrologic-pro/copilot</url>
     <connection>scm:git:git://github.com/fulcrologic-pro/copilot.git</connection>
     <developerConnection>scm:git:ssh://git@github.com/fulcrologic-pro/copilot.git</developerConnection>
+    <tag>copilot-0.9.0</tag>
   </scm>
   <distributionManagement>
     <repository>
