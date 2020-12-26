@@ -1,6 +1,5 @@
 DAEMONUI := $(shell find src/daemon* src/main -name '*.cljs' -o -name '*.cljc')
 DAEMON := $(shell find src/daemon* src/main -name '*.clj' -o -name '*.cljc')
-CHECKERSRC := $(shell find src/main -name '*.clj' -o -name '*.cljc')
 
 tests:
 	yarn
@@ -11,17 +10,14 @@ tests:
 resources/public/js/daemon-ui/main.js: $(DAEMONUI)
 	shadow-cljs release daemon-ui
 
-Copilot.jar: pom-daemon.xml resources/public/js/daemon-ui/main.js $(DAEMON)
-	clojure -A:provided:cljs:daemon -X:uberjar
-
 Checker.jar: pom.xml $(CHECKERSRC)
 	clojure -A:provided -X:checker-uberjar
 
-deploy-daemon: Copilot.jar
-	mvn deploy:deploy-file -Dfile=Copilot.jar -DpomFile=pom-daemon.xml -DrepositoryId=fulcrologic-publish -Durl=https://mvn.fulcrologic.com/mvn
+deploy-daemon: Daemon.jar
+	mvn deploy:deploy-file -Dfile=Daemon.jar -DpomFile=pom-daemon.xml -DrepositoryId=fulcrologic-publish -Durl=https://mvn.fulcrologic.com/mvn
 
-deploy-checker: Checker.jar
-	mvn deploy:deploy-file -Dfile=Checker.jar -DpomFile=pom.xml -DrepositoryId=fulcrologic-publish -Durl=https://mvn.fulcrologic.com/mvn
+install-daemon: Daemon.jar
+	mvn install:install-file -Dfile=Daemon.jar -DpomFile=pom-daemon.xml
 
 # gem install asciidoctor asciidoctor-diagram coderay
 docs/user-guide/UserGuide.html: docs/user-guide/UserGuide.adoc
