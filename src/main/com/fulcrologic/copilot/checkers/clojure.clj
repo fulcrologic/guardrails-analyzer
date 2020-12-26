@@ -13,7 +13,8 @@
     [com.fulcrologicpro.fulcro.networking.websockets-client :as fws]
     [com.fulcrologicpro.taoensso.timbre :as log])
   (:import
-    (java.io FileNotFoundException)))
+    (java.io FileNotFoundException))
+  (:gen-class))
 
 (defonce APP (app/headless-synchronous-app {}))
 
@@ -138,3 +139,7 @@
 (comment
   (start)
   )
+
+(defn -main [& args]
+  (start))
+

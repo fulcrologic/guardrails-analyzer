@@ -2,57 +2,71 @@
 
  :deps    {com.fulcrologic/guardrails     {:mvn/version "1.0.0"}
            org.clojure/core.async         {:mvn/version "1.0.567"}
-           com.fulcrologic/alternate-deps {:mvn/version "1.0.0"}
+           com.fulcrologic/alternate-deps {:mvn/version "1.0.1-SNAPSHOT"}
            org.clojure/test.check         {:mvn/version "1.1.0"}
            org.clojure/tools.namespace    {:mvn/version "1.0.0"}}
 
- :aliases {:test        {:extra-paths ["src/test" "src/test_cases"]
-                         :extra-deps  {fulcrologic/fulcro-spec {:mvn/version "3.1.8"}}
-                         :jvm-opts    ["-Dtest"]}
+ :aliases {:test            {:extra-paths ["src/test" "src/test_cases"]
+                             :extra-deps  {fulcrologic/fulcro-spec {:mvn/version "3.1.8"}}
+                             :jvm-opts    ["-Dtest"]}
 
-           :provided    {org.clojure/clojure       {:mvn/version "1.10.1"}
-                         org.clojure/clojurescript {:mvn/version "1.10.773"}}
+           :provided        {org.clojure/clojure       {:mvn/version "1.10.1"}
+                             org.clojure/clojurescript {:mvn/version "1.10.773"}}
 
-           :daemon      {:extra-paths ["src/daemon" "src/daemon_main" "resources"]
-                         :extra-deps  {bidi/bidi                           {:mvn/version "2.1.6"}
-                                       com.wsscode/pathom                  {:mvn/version "2.2.30"}
-                                       http-kit/http-kit                   {:mvn/version "2.5.0"}
-                                       mount/mount                         {:mvn/version "0.1.12"}
-                                       org.eclipse.lsp4j/org.eclipse.lsp4j {:mvn/version "0.9.0"}
-                                       ring/ring-core                      {:mvn/version "1.8.1"}
-                                       ring/ring-defaults                  {:mvn/version "0.3.2"}}
-                         :jvm-opts    ["-Ddaemon"]}
+           :daemon          {:extra-paths ["src/daemon" "src/daemon_main" "resources"]
+                             :extra-deps  {bidi/bidi                           {:mvn/version "2.1.6"}
+                                           com.wsscode/pathom                  {:mvn/version "2.2.30"}
+                                           http-kit/http-kit                   {:mvn/version "2.5.0"}
+                                           mount/mount                         {:mvn/version "0.1.12"}
+                                           org.eclipse.lsp4j/org.eclipse.lsp4j {:mvn/version "0.9.0"}
+                                           ring/ring-core                      {:mvn/version "1.8.1"}
+                                           ring/ring-defaults                  {:mvn/version "0.3.2"}}
+                             :jvm-opts    ["-Ddaemon"]}
 
-           :hours       {:extra-paths ["src/timesheets"]
-                         :extra-deps  {org.clojure/tools.cli {:mvn/version "1.0.194"}}
-                         :main-opts   ["-m" "timesheets"]}
+           :hours           {:extra-paths ["src/timesheets"]
+                             :extra-deps  {org.clojure/tools.cli {:mvn/version "1.0.194"}}
+                             :main-opts   ["-m" "timesheets"]}
 
-           :clj-tests   {:extra-paths ["src/test" "src/test_cases"]
-                         :main-opts   ["-m" "kaocha.runner"]
-                         :extra-deps  {lambdaisland/kaocha {:mvn/version "1.0.700"}}
-                         :jvm-opts    ["-Dtest" "-XX:-OmitStackTraceInFastThrow"]}
+           :clj-tests       {:extra-paths ["src/test" "src/test_cases"]
+                             :main-opts   ["-m" "kaocha.runner"]
+                             :extra-deps  {lambdaisland/kaocha {:mvn/version "1.0.700"}}
+                             :jvm-opts    ["-Dtest" "-XX:-OmitStackTraceInFastThrow"]}
 
-           :system-test {:extra-paths ["src/system_test"]}
+           :system-test     {:extra-paths ["src/system_test"]}
 
-           :dev         {:extra-paths ["src/dev"]
-                         :extra-deps  {org.clojure/tools.nrepl {:mvn/version "0.2.13"}}
-                         :jvm-opts    ["-Ddev"]}
+           :dev             {:extra-paths ["src/dev"]
+                             :extra-deps  {org.clojure/tools.nrepl {:mvn/version "0.2.13"}}
+                             :jvm-opts    ["-Ddev"]}
 
-           :cljs        {:extra-deps {binaryage/devtools        {:mvn/version "1.0.0"}
-                                      org.clojure/clojurescript {:mvn/version "1.10.773"}
-                                      thheller/shadow-cljs      {:mvn/version "2.11.4"}}
-                         :jvm-opts   ["-Ddev"]}
+           :cljs            {:extra-deps {binaryage/devtools        {:mvn/version "1.0.0"}
+                                          org.clojure/clojurescript {:mvn/version "1.10.773"}
+                                          thheller/shadow-cljs      {:mvn/version "2.11.4"}}
+                             :jvm-opts   ["-Ddev"]}
 
-           :deps-daemon {:extra-deps {com.fulcrologic/copilot-daemon {:mvn/version "1.0.0-SNAPSHOT"}}
-                         :exec-fn    com.fulcrologic.copilot.daemon.main/-main}
+           :deps-daemon     {:extra-deps {com.fulcrologic/copilot-daemon {:mvn/version "0.9.0"}}
+                             :exec-fn    com.fulcrologic.copilot.daemon.main/-main}
 
-           :uberjar     {:extra-deps  {seancorfield/depstar {:mvn/version "1.1.132"}}
-                         :extra-paths ["src/daemon_main"]
-                         :exec-fn     hf.depstar.uberjar/run
-                         :exec-args   {:jar        "Copilot.jar"
-                                       :aot        true
-                                       :exclude    ["com.fulcrologic.*\\.clj$"
-                                                    "com.fulcrologic.*\\.cljc$"
-                                                    "com.fulcrologic.*\\.cljs$"
-                                                    "com.fulcrologic.*\\.js"]
-                                       :main-class com.fulcrologic.copilot.daemon.main}}}}
+           :uberjar         {:extra-deps  {seancorfield/depstar {:mvn/version "1.1.132"}}
+                             :extra-paths ["src/daemon_main"]
+                             :exec-fn     hf.depstar.uberjar/run
+                             :exec-args   {:jar        "Copilot.jar"
+                                           :aot        true
+                                           :exclude    ["com.fulcrologic.*\\.clj$"
+                                                        "com.fulcrologic.*\\.cljc$"
+                                                        "com.fulcrologic.*\\.cljs$"
+                                                        "com.fulcrologic.*\\.js"]
+                                           :main-class com.fulcrologic.copilot.daemon.main}}
+
+           :checker-uberjar {:extra-deps {seancorfield/depstar {:mvn/version "1.1.132"}}
+                             :exec-fn    hf.depstar.uberjar/run
+                             :exec-args  {:jar        "Checker.jar"
+                                          :sync-pom   true
+                                          :pom-file   "pom-copilot.xml"
+                                          :verbose    true
+                                          :aot        true
+                                          :exclude    ["com.fulcrologic.*\\.clj$"
+                                                       "com.fulcrologic.*\\.cljc$"
+                                                       "com.fulcrologic.*\\.cljs$"
+                                                       "com.fulcrologic.*\\.js"]
+                                          :main-class com.fulcrologic.copilot.checkers.clojure
+                                          :compile-ns :all}}}}
