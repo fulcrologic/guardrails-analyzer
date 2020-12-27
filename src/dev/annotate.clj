@@ -36,7 +36,11 @@
     (.delete f)
     (spit f output)))
 
-(defn add-license []
+(defn add-license
+  "Adds license notice to the top of all source files that get distributed
+   to users. Uses docs/SOURCE-NOTICE.txt as the source. Must be run from
+   project root. Only affects files in src/main/com/fulcrologic."
+  []
   (let [files   (source-files)
         license (get-file (File. "docs/SOURCE-NOTICE.txt"))]
     (doseq [f files]
