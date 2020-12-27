@@ -74,7 +74,7 @@
          (slurp)
          (Integer/parseInt)
          (log/spy :debug "Found daemon running on port:"))
-    (catch FileNotFoundException _ nil)))
+       (catch FileNotFoundException _ nil)))
 
 (defn start
   "Start the checker.
