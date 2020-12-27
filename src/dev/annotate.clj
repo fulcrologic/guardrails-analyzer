@@ -4,7 +4,7 @@
   (:import (java.io File)))
 
 (defn source-files []
-  (let [main         (File. "src/main")
+  (let [main         (File. "src/main/com/fulcrologic")
         source-files (into []
                        (filter
                          (fn [^File f]
@@ -41,3 +41,6 @@
         license (get-file (File. "docs/SOURCE-NOTICE.txt"))]
     (doseq [f files]
       (annotate-file f license))))
+
+(comment
+  (add-license))
