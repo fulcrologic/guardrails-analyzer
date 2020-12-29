@@ -97,11 +97,11 @@ allowed by your license agreement..
 (defmethod format-problem-mm :error/function-argument-failed-spec
   [problem params]
   {:message (format "The function argument: %s should be %s, but could end up having value like %s"
-              (::cp.art/original-expression problem)
+              (format-expr problem)
               (format-expected problem)
               (format-actual problem))
    :tooltip (format "The function argument: <b>%s</b><br/>with spec: <b>%s</b><br/>could contain an invalid value like <b>%s</b>."
-              (::cp.art/original-expression problem)
+              (html-escape (format-expr problem))
               (html-escape (format-expected problem))
               (html-escape (format-actual problem)))})
 

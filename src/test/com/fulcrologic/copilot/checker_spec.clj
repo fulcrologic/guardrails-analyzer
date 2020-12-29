@@ -1,6 +1,6 @@
 (ns com.fulcrologic.copilot.checker-spec
   (:require
-    [com.fulcrologic.copilot.analysis.analyzer :as cp.ana]
+    [com.fulcrologic.copilot.analysis.analyze-test-utils :as cp.atu]
     [com.fulcrologic.copilot.artifacts :as cp.art]
     [com.fulcrologic.copilot.checker :as cp.checker]
     [com.fulcrologic.copilot.test-fixtures :as tf]
@@ -12,13 +12,13 @@
 (defn test:gather-analysis! [env x]
   (cp.art/clear-bindings!)
   (cp.art/clear-problems!)
-  (cp.ana/analyze! env x)
+  (cp.atu/analyze-string! env x)
   (cp.checker/gather-analysis!))
 
 (specification "gather-analysis!" :integration
   (let [env (tf/test-env)]
     (assertions
-      (test:gather-analysis! env `(let [a# 1] a#))
+      (test:gather-analysis! env "(let [a 1] a)")
       =check=> (_/embeds?*
                  {:bindings
                   (_/seq-matches?*

@@ -11,10 +11,10 @@ allowed by your license agreement..
 
 (ns com.fulcrologic.copilot.checker
   (:require
+    clojure.test.check.generators
     com.fulcrologic.copilot.analysis.fdefs.clojure-core
-    com.fulcrologic.copilot.analysis.fdefs.clojure-string
     com.fulcrologic.copilot.analysis.fdefs.clojure-spec-alpha
-    [clojure.test.check.generators]
+    com.fulcrologic.copilot.analysis.fdefs.clojure-string
     [com.fulcrologic.copilot.analysis.analyzer :as cp.ana]
     [com.fulcrologic.copilot.analysis.spec :as cp.spec]
     [com.fulcrologic.copilot.artifacts :as cp.art]
@@ -70,11 +70,11 @@ allowed by your license agreement..
       ::cp.art/literal-value ::cp.art/original-expression)
     (assoc ::cp.art/samples (set (map pr-str (::cp.art/samples p))))
     (assoc ::cp.art/expression
-      (pr-str (cp.art/unwrap-meta (::cp.art/original-expression p))))))
+      (pr-str (::cp.art/original-expression p)))))
 
 (defn- transit-safe-problems [problems]
   ($/transform [$/ALL] encode-problem problems))
 
 (defn gather-analysis! []
-  {:problems (-> @cp.art/problems format-problems transit-safe-problems)
-   :bindings (-> @cp.art/bindings format-bindings transit-safe-problems)})
+  {:problems (-> @cp.art/problems cp.art/unwrap-meta format-problems transit-safe-problems)
+   :bindings (-> @cp.art/bindings cp.art/unwrap-meta format-bindings transit-safe-problems)})
