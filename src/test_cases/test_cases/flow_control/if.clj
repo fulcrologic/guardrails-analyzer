@@ -62,9 +62,3 @@
   (if false                                                 ; :problem/unreachable-then
     3
     4))
-
-(deftc
-  {:problem/incorrect-return-type
-   {:expected {::cp.art/problem-type :error/bad-return-value}}
-
-   })
