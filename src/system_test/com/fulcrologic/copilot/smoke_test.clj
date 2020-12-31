@@ -13,7 +13,7 @@
 (deftc
   {:problem/defn.invalid-return
    {:expected {::cp.art/problem-type :error/bad-return-value
-               ::cp.art/expression ":kw"}}
+               ::cp.art/expression "t"}}
 
    :binding/int
    {:expected (_/embeds?*

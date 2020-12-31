@@ -4,8 +4,8 @@
     [com.fulcrologic.copilot.test-cases-runner :refer [deftc]]
     [com.fulcrologic.guardrails.core :refer [>defn =>]]))
 
-(>defn t [] [=> string?]
-  #?(:clj 1 :cljs 2)) ; :problem/cljc.not-a-string
+(>defn t [] [=> string?] ; :problem/cljc.not-a-string
+  #?(:clj 1 :cljs 2))
 
 (deftc
   {:problem/cljc.not-a-string

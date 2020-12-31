@@ -8,18 +8,17 @@
     [com.fulcrologic.guardrails.core :refer [>defn =>]]
     [fulcro-spec.check :as _]))
 
-(>defn r1 [] [=> int?]
-  "abc" ; :problem/defn.literal
+(>defn r1 [] [=> int?]; :problem/defn.literal
+  "abc"
   )
 
-(>defn r2 [] [=> int?]
-  (str 2) ; :problem/defn.expr
+(>defn r2 [] [=> int?] ; :problem/defn.expr
+  (str 2)
   )
 
 (>defn ^:pure pure [x] [any? => vector?] [:pure x])
 
-(>defn r3 [i] [int? => nil?]
-  (pure i)) ; :problem/defn.pure
+(>defn r3 [i] [int? => nil?] (pure i)) ; :problem/defn.pure
 
 (>defn pure-2
   ([] [=> vector?] [:not-pure])
@@ -30,25 +29,23 @@
         _ (pure-2 7) ; :binding/defn.pure-2
         ]))
 
-(>defn r5 [] [=> (s/keys :req [::foo])]
-  {:foo 5}) ; :problem/defn.not-req-key
+(>defn r5 [] [=> (s/keys :req [::foo])] {:foo 5}) ; :problem/defn.not-req-key
 
 (s/def ::zero (s/with-gen zero? #(gen/return 0)))
 (s/def ::one  (s/with-gen #(= % 1) #(gen/return 1)))
 
-(>defn r6 [[x y :as t]] ; :binding/_ :binding/_ :binding/defn.referred
+(>defn r6 [[x y :as t]] ; :binding/_ :binding/_ :binding/defn.referred :problem/defn.destructuring
   [(tuple ::zero ::one) => int?]
-  (pr-str [x y :as t])) ; :problem/defn.destructuring
+  (pr-str [x y :as t]))
 
 (deftc
   {:binding/_ {}
 
    :problem/defn.literal
-   {:expected (_/embeds?* {::cp.art/original-expression {:value "abc"}})}
+   {:expected (_/embeds?* {::cp.art/original-expression 'r1})}
 
    :problem/defn.expr
-   {:expected (_/embeds?* {::cp.art/original-expression
-                           (_/seq-matches?* ['str (_/embeds?* {:value 2})])})}
+   {:expected (_/embeds?* {::cp.art/original-expression 'r2})}
 
    :problem/defn.pure
    {:message "A defn can be marked pure on its symbol name"

@@ -28,7 +28,7 @@
                  [::cp.art/arities (count arglist) ::cp.art/gspec])
         env    (cp.fnt/bind-argument-types env arglist gspec)
         result (cp.ana.disp/analyze-statements! env body)]
-    (cp.fnt/check-return-type! env gspec result)))
+    (cp.fnt/check-return-type! env gspec result defn-sym)))
 
 (defn analyze:>defn! [env [_ defn-sym & defn-forms :as sexpr]]
   (let [env (assoc env ::cp.art/checking-sym defn-sym)

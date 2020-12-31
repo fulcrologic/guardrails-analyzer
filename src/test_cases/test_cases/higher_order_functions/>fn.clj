@@ -5,8 +5,8 @@
     [com.fulcrologic.guardrails.core :refer [>defn >fn =>]]
     [fulcro-spec.check :as _]))
 
-(>defn f1 [] [=> int?]
-  ((>fn [x] [int? => keyword?] (str x)) 0)) ; :problem/lambda.bad-return :problem/lambda.sanity-check
+(>defn f1 [] [=> int?] ; :problem/lambda.bad-return
+  ((>fn [x] [int? => keyword?] (str x)) 0)) ; :problem/lambda.sanity-check
 
 (deftc
   {:problem/lambda.bad-return
