@@ -160,4 +160,5 @@
  {:date "2020-12-22" :description "spec registry, >fn, bug fixes" :timespans [[1015 1300]]}
  {:date "2020-12-22" :description "system test" :timespans [[1535 1555] [1620 1840]]}
  {:date "2020-12-23" :description "system test" :timespans [[1430 1535] [1615 1945]]}
+ {:date "2020-12-30" :description "assorted fixes" :timespans [[1800 1915]]}
  ]
