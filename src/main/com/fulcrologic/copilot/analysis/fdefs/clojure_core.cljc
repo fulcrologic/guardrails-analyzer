@@ -14,7 +14,9 @@
     clojure.test.check.generators
     [clojure.spec.alpha :as s]
     [com.fulcrologic.guardrails.core :refer [>fdef >fspec => | ?]]
-    [com.fulcrologic.guardrails.utils :as utils]))
+    [com.fulcrologic.guardrails.utils :as utils])
+  (:import
+    #?(:clj (java.util.regex Pattern))))
 
 ;; CONTEXT: Higher Order FunctionS
 
@@ -60,24 +62,29 @@
 
 ;; CONTEXT: future design work
 
-;; NOTE: objects
-#_(>fdef ^:pure clojure.core/ex-info)
+(defn regex? [x]
+  #?(:clj  (= (type x) Pattern)
+     :cljs (regexp? x)))
 
-;; NOTE: objects
-#_(>fdef ^:pure clojure.core/re-find)
+(>fdef ^:pure clojure.core/re-find
+  [re s] [regex? string? => (? string?)])
 
-;; NOTE: objects
-#_(>fdef ^:pure clojure.core/re-seq)
+(>fdef ^:pure clojure.core/re-seq
+  [re s] [regex? string? => (s/coll-of string?)])
 
 ;; NOTE: interface Iterable / cljs ???
 (>fdef ^:pure clojure.core/seq
   [coll] [coll? => (? coll?)])
 
 ;; NOTE: interface Comparator
-#_(>fdef ^:pure clojure.core/sort)
+(>fdef ^:pure clojure.core/sort
+  ([coll] [coll? => coll?])
+  ([comp coll] [some? coll? => coll?]))
 
-;; NOTE: objects
-#_(>fdef ^:pure clojure.core/type)
+(>fdef ^:pure clojure.core/type
+  [x] [any? => any?])
+
+#_(>fdef ^:pure clojure.core/ex-info)
 
 ;; CONTEXT: Value Functions
 

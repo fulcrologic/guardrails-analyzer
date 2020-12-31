@@ -68,26 +68,18 @@
   )
 
 (defmethod cp.ana.disp/analyze-mm 'clojure.core/if [env [_ condition then & [else]]]
-  ;; TODO: on each branch (then & else) update env locals used in condition:
-  ;; if predicate has sampler, look it up & call it to filter locals used
-  ;; otherwise:
-  ;; - ? maybe further analysis cannot be done
-  ;; - ? maybe annotate x as not accurate
-  #_(if (even? x)
-      (str "EVEN:" x) ;; x should     be even?
-      (str "ODD:" x)) ;; x should not be even?
   (let [C (cp.ana.disp/-analyze! env condition)
         T (cp.ana.disp/-analyze! env then)
         E (if else
             (cp.ana.disp/-analyze! env else)
             {::cp.art/samples (set (cp.spec/sample env (cp.spec/generator env nil?)))})]
-    (log/debug "IF:" C "THEN:" T)
-    (when (not (some identity (::cp.art/samples C)))
-      (cp.art/record-warning! env condition
-        :warning/if-condition-never-reaches-then-branch))
-    (when (and E (not (some not (::cp.art/samples C))))
-      (cp.art/record-warning! env condition
-        :warning/if-condition-never-reaches-else-branch))
+    (when-not (::cp.art/unknown-expression C)
+      (when (not (some identity (::cp.art/samples C)))
+        (cp.art/record-warning! env condition
+          :warning/if-condition-never-reaches-then-branch))
+      (when (and E (not (some not (::cp.art/samples C))))
+        (cp.art/record-warning! env condition
+          :warning/if-condition-never-reaches-else-branch)))
     {::cp.art/samples (cp.sampler/random-samples-from env T E)}))
 
 (defmethod cp.ana.disp/analyze-mm 'clojure.core/if-let [env [_ [bind-sym bind-expr] then & [else]]]
