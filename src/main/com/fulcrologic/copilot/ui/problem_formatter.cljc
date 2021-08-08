@@ -15,7 +15,7 @@
                [goog.string.format]])
     [clojure.string :as str]
     [com.fulcrologic.copilot.artifacts :as cp.art]
-    [com.fulcrologicpro.com.rpl.specter :as $]
+    [com.rpl.specter :as $]
     [com.fulcrologicpro.taoensso.timbre :as log]))
 
 (defn html-escape [s]

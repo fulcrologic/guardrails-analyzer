@@ -16,7 +16,7 @@
     [clojure.pprint :refer [pprint]]
     [clojure.string :as str]
     [com.fulcrologic.copilot.artifacts :as cp.art]
-    [com.fulcrologicpro.com.rpl.specter :as $]))
+    [com.rpl.specter :as $]))
 
 (defn html-escape [s]
   (-> s

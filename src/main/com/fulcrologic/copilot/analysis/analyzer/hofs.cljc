@@ -19,7 +19,7 @@
     [com.fulcrologic.copilot.artifacts :as cp.art]
     [com.fulcrologic.guardrails.core :as gr]
     [com.fulcrologic.guardrails.utils :as utils]
-    [com.fulcrologicpro.com.rpl.specter :as $]))
+    [com.rpl.specter :as $]))
 
 (defn analyze-single-arity! [env lambda-td [arglist _ & body]]
   (let [gspec  (get-in lambda-td [::cp.art/arities (count arglist) ::cp.art/gspec])

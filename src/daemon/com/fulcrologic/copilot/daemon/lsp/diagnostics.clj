@@ -1,7 +1,7 @@
 (ns com.fulcrologic.copilot.daemon.lsp.diagnostics
   (:require
     [com.fulcrologic.copilot.artifacts :as cp.art]
-    [com.fulcrologicpro.com.rpl.specter :as $]
+    [com.rpl.specter :as $]
     [com.fulcrologicpro.taoensso.timbre :as log])
   (:import
     (org.eclipse.lsp4j

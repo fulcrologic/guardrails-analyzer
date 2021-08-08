@@ -22,7 +22,7 @@
     [com.fulcrologic.copilot.forms :as cp.forms]
     [com.fulcrologic.copilot.ui.binding-formatter :refer [format-bindings]]
     [com.fulcrologic.copilot.ui.problem-formatter :refer [format-problems]]
-    [com.fulcrologicpro.com.rpl.specter :as $]
+    [com.rpl.specter :as $]
     [com.fulcrologicpro.taoensso.timbre :as log]
     [com.fulcrologic.copilot.analytics :as cp.analytics]))
 

@@ -1,7 +1,7 @@
 (ns com.fulcrologic.copilot.daemon.server.problems
   (:require
     [com.fulcrologic.copilot.artifacts :as cp.art]
-    [com.fulcrologicpro.com.rpl.specter :as $]))
+    [com.rpl.specter :as $]))
 
 (defonce problems (atom {}))
 
