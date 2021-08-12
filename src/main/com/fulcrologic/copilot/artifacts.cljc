@@ -55,12 +55,13 @@
                   :predicate ifn?)
                 gen-predicate))
 (s/def ::type string?)
-(s/def ::form any?) ;; TODO
+(s/def ::form any?)                                         ;; TODO
 ;; samples is for generated data only
 (s/def ::samples (s/coll-of any? :min-count 0 :kind set?))
 (s/def ::failing-samples ::samples)
 (s/def ::expression string?)
 (s/def ::original-expression ::form)
+(s/def ::level (s/int-in 1 12))
 (s/def ::literal-value ::original-expression)
 (s/def ::problem-type (s/and qualified-keyword?
                         (comp #{"error" "warning" "info" "hint"} namespace)))
@@ -201,11 +202,12 @@
       RESOLVE registry)))
 
 (>defn build-env
-  [{:keys [NS file aliases refers]}]
+  [{:keys [NS meta file aliases refers]}]
   [map? => ::env]
   (let [env {::aliases          aliases
              ::checking-file    file
              ::current-ns       NS
+             ::ns-meta          meta
              ::externs-registry (fix-kw-nss @gr.externs/externs-registry)
              ::refers           refers
              ::spec-registry    (fix-kw-nss @gr.externs/spec-registry)}]
@@ -311,10 +313,10 @@
   "Report a type description for the given simple symbol."
   [env sym td]
   [::env simple-symbol? ::type-description => nil?]
-  (let [env (update-location env (meta sym))
+  (let [env  (update-location env (meta sym))
         bind (merge td (::location env)
-               {::file (::checking-file env)
-                ::problem-type :hint/binding-type-info
+               {::file                (::checking-file env)
+                ::problem-type        :hint/binding-type-info
                 ::original-expression sym})]
     (log/debug :record-binding! bind)
     (swap! bindings conj bind)
@@ -323,11 +325,11 @@
 ;; ========== PROBLEMS ==========
 
 (s/def ::problem (s/keys
-                  :req [::original-expression ::problem-type
-                        ::file ::line-start]
-                  :opt [::expected ::actual
-                        ::column-start ::column-end
-                        ::line-end ::message-params]))
+                   :req [::original-expression ::problem-type
+                         ::file ::line-start]
+                   :opt [::expected ::actual
+                         ::column-start ::column-end
+                         ::line-end ::message-params]))
 (s/def ::error (s/and ::problem (comp #{"error"} namespace ::problem-type)))
 (s/def ::warning (s/and ::problem (comp #{"warning"} namespace ::problem-type)))
 (s/def ::info (s/and ::problem (comp #{"info"} namespace ::problem-type)))
@@ -356,9 +358,9 @@
    (record-error! env original-expression problem-type {}))
   ([env original-expression problem-type message-params]
    [::env ::original-expression ::problem-type ::message-params => nil?]
-   (record-error! env {::problem-type problem-type
+   (record-error! env {::problem-type        problem-type
                        ::original-expression original-expression
-                       ::message-params message-params}))
+                       ::message-params      message-params}))
   ([env error]
    [::env (s/keys :req [::problem-type ::original-expression]) => nil?]
    (record-problem! env error)
@@ -370,9 +372,9 @@
    (record-warning! env original-expression problem-type {}))
   ([env original-expression problem-type message-params]
    [::env ::original-expression ::problem-type ::message-params => nil?]
-   (record-warning! env {::problem-type problem-type
+   (record-warning! env {::problem-type        problem-type
                          ::original-expression original-expression
-                         ::message-params message-params}))
+                         ::message-params      message-params}))
   ([env warning]
    [::env (s/keys :req [::problem-type ::original-expression]) => nil?]
    (record-problem! env warning)
@@ -384,9 +386,9 @@
    (record-info! env original-expression problem-type {}))
   ([env original-expression problem-type message-params]
    [::env ::original-expression ::problem-type ::message-params => nil?]
-   (record-info! env {::problem-type problem-type
+   (record-info! env {::problem-type        problem-type
                       ::original-expression original-expression
-                      ::message-params message-params}))
+                      ::message-params      message-params}))
   ([env info]
    [::env (s/keys :req [::problem-type ::original-expression]) => nil?]
    (record-problem! env info)

@@ -5,6 +5,7 @@
     com.fulcrologic.copilot.analysis.fdefs.clojure-core
     com.fulcrologic.copilot.analysis.fdefs.clojure-spec-alpha
     com.fulcrologic.copilot.analysis.fdefs.clojure-string
+    [com.fulcrologic.copilot.analysis2.purity :refer [pure?]]
     [com.fulcrologic.copilot.analysis.analyzer.dispatch :as d]
     [com.fulcrologic.copilot.analysis.function-type :as cp.fnt]
     [com.fulcrologic.copilot.analysis.analyzer.literals :as literals]
@@ -24,14 +25,15 @@
   "Returns all of the errors currently tracked in `env`."
   [env] (::errors env))
 
-(defn with-error
+(defn with-report
   "Add a single error to env. `expr` should be the original-expression (e.g. wrapped literials) so there
    is position metadata."
-  ([env expr problem-type]
-   (with-error env expr nil nil nil problem-type))
-  ([env expr failure spec type problem-type]
+  ([env expr level problem-type]
+   (with-report env expr nil nil nil level problem-type))
+  ([env expr failure spec type level problem-type]
    (update env ::errors (fnil conj [])
      (cond-> {::cp.art/original-expression expr
+              ::cp.art/level               level
               ::cp.art/problem-type        problem-type}
        failure (assoc ::cp.art/actual {::cp.art/failing-samples #{failure}})
        (and spec type) (assoc ::cp.art/expected #::cp.art{:spec spec :type type})))))
@@ -47,10 +49,25 @@
     (if (contains? sample-failure :failing-case)
       (let [sample-failure (:failing-case sample-failure)]
         (-> env
-          (with-error original-expression sample-failure return-spec return-type
-            :error/bad-return-value))))))
+          (with-report original-expression sample-failure return-spec return-type
+            10 :error/bad-return-value))))))
 
-(defn analyze-statements!
+(defn fork-the-world
+  "Determine what bindings are used by `sexpr` and the find a combinatorial series of `env`s that contain each known sample
+   of those variables such that no returned `env` has more than one value for each binding. This is used to evaluate
+   conditions that determine the path of code branches so that each path can accurately track data dependencies."
+  [env sexpr])
+
+(defn analyze-if [env body]
+  (if (pure? env body)
+    ;; We can analyze data dependencies, since we can run the condition
+    (let [[_ condition then else] body
+          condition-envs (fork-the-world env condition)])
+    ;; Not possible to analyze condition, and data dependencies can cause significant noise. Better off saying we cannot
+    ;; analyze the remaining expressions that depend on this result
+    (with-report env body 1 :warning/cannot-analyze-condition-not-pure)))
+
+(defn analyze-statements
   "Analyze a sequence of statements where only the last one's result is kept in the env's result
    expression; however, it collects any errors from the rest of the body into the returned envs."
   [env body]
@@ -65,14 +82,14 @@
                               []
                               (butlast body)))]
     (if-not (last body)
-      [(with-error env body :warning/empty-body)]
+      [(with-report env body 1 :warning/empty-body)]
       (check-form body-env (last body)))))
 
 (defn analyze-single-arity! [env defn-sym [arglist _ & body]]
   (let [gspec       (get-in (cp.art/function-detail env defn-sym)
                       [::cp.art/arities (count arglist) ::cp.art/gspec])
         env         (cp.fnt/bind-argument-types env arglist gspec)
-        result-envs (analyze-statements! env body)]
+        result-envs (analyze-statements env body)]
     (map #(check-return-type % gspec defn-sym) result-envs)))
 
 (defn analyze:>defn! [env [_ defn-sym & defn-forms :as sexpr]]
@@ -106,7 +123,7 @@
                           kind)
         type-descriptor (literals/literal-td env lit-kind value orig)]
     [(cond-> (returning env type-descriptor)
-       missing-spec? (with-error orig :warning/qualified-keyword-missing-spec))]))
+       missing-spec? (with-report orig 1 :warning/qualified-keyword-missing-spec))]))
 
 (defmethod check-form :default [env form]
   (log/error "Cannot analyze" form)
@@ -127,12 +144,12 @@
   (let [forms (cp.reader/read-file file :clj)
         env   (cp.art/build-env forms)
         {:keys [forms file aliases refers]} forms]
-    (mapcat
-      (fn [envs]
-        (map errors envs))
-      (for [form forms
-           env  [env]]
-       (check-form env form)))
+    #_(mapcat
+        (fn [envs]
+          (map errors envs))
+        (for [form forms
+              env  [env]]
+          (check-form env form)))
 
     #_(cp.analytics/profile ::check!
         (cp.spec/with-empty-cache
@@ -151,9 +168,9 @@
     ))
 
 (comment
-  (tap> (check-form (cp.art/build-env [])
-          (-> (cp.reader/read-file (java.io.StringReader. "(ns app) \"\"") :clj)
-            :forms first)
-          ))
+  (tap> (cp.art/build-env []))
   (and (map? sexpr) (:com.fulcrologic.copilot/meta-wrapper? sexpr)) :literal/wrapped
+  (let [forms (cp.reader/read-file "/home/tony/fulcrologic/copilot/src/dev/sample.clj" :clj)
+        env   (cp.art/build-env forms)]
+    (tap> env))
   (check! "/home/tony/fulcrologic/copilot/src/dev/sample.clj"))

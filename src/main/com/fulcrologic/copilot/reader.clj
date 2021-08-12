@@ -17,7 +17,8 @@
     [com.fulcrologicpro.clojure.tools.reader :as reader]
     [com.fulcrologicpro.clojure.tools.reader.reader-types :as readers]
     [com.fulcrologic.copilot.artifacts :as cp.art]
-    [com.fulcrologicpro.taoensso.encore :as enc])
+    [com.fulcrologicpro.taoensso.encore :as enc]
+    [com.fulcrologicpro.taoensso.timbre :as log])
   (:import
     (java.io PushbackReader File)))
 
@@ -61,7 +62,7 @@
 (defn parse-ns [ns-form]
   (let [conformed-ns (s/conform :clojure.core.specs.alpha/ns-form
                        (cp.art/unwrap-meta (rest ns-form)))
-        requires (:body (:require (into {} (:ns-clauses conformed-ns))))]
+        requires     (:body (:require (into {} (:ns-clauses conformed-ns))))]
     (reduce enc/nested-merge {}
       (map parse:require-clause requires))))
 
@@ -74,6 +75,7 @@
                    :read-cond :allow
                    :features  #{reader-cond-branch}}
         ns-decl   (cp.art/unwrap-meta (read-impl opts reader))
+        ns-meta   (some-> (second ns-decl) (meta) (cp.art/unwrap-meta))
         _         (assert (= 'ns (first ns-decl))
                     (format "First form in file <%s> was not a ns declaration!"
                       (if (instance? File file)
@@ -87,4 +89,7 @@
                       (if (identical? form eof)
                         (do (.close reader) forms)
                         (recur (conj forms form)))))]
-    (merge parsed-ns {:file (str file) :NS (str NS) :forms forms})))
+    (merge parsed-ns {:file  (str file)
+                      :NS    (str NS)
+                      :forms forms
+                      :meta  ns-meta})))
