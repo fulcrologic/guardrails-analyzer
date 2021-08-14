@@ -102,4 +102,8 @@
  {:date "2020-12-26" :description "trial license work" :timespans [[1320 1930]]}
  {:date "2020-12-28" :description "check-in" :timespans [[1220 1320]]}
  {:date "2020-12-29" :description "check-in, added tests for conditionals" :timespans [[1220 1300] [1710 1745] [1830 1855]]}
+ {:date "2021-08-10" :description "experiments on conditionals" :timespans [[1400 2200]]}
+ {:date "2021-08-11" :description "experiments on conditionals" :timespans [[1400 2200]]}
+ {:date "2021-08-12" :description "refine IJ plugin build" :timespans [[1800 2330]]}
+ {:date "2021-08-13" :description "worked on registry helpers" :timespans [[2000 2110]]}
  ]

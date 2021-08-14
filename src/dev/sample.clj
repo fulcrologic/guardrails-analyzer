@@ -8,8 +8,10 @@
     [com.fulcrologic.guardrails.registry :as reg]
     [clojure.spec.alpha :as s]))
 
+(s/def :person/id int?)
 (s/def :person/first-name string?)
 (s/def :person/last-name string?)
+(s/def :person/full-name string?)
 (s/def :person/age int?)
 
 (>defn full-name [{:person/keys [first-name last-name] :as person}]
@@ -30,7 +32,8 @@
                                      :person/last-name
                                      :person/full-name
                                      :person/age])]
-   (let [person  {:person/first-name first-name
+   (let [person  {:person/id 1
+                  :person/first-name first-name
                   :person/last-name  "Kay"
                   :person/age        44}
          person2 (full-name person)
@@ -43,7 +46,8 @@
                             :person/last-name
                             :person/full-name
                             :person/age])]
-   (let [person  {:person/first-name "Tony"
+   (let [person  {:person/id 1
+                  :person/first-name "Tony"
                   :person/last-name  "Kay"
                   :person/age        44}
          person2 (full-name person)
@@ -52,7 +56,11 @@
                    "hello")]
      v)))
 
+
 (comment
-  (externs/function-info 'clojure.core/print)
+  (externs/function-info `new-person)
   (externs/spec-system 'clojure.core/print)
-  (externs/pure? 'clojure.core/namespace 1))
+  (externs/pure? 'clojure.core/namespace 1)
+  (externs/run-registry-function `new-person ["bob"])
+
+  )
