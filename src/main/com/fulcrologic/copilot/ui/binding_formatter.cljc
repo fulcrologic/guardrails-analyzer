@@ -11,31 +11,38 @@
 
 (ns com.fulcrologic.copilot.ui.binding-formatter
   (:require
-    #?@(:cljs [[goog.string :refer [format]]
-               [goog.string.format]])
-    [clojure.pprint :refer [pprint]]
-    [clojure.string :as str]
-    [com.fulcrologic.copilot.artifacts :as cp.art]
-    [com.rpl.specter :as $]))
+   #?@(:cljs [[goog.string :refer [format]]
+              [goog.string.format]])
+   [clojure.pprint :refer [pprint]]
+   [clojure.string :as str]
+   [com.fulcrologic.copilot.artifacts :as cp.art]
+   [com.rpl.specter :as $]))
 
 (defn html-escape [s]
   (-> s
-    (str/replace "&" "&amp;")
-    (str/replace "<" "&lt;")
-    (str/replace ">" "&gt;")))
+      (str/replace "&" "&amp;")
+      (str/replace "<" "&lt;")
+      (str/replace ">" "&gt;")))
 
 (defn format-binding [bind]
-  (-> bind
-    (assoc ::cp.art/message
-           (str "Bindings for: " (::cp.art/original-expression bind)))
-    (assoc ::cp.art/tooltip
-           (format
-             "<b>Type:</b>%s<br><b>Sample Values:</b><br>%s"
-             (some-> bind ::cp.art/type html-escape)
-             (str/join
-               (mapv (comp #(format "<pre>%s</pre>" (html-escape %))
-                       #(str/trim (with-out-str (pprint %))))
-                 (::cp.art/samples bind)))))))
+  (let [samples (if (cp.art/path-based? bind)
+                  (cp.art/extract-all-samples bind)
+                  (::cp.art/samples bind))]
+    (-> bind
+        (assoc ::cp.art/message
+               (str "Bindings for: " (::cp.art/original-expression bind)))
+        (assoc ::cp.art/tooltip
+               (format
+                "<b>Type:</b>%s<br><b>Sample Values:</b><br>%s"
+                (some-> bind ::cp.art/type html-escape)
+                (str/join
+                 (mapv (comp #(format "<pre>%s</pre>" (html-escape %))
+                             #(str/trim (with-out-str (pprint %))))
+                       samples)))))))
 
 (defn format-bindings [bindings]
-  ($/transform [($/walker ::cp.art/samples)] format-binding bindings))
+  ($/transform [($/walker (fn [x]
+                            (and (map? x)
+                                 (or (contains? x ::cp.art/samples)
+                                     (contains? x ::cp.art/execution-paths)))))]
+               format-binding bindings))

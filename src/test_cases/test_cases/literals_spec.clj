@@ -1,4 +1,4 @@
-(ns test-cases.literals
+(ns test-cases.literals-spec
   (:require
     [com.fulcrologic.copilot.artifacts :as cp.art]
     [com.fulcrologic.copilot.test-cases-runner :refer [deftc]]

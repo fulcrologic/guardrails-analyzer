@@ -1,4 +1,4 @@
-(ns test-cases.ns-form
+(ns test-cases.ns-form-spec
   (:require
     [clojure.string :refer [join]]
     [com.fulcrologic.copilot.artifacts :as cp.art]

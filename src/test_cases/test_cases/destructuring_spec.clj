@@ -1,4 +1,4 @@
-(ns test-cases.destructuring
+(ns test-cases.destructuring-spec
   (:require
     [clojure.spec.alpha :as s]
     [com.fulcrologic.copilot.artifacts :as cp.art]

@@ -1,4 +1,4 @@
-(ns test-cases.bad-specs
+(ns test-cases.bad-specs-spec
   (:require
     [clojure.spec.alpha :as s]
     [clojure.spec.gen.alpha :as gen]

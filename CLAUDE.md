@@ -189,6 +189,194 @@ Nested conditions:
    - Complex conditions fall back to superposition
    - Arithmetic operations don't yet propagate filtered samples
 
+## Daemon Communication System
+
+### Data Flow Architecture
+
+The Copilot daemon acts as a bridge between checkers (running in JVM or browser) and editors/IDEs. Understanding this data flow is critical for maintaining compatibility with new features like path-based analysis.
+
+```
+┌─────────────┐
+│   Checker   │ (JVM/Browser)
+│ (analysis)  │
+└──────┬──────┘
+       │
+       │ gather-analysis!
+       ↓
+┌─────────────┐
+│  Formatter  │ problem_formatter.cljc
+│  (UI layer) │ binding_formatter.cljc
+└──────┬──────┘
+       │
+       │ format-problems / format-bindings
+       ↓
+┌─────────────┐
+│   Encoder   │ checker.cljc
+│ (serialize) │ encode-problem / transit-safe-problems
+└──────┬──────┘
+       │
+       │ WebSocket/HTTP
+       ↓
+┌─────────────┐
+│   Daemon    │ src/daemon/
+│  (routing)  │ problems.clj, lsp/diagnostics.clj
+└──────┬──────┘
+       │
+       │ LSP/JSON
+       ↓
+┌─────────────┐
+│ Editor/IDE  │
+└─────────────┘
+```
+
+### Critical Data Flow Steps
+
+1. **Analysis Phase** (`function_type.cljc`)
+   - Creates problems with rich data structures
+   - For path-based errors: includes `::cp.art/failing-paths` in `::cp.art/actual`
+   - Path data contains full execution context
+
+2. **Formatting Phase** (`problem_formatter.cljc`, `binding_formatter.cljc`)
+   - **CRITICAL**: Formatting happens BEFORE encoding
+   - Converts rich data structures to human-readable strings
+   - Path information becomes text in `::cp.art/message` and `::cp.art/tooltip`
+   - Example: `format-failing-paths` converts path objects to "when (pos? x) → then"
+
+3. **Encoding Phase** (`checker.cljc`)
+   - `gather-analysis!` chains: format → encode → return
+   - `encode-problem` strips raw data structures: `::cp.art/actual`, `::cp.art/expected`, `::cp.art/spec`
+   - Only keeps: `::cp.art/message`, `::cp.art/tooltip`, location info
+   - Converts remaining samples to strings via `pr-str`
+
+4. **Transit Phase**
+   - Encoded data sent over WebSocket/HTTP
+   - Only simple data types (strings, numbers, keywords)
+   - No complex nested structures
+
+5. **Daemon Phase** (`src/daemon/server/problems.clj`, `src/daemon/lsp/diagnostics.clj`)
+   - Receives pre-formatted, pre-encoded problems
+   - Routes to appropriate editor clients
+   - LSP: converts to `Diagnostic` objects (lsp/diagnostics.clj:18-28)
+   - IntelliJ: groups by file/line/column (server/problems.clj:21-27)
+
+6. **Editor Phase**
+   - Displays formatted messages to user
+   - Shows tooltips on hover
+   - No knowledge of internal data structures
+
+### Path-Based Analysis Compatibility
+
+#### ✅ Problems: Fully Compatible
+
+Path-based problems work correctly because:
+- `problem_formatter.cljc` handles `::failing-paths` correctly (ui/problem_formatter.cljc:65-72)
+- Formatting happens before encoding (correct order in checker.cljc:71)
+- Path context is converted to text before serialization
+- Daemon sees only formatted strings
+
+Example formatter code from ui/problem_formatter.cljc:65-72:
+```clojure
+(defmethod format-problem-mm :error/bad-return-value [problem params]
+  (let [failing-paths  (get-in problem [::cp.art/actual ::cp.art/failing-paths])
+        path-context   (when (seq failing-paths) (format-failing-paths failing-paths))
+        message-suffix (or path-context ".")]
+    {:message (format "The Return spec is %s, but it is possible to return a value like %s%s"
+                (format-expected problem) (format-actual problem) message-suffix)}))
+```
+
+#### ⚠️ Bindings: Potential Issue
+
+**BUG FOUND**: `binding_formatter.cljc` does NOT handle path-based type descriptions correctly.
+
+**Current Code** (ui/binding_formatter.cljc:27-38):
+```clojure
+(defn format-binding [bind]
+  (-> bind
+    (assoc ::cp.art/tooltip
+           (format "<b>Sample Values:</b><br>%s"
+             (str/join
+               (mapv ... (::cp.art/samples bind)))))))  ;; ❌ Assumes ::samples exists
+
+(defn format-bindings [bindings]
+  ($/transform [($/walker ::cp.art/samples)] format-binding bindings))  ;; ❌ Won't find path-based
+```
+
+**Problem**:
+- Specter walker searches for `::cp.art/samples` key
+- Path-based type descriptions use `::cp.art/execution-paths` instead
+- Bindings with path-based types won't be formatted
+- Tooltip will show no sample values
+
+**Impact**:
+- Variables inside conditional branches will have incomplete hover information
+- No error, just missing data in IDE tooltips
+- Type information still shown, but sample values missing
+
+**Fix Required**:
+Update `binding_formatter.cljc` to handle both formats:
+
+```clojure
+(defn format-binding [bind]
+  (let [samples (if (cp.art/path-based? bind)
+                  (cp.art/extract-all-samples bind)
+                  (::cp.art/samples bind))]
+    (-> bind
+      (assoc ::cp.art/message
+             (str "Bindings for: " (::cp.art/original-expression bind)))
+      (assoc ::cp.art/tooltip
+             (format "<b>Type:</b>%s<br><b>Sample Values:</b><br>%s"
+               (some-> bind ::cp.art/type html-escape)
+               (str/join
+                 (mapv (comp #(format "<pre>%s</pre>" (html-escape %))
+                         #(str/trim (with-out-str (pprint %))))
+                   samples)))))))
+
+(defn format-bindings [bindings]
+  ;; Find both regular and path-based bindings
+  ($/transform [($/walker (fn [x]
+                            (or (contains? x ::cp.art/samples)
+                                (contains? x ::cp.art/execution-paths))))]
+    format-binding bindings))
+```
+
+### Daemon-Specific Encoders
+
+The daemon has viewer-specific encoders for different editor types:
+
+1. **Default Encoder** (`server/problems.clj:18`, `server/bindings.clj:18`)
+   - Passes through pre-formatted data
+   - Used by most editors
+
+2. **IDEA Encoder** (`encode-for-mm :IDEA` in server/problems.clj:21-27)
+   - Groups problems/bindings by file/line/column
+   - Converts keywords to strings
+   - Extracts severity from problem-type namespace
+   - Works with formatted data (no raw structures)
+
+Both encoders work with formatted messages, so path-based analysis doesn't affect them.
+
+### Testing Recommendations
+
+To verify daemon communication with path-based analysis:
+
+1. **Unit Tests**: Test binding formatter with path-based type descriptions
+2. **Integration Tests**: Send path-based problems through full pipeline
+3. **Manual Tests**:
+   - Open file with conditional code in IDE
+   - Hover over variable inside `if` branch
+   - Verify sample values appear in tooltip
+
+### Summary
+
+**Status**: Mostly compatible, one bug found
+
+- ✅ Problems: Fully compatible with path-based analysis
+- ⚠️ Bindings: Need fix in `binding_formatter.cljc`
+- ✅ Daemon: No changes needed
+- ✅ LSP: No changes needed
+- ✅ Encoding: Working correctly
+- ✅ Data flow: Correct order (format before encode)
+
 ## Configuration Files
 
 - `deps.edn` - Main dependency and alias configuration
@@ -250,3 +438,4 @@ Copilot analyzes code that uses Guardrails' `>defn` macro. When working on Copil
 4. **System tests** - Test daemon, LSP, and full integration
 
 When adding features, create test cases in `src/test_cases/` that demonstrate the expected behavior.
+- Always run tests with @ai/running-tests.md

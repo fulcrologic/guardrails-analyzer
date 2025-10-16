@@ -1,4 +1,4 @@
-(ns test-cases.>defn
+(ns test-cases.gtdefn-spec
   (:require
     [clojure.spec.alpha :as s :refer [tuple]]
     [clojure.spec.gen.alpha :as gen]
