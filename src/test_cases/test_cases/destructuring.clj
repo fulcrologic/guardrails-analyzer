@@ -3,35 +3,35 @@
     [clojure.spec.alpha :as s]
     [com.fulcrologic.copilot.artifacts :as cp.art]
     [com.fulcrologic.copilot.test-cases-runner :refer [deftc]]
-    [com.fulcrologic.guardrails.core :refer [>defn =>]]
+    [com.fulcrologic.guardrails.core :refer [=> >defn]]
     [fulcro-spec.check :as _]))
 
 (>defn d0 [] [=> any?]
-  (let [_ :a ; :binding/destr.simple-symbol
+  (let [_ :a                                                ; :binding/destr.simple-symbol
         ]))
 
 (s/def ::c int?)
 (s/def ::f int?)
 
 (>defn d:maps [] [=> any?]
-  (let [{b :b}       {:b 1}  ; :binding/destr.map.simple-keyword
-        {c ::c}      {::c 2} ; :binding/destr.map.nsed-keyword
-        {c ::c}      {}      ; :problem/destr.map.nsed-keyword.missing
-        {:as d}      {:d 3}  ; :binding/destr.map.as
-        {::keys [f]} {::f 5} ; :binding/destr.map.nsed-keys
-        {g ::g}      {}      ; :problem/destr.map.nsed-keyword.no-spec
+  (let [{b :b} {:b 1}                                       ; :binding/destr.map.simple-keyword
+        {c ::c} {::c 2}                                     ; :binding/destr.map.nsed-keyword
+        {c ::c} {}                                          ; :problem/destr.map.nsed-keyword.missing
+        {:as d} {:d 3}                                      ; :binding/destr.map.as
+        {::keys [f]} {::f 5}                                ; :binding/destr.map.nsed-keys
+        {g ::g} {}                                          ; :problem/destr.map.nsed-keyword.no-spec
         ]))
 
 (>defn d:vectors [] [=> any?]
-  (let [[a]      [6]      ; :binding/destr.vec.one
-        [_ b]    [:b 7]   ; :binding/_ :binding/destr.vec.two
-        [c]      []       ; :binding/destr.vec.missing
-        [_ & ds] [8 9 10] ; :binding/_ :binding/destr.vec.amp
-        [:as e]  [11 12]  ; :binding/destr.vec.as
+  (let [[a] [6]                                             ; :binding/destr.vec.one
+        [_ b] [:b 7]                                        ; :binding/_ :binding/destr.vec.two
+        [c] []                                              ; :binding/destr.vec.missing
+        [_ & ds] [8 9 10]                                   ; :binding/_ :binding/destr.vec.amp
+        [:as e] [11 12]                                     ; :binding/destr.vec.as
         ]))
 
 (>defn d:mixed [] [=> any?]
-  (let [[{x :x} :as v] [{:x 13}] ; :binding/destr.mixed.x :binding/destr.mixed.as
+  (let [[{x :x} :as v] [{:x 13}]                            ; :binding/destr.mixed.x :binding/destr.mixed.as
         ]))
 
 (deftc

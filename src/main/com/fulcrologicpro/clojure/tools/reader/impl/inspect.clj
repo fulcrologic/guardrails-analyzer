@@ -11,33 +11,33 @@
 (declare inspect*)
 
 (defn- inspect*-col [truncate col start end]
-  (let [n (count col)
-        l (if truncate 0 (min 10 n))
+  (let [n        (count col)
+        l        (if truncate 0 (min 10 n))
         elements (map (partial inspect* true) (take l col))
-        content (apply str (interpose " " elements))
-        suffix (if (< l n) "...")]
+        content  (apply str (interpose " " elements))
+        suffix   (if (< l n) "...")]
     (str start content suffix end)))
 
 (defn- dispatch-inspect
   [_ x]
   (cond
-   (nil? x) :nil
-   (string? x) :string
-   (keyword? x) :strable
-   (number? x) :strable
-   (symbol? x) :strable
-   (vector? x) :vector
-   (list? x) :list
-   (map? x) :map
-   (set? x) :set
-   (= x true) :strable
-   (= x false) :strable
-   :default (class x)))
+    (nil? x) :nil
+    (string? x) :string
+    (keyword? x) :strable
+    (number? x) :strable
+    (symbol? x) :strable
+    (vector? x) :vector
+    (list? x) :list
+    (map? x) :map
+    (set? x) :set
+    (= x true) :strable
+    (= x false) :strable
+    :default (class x)))
 
 (defmulti inspect* dispatch-inspect)
 
 (defmethod inspect* :string [truncate ^String x]
-  (let [n (if truncate 5 20)
+  (let [n      (if truncate 5 20)
         suffix (if (> (.length x) n) "...\"" "\"")]
     (str
       \"
@@ -65,10 +65,10 @@
   (inspect*-col truncate col \( \)))
 
 (defmethod inspect* :map [truncate m]
-  (let [len (count m)
-        n-shown (if truncate 0 len)
+  (let [len      (count m)
+        n-shown  (if truncate 0 len)
         contents (apply concat (take n-shown m))
-        suffix (if (> len n-shown) "...}" \})]
+        suffix   (if (> len n-shown) "...}" \})]
     (inspect*-col truncate contents \{ suffix)))
 
 (defmethod inspect* :set [truncate col]

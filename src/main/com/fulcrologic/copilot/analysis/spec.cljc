@@ -77,8 +77,8 @@
 (defn explain [env spec value] (-explain (::impl env) spec value))
 (defn generator [env spec]
   (try (-generator (::impl env) spec)
-    (catch #?(:clj Exception :cljs :default) e
-      nil)))
+       (catch #?(:clj Exception :cljs :default) e
+         nil)))
 (defn generate [env spec] (-generate (::impl env) spec))
 
 (defonce cache (atom {}))
@@ -89,7 +89,7 @@
     (let [spec (::spec gen gen)]
       (if-let [samples (get @cache spec)]
         (do (log/debug "Using cached samples for" spec)
-          samples)
+            samples)
         (cp.analytics/profile ::new-samples
           (let [samples (-sample (::impl env) gen)]
             (log/debug "Caching new samples for:" spec)

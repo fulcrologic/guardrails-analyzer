@@ -2,6 +2,7 @@
   (:require
     [clojure.java.io :as io]
     [clojure.set :as set]
+    [clojure.string :as str]
     [clojure.test :as t]
     [com.fulcrologic.copilot.analysis.analyzer :refer [defanalyzer]]
     [com.fulcrologic.copilot.artifacts :as cp.art]
@@ -11,8 +12,7 @@
     [com.fulcrologicpro.taoensso.encore :as enc]
     [com.fulcrologicpro.taoensso.timbre :as log]
     [fulcro-spec.check :as _]
-    [fulcro-spec.core :refer [specification]]
-    [clojure.string :as str]))
+    [fulcro-spec.core :refer [specification]]))
 
 (defn test-case-keyword? [x]
   (and (keyword? x) (#{"problem" "binding"} (namespace x))))
@@ -102,24 +102,24 @@
     (doseq [[line {:as tp :keys [problem-cases binding-cases problems bindings]}]
             (sort-by key (test-plan tc-info test-cases))]
       (if (and (empty? problem-cases) (empty? problems)) nil
-        (doseq [[c p] (zip-fully problem-cases problems)]
-          (cond
-            (not c) (report! {:type    :fail
-                              :message (str "found an extra problem on line: " line)
-                              :actual  p})
-            (not p) (report! {:type     :fail
-                              :message  (str "found an extra problem test case on line: " line)
-                              :actual   nil
-                              :expected c})
-            :else (check-test-case! report! c p))))
+                                                         (doseq [[c p] (zip-fully problem-cases problems)]
+                                                           (cond
+                                                             (not c) (report! {:type    :fail
+                                                                               :message (str "found an extra problem on line: " line)
+                                                                               :actual  p})
+                                                             (not p) (report! {:type     :fail
+                                                                               :message  (str "found an extra problem test case on line: " line)
+                                                                               :actual   nil
+                                                                               :expected c})
+                                                             :else (check-test-case! report! c p))))
       (if (and (empty? binding-cases) (empty? bindings)) nil
-        (doseq [[c b] (zip-fully binding-cases bindings)]
-          (if (not b)
-            (report! {:type     :fail
-                      :message  (str "found an extra binding test case on line: " line)
-                      :actual   c
-                      :expected nil})
-            (check-test-case! report! c b)))))
+                                                         (doseq [[c b] (zip-fully binding-cases bindings)]
+                                                           (if (not b)
+                                                             (report! {:type     :fail
+                                                                       :message  (str "found an extra binding test case on line: " line)
+                                                                       :actual   c
+                                                                       :expected nil})
+                                                             (check-test-case! report! c b)))))
     (when-let [non-existant-test-cases
                (seq (set/difference
                       (set (mapcat :cases test-cases))
@@ -168,12 +168,12 @@
 
 (defn run-tc-file! [report-fn tc-file {:keys [problems bindings]}]
   (try (run-test-cases! {:tc-file tc-file :report! report-fn}
-    (assoc (read-test-case tc-file
-             (tests-for tc-file))
-      :problems problems
-      :bindings bindings))
-    (catch Exception e
-      (report-fn {:type :error :actual e}))))
+         (assoc (read-test-case tc-file
+                  (tests-for tc-file))
+           :problems problems
+           :bindings bindings))
+       (catch Exception e
+         (report-fn {:type :error :actual e}))))
 
 (defmacro deftc [& args]
   (let [suffix (last (str/split *file* #"[.]"))

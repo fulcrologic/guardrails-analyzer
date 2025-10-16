@@ -13,7 +13,7 @@
   (:require
     [com.fulcrologic.copilot.analytics :as cp.analytics]
     [com.fulcrologic.copilot.artifacts :as cp.art]
-    [com.fulcrologic.guardrails.core :as gr :refer [>defn =>]]))
+    [com.fulcrologic.guardrails.core :refer [=> >defn]]))
 
 (declare analyze-mm)
 
@@ -66,6 +66,9 @@
     (set? sexpr) :collection/set
     (map? sexpr) :collection/map
 
+    ;; Boolean literals
+    (boolean? sexpr) :literal/boolean
+
     (ifn? sexpr) :ifn/literal
 
     :else :unknown))
@@ -76,13 +79,13 @@
   [env sexpr]
   [::cp.art/env any? => ::cp.art/type-description]
   (let [dispatch (analyze-dispatch env sexpr)
-        env (-> env
-              (assoc ::dispatch dispatch)
-              (cp.art/sync-location sexpr))]
+        env      (-> env
+                   (assoc ::dispatch dispatch)
+                   (cp.art/sync-location sexpr))]
     (when (and (qualified-symbol? dispatch)
             ;; TODO: if its defined in copilot fdefs.*
             (#{"clojure.core"}
-              (namespace dispatch)))
+             (namespace dispatch)))
       (cp.analytics/record-analyze! env dispatch
         (when (seqable? sexpr) (rest sexpr))))
     (cp.analytics/profile ::analyze-mm

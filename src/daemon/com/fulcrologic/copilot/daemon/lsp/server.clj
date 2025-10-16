@@ -7,6 +7,9 @@
     [com.fulcrologic.copilot.daemon.lsp.diagnostics :as lsp.diag]
     [com.fulcrologicpro.taoensso.timbre :as log])
   (:import
+    (java.net ServerSocket SocketException SocketTimeoutException)
+    (java.util UUID)
+    (java.util.concurrent CompletableFuture)
     (org.eclipse.lsp4j
       DidChangeConfigurationParams
       DidChangeTextDocumentParams
@@ -22,10 +25,7 @@
       ServerCapabilities
       TextDocumentSyncOptions)
     (org.eclipse.lsp4j.launch LSPLauncher)
-    (org.eclipse.lsp4j.services LanguageServer TextDocumentService WorkspaceService)
-    (java.net ServerSocket SocketException SocketTimeoutException)
-    (java.util UUID)
-    (java.util.concurrent CompletableFuture)))
+    (org.eclipse.lsp4j.services LanguageServer TextDocumentService WorkspaceService)))
 
 (defn read-json [x]
   (json/read-str (str x) :key-fn keyword))
@@ -33,7 +33,7 @@
 (deftype LSPWorkspaceService [client-id-atom]
   WorkspaceService
   (^CompletableFuture executeCommand [_ ^ExecuteCommandParams params]
-    (let [cmd (.getCommand params)
+    (let [cmd  (.getCommand params)
           args (.getArguments params)]
       (log/info "executeCommand" cmd "&" args)
       (if-let [f (get lsp.cmds/commands cmd)]
@@ -51,12 +51,12 @@
   TextDocumentService
   (^void didOpen [_ ^DidOpenTextDocumentParams params]
     (let [document (.getTextDocument params)
-          uri (.getUri document)]
+          uri      (.getUri document)]
       (swap! lsp.diag/client-id->open-uri assoc @client-id-atom uri))
     nil)
   (^void didClose [_ ^DidCloseTextDocumentParams params]
     (let [document (.getTextDocument params)
-          uri (.getUri document)]
+          uri      (.getUri document)]
       (swap! lsp.diag/client-id->open-uri dissoc @client-id-atom))
     nil)
   (^void didChange [_ ^DidChangeTextDocumentParams params] nil)
@@ -69,7 +69,7 @@
         (let [id (UUID/randomUUID)]
           (log/info "initialize server!" {:id id})
           (swap! lsp.diag/client:id->info
-            assoc id {:remote (.getRemoteProxy @launcher)
+            assoc id {:remote      (.getRemoteProxy @launcher)
                       :project-dir (.getRootPath params)})
           (reset! client-id id))
         (CompletableFuture/completedFuture
@@ -112,29 +112,29 @@
 (defn start-lsp []
   (let [server-socket (doto (new ServerSocket 0)
                         (.setSoTimeout 1000))
-        port (.getLocalPort server-socket)]
+        port          (.getLocalPort server-socket)]
     (log/info "Starting Copilot Daemon LSP server on:" port)
     (.deleteOnExit port-file)
     (write-port-to-file! port-file port)
-    (let [sockets (atom [])
+    (let [sockets   (atom [])
           stop-chan (async/chan)]
       (async/go-loop []
         (if (= ::STOP (async/alt!
                         stop-chan ([v] v)
                         (async/timeout 1000) nil))
           (do (log/info "Received stop signal, shutting down copilot LSP server!")
-            (.close server-socket)
-            (reset! lsp.diag/client:id->info {})
-            (doseq [s @sockets]
-              (shutdown-socket s))
-            (reset! sockets []))
+              (.close server-socket)
+              (reset! lsp.diag/client:id->info {})
+              (doseq [s @sockets]
+                (shutdown-socket s))
+              (reset! sockets []))
           (do (when-let [socket (try (.accept server-socket)
-                                  (catch SocketTimeoutException _ nil)
-                                  (catch SocketException e
-                                    (log/error e "socket exception")
-                                    nil))]
+                                     (catch SocketTimeoutException _ nil)
+                                     (catch SocketException e
+                                       (log/error e "socket exception")
+                                       nil))]
                 (let [launcher (atom nil)
-                      server (new-server launcher)]
+                      server   (new-server launcher)]
                   (reset! launcher
                     (LSPLauncher/createServerLauncher server
                       (.getInputStream socket)
@@ -143,15 +143,15 @@
                   (async/go-loop [F (.startListening @launcher)]
                     (if (future-done? F)
                       (do (log/debug "future-done!")
-                        (shutdown-socket socket)
-                        @(.shutdown server)
-                        (.close socket))
+                          (shutdown-socket socket)
+                          @(.shutdown server)
+                          (.close socket))
                       (recur F)))))
-            (recur))))
+              (recur))))
       {::port-file port-file
        ::stop-chan stop-chan})))
 
-(defn stop-lsp [{::keys [port-file stop-chan]} ]
+(defn stop-lsp [{::keys [port-file stop-chan]}]
   (log/info "Stopping copilot LSP server!")
   (.delete port-file)
   (async/put! stop-chan ::STOP))

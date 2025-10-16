@@ -11,8 +11,8 @@
 
 (ns com.fulcrologic.copilot.analysis.fdefs.clojure-spec-alpha
   (:require
-    clojure.test.check.generators
     [clojure.spec.alpha :as s]
+    [clojure.test.check.generators]
     [com.fulcrologic.copilot.analysis.analyzer :refer [defanalyzer]]))
 
 (s/def ::spec-key (s/or :kw qualified-keyword? :sym symbol?))

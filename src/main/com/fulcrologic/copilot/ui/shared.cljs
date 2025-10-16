@@ -11,11 +11,11 @@
 
 (ns com.fulcrologic.copilot.ui.shared
   (:require
+    [com.fulcrologic.copilot.artifacts :as cp.art]
     [com.fulcrologicpro.fulcro.components :as comp :refer [defsc]]
-    [com.fulcrologicpro.fulcro.dom :as dom :refer [div h3 h4 label input]]
+    [com.fulcrologicpro.fulcro.dom :as dom :refer [div h3 h4 input label]]
     [com.fulcrologicpro.fulcro.mutations :as f.m]
-    [com.fulcrologicpro.fulcro.routing.dynamic-routing :as dr]
-    [com.fulcrologic.copilot.artifacts :as cp.art]))
+    [com.fulcrologicpro.fulcro.routing.dynamic-routing :as dr]))
 
 (f.m/defmutation focus-ns [{:keys [ns]}]
   (action [{:keys [app state]}]
@@ -32,7 +32,7 @@
     (dissoc state :problems/by-namespace)
     problems))
 
-(defn set-bindings* [state bindings] ;; TODO ??
+(defn set-bindings* [state bindings]                        ;; TODO ??
   (assoc state :bindings bindings))
 
 (defsc Settings [this {:settings/keys [daemon-port]}]
@@ -53,7 +53,7 @@
   (div :.item {:key message}
     (dom/i :.exclamation.icon
       {:classes [(case (namespace problem-type)
-                   "error"   "red"
+                   "error" "red"
                    "warning" "yellow"
                    nil)]})
     (str line-start ": " message)))

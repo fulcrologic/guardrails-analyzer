@@ -1,8 +1,8 @@
 (ns com.fulcrologic.copilot.daemon.ui.root
   (:require
-    [com.fulcrologicpro.fulcro.components :as f.c :refer [defsc]]
-    [com.fulcrologicpro.fulcro.dom :as dom]
-    [com.fulcrologic.copilot.artifacts :as cp.art]))
+    [com.fulcrologic.copilot.artifacts :as cp.art]
+    [com.fulcrologicpro.fulcro.components :refer [defsc]]
+    [com.fulcrologicpro.fulcro.dom :as dom]))
 
 (defn ui-error-part [[part-key part]]
   (dom/tr {:key (name part-key)}

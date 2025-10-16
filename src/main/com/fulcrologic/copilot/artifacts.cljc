@@ -16,11 +16,12 @@
     [clojure.spec.alpha :as s]
     [clojure.test.check.generators :as gen]
     [com.fulcrologic.copilot.analysis.spec :as cp.spec]
+    [com.fulcrologic.copilot.analysis.purity-data :as purity-data]
     [com.fulcrologic.copilot.analytics :as cp.analytics]
     [com.fulcrologic.guardrails.core :refer [>defn => ?]]
     [com.fulcrologic.guardrails.registry :as gr.reg]
     [com.fulcrologic.guardrails.impl.externs :as gr.externs]
-    [com.fulcrologicpro.com.rpl.specter :as $]
+    [com.rpl.specter :as $]
     [com.fulcrologicpro.taoensso.timbre :as log]))
 
 ;; ========== CLJC SYM REWRITE ==========
@@ -43,7 +44,7 @@
 
 (def posint?
   (s/with-gen pos-int?
-    #(gen/such-that pos? gen/int)))
+    #(gen/such-that pos? (gen/int))))
 
 (def gen-predicate #(gen/return (fn [& _] (rand-nth [true false]))))
 #_(map (fn [pf] (pf)) (gen/sample (gen-predicate)))
@@ -55,12 +56,13 @@
                   :predicate ifn?)
                 gen-predicate))
 (s/def ::type string?)
-(s/def ::form any?) ;; TODO
+(s/def ::form any?)                                         ;; TODO
 ;; samples is for generated data only
 (s/def ::samples (s/coll-of any? :min-count 0 :kind set?))
 (s/def ::failing-samples ::samples)
 (s/def ::expression string?)
 (s/def ::original-expression ::form)
+(s/def ::level (s/int-in 1 12))
 (s/def ::literal-value ::original-expression)
 (s/def ::problem-type (s/and qualified-keyword?
                         (comp #{"error" "warning" "info" "hint"} namespace)))
@@ -85,6 +87,7 @@
 (s/def ::type-description (s/or
                             :unknown (s/keys :req [::unknown-expression])
                             :function ::lambda
+                            :path-based (s/keys :req [::execution-paths])
                             :value (s/keys :opt [::spec
                                                  ;::recursive-description
                                                  ::type
@@ -135,6 +138,40 @@
 (s/def ::location (s/keys
                     :req [::line-start ::column-start]
                     :opt [::line-end ::column-end]))
+
+;; ========== PATH-BASED ANALYSIS SPECS ==========
+;; Path conditions represent branch conditions taken during execution
+(s/def ::condition-id nat-int?)
+(s/def ::condition-expression ::form)
+(s/def ::condition-location ::location)
+(s/def ::determined? boolean?)                              ;; Can we partition samples?
+(s/def ::branch keyword?)                                   ;; :then, :else, :branch-0, etc.
+(s/def ::condition-value boolean?)                          ;; For determined paths, the actual condition result
+
+(s/def ::path-condition
+  (s/keys :req [::condition-id
+                ::condition-expression
+                ::condition-location
+                ::determined?
+                ::branch]
+    :opt [::condition-value]))
+
+(s/def ::conditions (s/coll-of ::path-condition :kind vector?))
+
+;; An execution path tracks samples with their conditions and bindings
+(s/def ::path-id nat-int?)
+(s/def ::path-bindings (s/map-of symbol? ::samples))        ;; Bound variables with their samples in this path
+(s/def ::merged? boolean?)                                  ;; Path was merged from multiple paths
+(s/def ::condition-sets (s/coll-of ::conditions :kind vector?)) ;; For merged paths
+
+(s/def ::execution-path
+  (s/keys :req [::path-id
+                ::conditions
+                ::samples
+                ::path-bindings]
+    :opt [::merged? ::condition-sets]))
+
+(s/def ::execution-paths (s/coll-of ::execution-path :min-count 1 :kind vector?))
 (s/def ::checking-file string?)
 (s/def ::checking-sym simple-symbol?)
 (s/def ::current-form ::form)
@@ -155,6 +192,10 @@
                              (s/every-kv symbol? ::function
                                :gen-max 20)
                              :gen-max 10))
+;; Path analysis tracking
+(s/def ::next-condition-id nat-int?)
+(s/def ::next-path-id nat-int?)
+
 (s/def ::env (s/keys
                :req [::function-registry]
                :opt [::external-function-registry
@@ -166,7 +207,9 @@
                      ::current-ns
                      ::location
                      ::aliases
-                     ::refers]))
+                     ::refers
+                     ::next-condition-id
+                     ::next-path-id]))
 
 (>defn get-arity
   [arities args]
@@ -191,21 +234,22 @@
                   (cond-> m
                     (::quoted.argument-specs m)
                     #_=> (assoc ::argument-specs
-                           (mapv (partial lookup-spec env)
-                             (::quoted.argument-specs m)))
+                                (mapv (partial lookup-spec env)
+                                  (::quoted.argument-specs m)))
                     (::quoted.return-spec m)
                     #_=> (assoc ::return-spec
-                           (lookup-spec env
-                             (::quoted.return-spec m)))))]
+                                (lookup-spec env
+                                  (::quoted.return-spec m)))))]
     ($/transform [($/walker (some-fn ::quoted.argument-specs ::quoted.return-spec))]
       RESOLVE registry)))
 
 (>defn build-env
-  [{:keys [NS file aliases refers]}]
+  [{:keys [NS meta file aliases refers]}]
   [map? => ::env]
   (let [env {::aliases          aliases
              ::checking-file    file
              ::current-ns       NS
+             ::ns-meta          meta
              ::externs-registry (fix-kw-nss @gr.externs/externs-registry)
              ::refers           refers
              ::spec-registry    (fix-kw-nss @gr.externs/spec-registry)}]
@@ -268,6 +312,315 @@
   (let [{::keys [samples]} (get-in env [::local-symbols sym])]
     (and (seq samples) (rand-nth (vec samples)))))
 
+;; ========== PATH-BASED HELPERS ==========
+
+(>defn path-based?
+  "Check if type-description uses execution paths"
+  [td]
+  [::type-description => boolean?]
+  (contains? td ::execution-paths))
+
+(>defn ensure-path-based
+  "Convert old-style samples to path-based form (single path, no conditions).
+If already path-based, returns as-is."
+  [td]
+  [::type-description => ::type-description]
+  (if (path-based? td)
+    td
+    (if-let [samples (seq (::samples td))]
+      (assoc td ::execution-paths
+                [{::path-id       0
+                  ::conditions    []
+                  ::samples       (set samples)
+                  ::path-bindings {}}])
+      td)))
+
+(>defn extract-all-samples
+  "Get all samples across all paths (loses path info).
+Returns a set of all samples found in any path."
+  [td]
+  [::type-description => ::samples]
+  (if (path-based? td)
+    (reduce set/union #{} (map ::samples (::execution-paths td)))
+    (::samples td #{})))
+
+(>defn create-single-path
+  "Create a simple execution path with samples and bindings"
+  [samples bindings]
+  [::samples (s/map-of symbol? ::samples) => ::execution-path]
+  {::path-id       0
+   ::conditions    []
+   ::samples       samples
+   ::path-bindings bindings})
+
+(>defn add-condition
+  "Add a condition to an execution path's condition list"
+  [path condition-id condition-expr location determined? branch]
+  [::execution-path int? any? ::location boolean? ::branch => ::execution-path]
+  (update path ::conditions conj
+    {::condition-id         condition-id
+     ::condition-expression condition-expr
+     ::condition-location   location
+     ::determined?          determined?
+     ::branch               branch}))
+
+(>defn add-determined-condition
+  "Add a determined condition to an execution path (we know the partition)"
+  [path condition-id condition-expr location value branch]
+  [::execution-path int? any? ::location boolean? ::branch => ::execution-path]
+  (update path ::conditions conj
+    {::condition-id         condition-id
+     ::condition-expression condition-expr
+     ::condition-location   location
+     ::determined?          true
+     ::condition-value      value
+     ::branch               branch}))
+
+(>defn add-undetermined-condition
+  "Add an undetermined condition to an execution path (superposition)"
+  [path condition-id condition-expr location branch]
+  [::execution-path int? any? ::location ::branch => ::execution-path]
+  (update path ::conditions conj
+    {::condition-id         condition-id
+     ::condition-expression condition-expr
+     ::condition-location   location
+     ::determined?          false
+     ::branch               branch}))
+
+(>defn update-binding-with-samples
+  "Update a single symbol binding in the environment with filtered samples.
+Creates a path-based type-description with a single path containing the filtered samples."
+  [env sym filtered-samples]
+  [::env symbol? ::samples => ::env]
+  (if (empty? filtered-samples)
+    env
+    (let [current-td (get-in env [::local-symbols sym])
+          new-td     {::execution-paths
+                      [{::path-id       0
+                        ::conditions    []
+                        ::samples       filtered-samples
+                        ::path-bindings {}}]}]
+      (assoc-in env [::local-symbols sym] new-td))))
+
+(>defn update-env-with-path-bindings
+  "Update environment with filtered samples for all symbols in path-bindings.
+Each symbol in path-bindings is updated in the environment's local-symbols
+to have a new path-based type-description with the filtered samples."
+  [env path-bindings]
+  [::env (s/map-of symbol? ::samples) => ::env]
+  (reduce-kv
+    (fn [env' sym samples]
+      (update-binding-with-samples env' sym samples))
+    env
+    path-bindings))
+
+;; ========== SAMPLE PARTITIONING FOR PATH-BASED ANALYSIS ==========
+
+(>defn resolve-pure-function
+  "Resolve a function symbol to an executable function or its pure-mock.
+Returns a function that can be safely called during analysis,
+or nil if the function cannot be resolved or is not pure.
+
+Attempts to resolve in this order:
+1. Check function/external-function registries for pure-mock
+2. Check function/external-function registries for pure? metadata
+3. Fallback: If function is pure (per multimethod), try to resolve directly"
+  [env fn-sym]
+  [::env symbol? => (? fn?)]
+  (if-let [fn-detail (or (function-detail env fn-sym)
+                       (external-function-detail env fn-sym))]
+    ;; Function is in registry - check for pure-mock or pure? metadata
+    (let [arities   (::arities fn-detail)
+          ;; Check for pure-mock in metadata
+          pure-mock (some (fn [[_arity arity-detail]]
+                            (when-let [gspec (::gspec arity-detail)]
+                              (let [metadata (::metadata gspec)]
+                                (:pure-mock metadata))))
+                      arities)
+          ;; Check if function is marked as pure
+          is-pure?  (boolean
+                      (some (fn [[_arity arity-detail]]
+                              (when-let [gspec (::gspec arity-detail)]
+                                (let [metadata (::metadata gspec)]
+                                  (or (:pure? metadata)
+                                    (:pure metadata)))))
+                        arities))]
+      (cond
+        ;; If there's a pure-mock, use it
+        pure-mock
+        pure-mock
+
+        ;; If the function is marked as pure, return the actual function
+        is-pure?
+        (or (::fn-ref fn-detail)
+          (when-let [env->fn (::env->fn fn-detail)]
+            (env->fn env)))
+
+        ;; Otherwise, return nil (not safe to call)
+        :else
+        nil))
+
+    ;; Function not in registry - check if it's pure via multimethod and try to resolve
+    (when (purity-data/known-pure-function? fn-sym)
+      #?(:clj
+         (try
+           (resolve fn-sym)
+           (catch Exception e
+             (log/debug "Failed to resolve pure function" fn-sym e)
+             nil))
+         :cljs
+         nil))))
+
+(>defn eval-condition
+  "Evaluate a condition expression with a specific sample value for a symbol.
+Returns {:result boolean?, :error? boolean?, :error any?}
+
+The condition is evaluated in a mini-interpreter that:
+- Resolves local symbols to their sample values
+- Resolves function symbols to pure functions or pure-mocks
+- Evaluates the condition and returns the result
+- Treats 0 as falsey (in addition to false and nil)
+
+If evaluation fails (e.g., function not available, error during eval),
+returns {:error? true, :error <exception>}"
+  [env condition-expr symbol-bindings]
+  [::env any? (s/map-of symbol? any?) => (s/keys :req-un [::result ::error?])]
+  (try
+    (letfn [(eval-expr [expr]
+              (cond
+                ;; Literal values
+                (or (string? expr) (number? expr) (boolean? expr) (nil? expr)
+                  (keyword? expr))
+                expr
+
+                ;; Symbol lookup - check bindings first, then resolve as function
+                (symbol? expr)
+                (if (contains? symbol-bindings expr)
+                  (get symbol-bindings expr)
+                  (or (resolve-pure-function env expr)
+                    (throw (ex-info "Cannot resolve symbol" {:symbol expr}))))
+
+                ;; Collections
+                (vector? expr) (mapv eval-expr expr)
+                (map? expr) (into {} (map (fn [[k v]] [(eval-expr k) (eval-expr v)]) expr))
+                (set? expr) (set (map eval-expr expr))
+
+                ;; Function calls
+                (seq? expr)
+                (let [[fn-sym & args] expr
+                      f (if (contains? symbol-bindings fn-sym)
+                          (get symbol-bindings fn-sym)
+                          (resolve-pure-function env fn-sym))]
+                  (if-not f
+                    (throw (ex-info "Cannot resolve function" {:fn-sym fn-sym}))
+                    (apply f (map eval-expr args))))
+
+                :else
+                (throw (ex-info "Cannot evaluate expression" {:expr expr}))))
+            (truthy? [v]
+              ;; Custom truthiness: false, nil, and 0 are falsey
+              (not (or (false? v) (nil? v) (and (number? v) (zero? v)))))]
+      {:result (truthy? (eval-expr condition-expr))
+       :error? false})
+    (catch #?(:clj Throwable :cljs :default) e
+      {:result false
+       :error? true
+       :error  e})))
+
+(>defn partition-samples-by-condition
+  "Partition samples based on whether they satisfy a condition.
+
+Given:
+- env: analysis environment
+- condition-expr: the condition expression to evaluate
+- binding-symbol: the symbol being tested in the condition
+- samples: set of sample values to partition
+
+Returns:
+{:true-samples #{...}    ; Samples where condition is true
+:false-samples #{...}   ; Samples where condition is false
+:undetermined-samples #{...}  ; Samples where condition couldn't be evaluated
+:determined? boolean}   ; true if all samples could be evaluated"
+  [env condition-expr binding-symbol samples]
+  [::env any? symbol? ::samples
+   => (s/keys :req-un [::true-samples ::false-samples ::undetermined-samples ::determined?])]
+  (let [results (group-by
+                  (fn [sample]
+                    (let [bindings {binding-symbol sample}
+                          {:keys [result error?]} (eval-condition env condition-expr bindings)]
+                      (cond
+                        error? :undetermined
+                        result :true
+                        :else :false)))
+                  samples)]
+    {:true-samples         (set (get results :true []))
+     :false-samples        (set (get results :false []))
+     :undetermined-samples (set (get results :undetermined []))
+     :determined?          (empty? (get results :undetermined []))}))
+
+;; ========== PATH DEDUPLICATION AND LIMITS ==========
+
+(def ^:dynamic *max-paths* 500)
+(def ^:dynamic *max-samples-per-path* 20)
+
+(>defn limit-samples
+  "Limit samples to a maximum count, randomly sampling if needed"
+  [samples max-count]
+  [::samples pos-int? => ::samples]
+  (if (<= (count samples) max-count)
+    samples
+    (set (take max-count (shuffle (vec samples))))))
+
+(>defn deduplicate-paths
+  "Merge execution paths that have identical samples.
+Paths with the same samples can be merged, combining their conditions.
+Returns a vector of deduplicated paths."
+  [paths]
+  [::execution-paths => ::execution-paths]
+  (let [grouped (group-by ::samples paths)]
+    (vec
+      (map (fn [[samples paths-with-same-samples]]
+             (if (= 1 (count paths-with-same-samples))
+               ;; Single path, return as-is
+               (first paths-with-same-samples)
+               ;; Multiple paths with same samples, merge them
+               (let [all-conditions  (mapv ::conditions paths-with-same-samples)
+                     merged-bindings (apply merge (map ::path-bindings paths-with-same-samples))]
+                 {::path-id        (::path-id (first paths-with-same-samples))
+                  ::conditions     (::conditions (first paths-with-same-samples))
+                  ::samples        samples
+                  ::path-bindings  merged-bindings
+                  ::merged?        true
+                  ::condition-sets all-conditions})))
+        grouped))))
+
+(>defn limit-paths
+  "Limit the number of execution paths to prevent explosion.
+If there are too many paths, randomly select a subset."
+  [paths max-paths]
+  [::execution-paths pos-int? => ::execution-paths]
+  (if (<= (count paths) max-paths)
+    paths
+    (do
+      (log/warn "Path explosion detected:" (count paths) "paths, limiting to" max-paths)
+      (vec (take max-paths (shuffle paths))))))
+
+(>defn apply-path-limits
+  "Apply both deduplication and size limits to execution paths.
+
+Steps:
+1. Deduplicate paths with identical samples
+2. Limit samples per path to max-samples-per-path
+3. Limit total paths to max-paths
+
+Uses dynamic vars *max-paths* and *max-samples-per-path* for configuration."
+  [paths]
+  [::execution-paths => ::execution-paths]
+  (-> paths
+    deduplicate-paths
+    (->> (mapv #(update % ::samples limit-samples *max-samples-per-path*)))
+    (limit-paths *max-paths*)))
+
 ;; ========== LOCATION ==========
 
 (>defn new-location
@@ -287,7 +640,7 @@
   (log/trace :update-location (::checking-sym env) location)
   (cond-> env location
     (assoc ::location
-      (new-location location))))
+           (new-location location))))
 
 (>defn sync-location
   [env sexpr]
@@ -311,10 +664,10 @@
   "Report a type description for the given simple symbol."
   [env sym td]
   [::env simple-symbol? ::type-description => nil?]
-  (let [env (update-location env (meta sym))
+  (let [env  (update-location env (meta sym))
         bind (merge td (::location env)
-               {::file (::checking-file env)
-                ::problem-type :hint/binding-type-info
+               {::file                (::checking-file env)
+                ::problem-type        :hint/binding-type-info
                 ::original-expression sym})]
     (log/debug :record-binding! bind)
     (swap! bindings conj bind)
@@ -323,11 +676,11 @@
 ;; ========== PROBLEMS ==========
 
 (s/def ::problem (s/keys
-                  :req [::original-expression ::problem-type
-                        ::file ::line-start]
-                  :opt [::expected ::actual
-                        ::column-start ::column-end
-                        ::line-end ::message-params]))
+                   :req [::original-expression ::problem-type
+                         ::file ::line-start]
+                   :opt [::expected ::actual
+                         ::column-start ::column-end
+                         ::line-end ::message-params]))
 (s/def ::error (s/and ::problem (comp #{"error"} namespace ::problem-type)))
 (s/def ::warning (s/and ::problem (comp #{"warning"} namespace ::problem-type)))
 (s/def ::info (s/and ::problem (comp #{"info"} namespace ::problem-type)))
@@ -356,9 +709,9 @@
    (record-error! env original-expression problem-type {}))
   ([env original-expression problem-type message-params]
    [::env ::original-expression ::problem-type ::message-params => nil?]
-   (record-error! env {::problem-type problem-type
+   (record-error! env {::problem-type        problem-type
                        ::original-expression original-expression
-                       ::message-params message-params}))
+                       ::message-params      message-params}))
   ([env error]
    [::env (s/keys :req [::problem-type ::original-expression]) => nil?]
    (record-problem! env error)
@@ -370,9 +723,9 @@
    (record-warning! env original-expression problem-type {}))
   ([env original-expression problem-type message-params]
    [::env ::original-expression ::problem-type ::message-params => nil?]
-   (record-warning! env {::problem-type problem-type
+   (record-warning! env {::problem-type        problem-type
                          ::original-expression original-expression
-                         ::message-params message-params}))
+                         ::message-params      message-params}))
   ([env warning]
    [::env (s/keys :req [::problem-type ::original-expression]) => nil?]
    (record-problem! env warning)
@@ -384,9 +737,9 @@
    (record-info! env original-expression problem-type {}))
   ([env original-expression problem-type message-params]
    [::env ::original-expression ::problem-type ::message-params => nil?]
-   (record-info! env {::problem-type problem-type
+   (record-info! env {::problem-type        problem-type
                       ::original-expression original-expression
-                      ::message-params message-params}))
+                      ::message-params      message-params}))
   ([env info]
    [::env (s/keys :req [::problem-type ::original-expression]) => nil?]
    (record-problem! env info)

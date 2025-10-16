@@ -8,12 +8,11 @@
 
 (ns com.fulcrologicpro.clojure.tools.reader.impl.commons
   (:refer-clojure :exclude [char])
-  (:require [com.fulcrologicpro.clojure.tools.reader.reader-types :refer [peek-char read-char]]
-            [com.fulcrologicpro.clojure.tools.reader.impl.errors :refer [reader-error]]
-            [com.fulcrologicpro.clojure.tools.reader.impl.utils :refer [numeric? newline? char]])
+  (:require [com.fulcrologicpro.clojure.tools.reader.impl.errors :refer [reader-error]]
+            [com.fulcrologicpro.clojure.tools.reader.impl.utils :refer [newline? numeric?]]
+            [com.fulcrologicpro.clojure.tools.reader.reader-types :refer [peek-char read-char]])
   (:import (clojure.lang BigInt Numbers)
-           (java.util.regex Pattern Matcher)
-           java.lang.reflect.Constructor))
+           (java.util.regex Matcher Pattern)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; helpers
@@ -23,8 +22,8 @@
   "Checks whether the reader is at the start of a number literal"
   [reader initch]
   (or (numeric? initch)
-      (and (or (identical? \+ initch) (identical?  \- initch))
-           (numeric? (peek-char reader)))))
+    (and (or (identical? \+ initch) (identical? \- initch))
+      (numeric? (peek-char reader)))))
 
 (defn read-past
   "Read until first character that doesn't match pred, returning
@@ -51,13 +50,13 @@
   [^Matcher m]
   (if (.group m 2)
     (if (.group m 8) 0N 0)
-    (let [negate? (= "-" (.group m 1))
-          a (cond
-             (.group m 3) [(.group m 3) 10]
-             (.group m 4) [(.group m 4) 16]
-             (.group m 5) [(.group m 5) 8]
-             (.group m 7) [(.group m 7) (Integer/parseInt (.group m 6))]
-             :else        [nil nil])
+    (let [negate?   (= "-" (.group m 1))
+          a         (cond
+                      (.group m 3) [(.group m 3) 10]
+                      (.group m 4) [(.group m 4) 16]
+                      (.group m 5) [(.group m 5) 8]
+                      (.group m 7) [(.group m 7) (Integer/parseInt (.group m 6))]
+                      :else [nil nil])
           ^String n (a 0)]
       (when n
         (let [bn (BigInteger. n (int (a 1)))
@@ -70,13 +69,13 @@
 
 (defn- match-ratio
   [^Matcher m]
-  (let [^String numerator (.group m 1)
+  (let [^String numerator   (.group m 1)
         ^String denominator (.group m 2)
-        numerator (if (.startsWith numerator "+")
-                    (subs numerator 1)
-                    numerator)]
-    (/ (-> numerator   BigInteger. BigInt/fromBigInteger Numbers/reduceBigInt)
-       (-> denominator BigInteger. BigInt/fromBigInteger Numbers/reduceBigInt))))
+        numerator           (if (.startsWith numerator "+")
+                              (subs numerator 1)
+                              numerator)]
+    (/ (-> numerator BigInteger. BigInt/fromBigInteger Numbers/reduceBigInt)
+      (-> denominator BigInteger. BigInt/fromBigInteger Numbers/reduceBigInt))))
 
 (defn- match-float
   [^String s ^Matcher m]
@@ -99,22 +98,22 @@
   "Parses a string into a vector of the namespace and symbol"
   [^String token]
   (when-not (or (= "" token)
-                (.endsWith token ":")
-                (.startsWith token "::"))
+              (.endsWith token ":")
+              (.startsWith token "::"))
     (let [ns-idx (.indexOf token "/")]
       (if-let [^String ns (and (pos? ns-idx)
-                               (subs token 0 ns-idx))]
+                            (subs token 0 ns-idx))]
         (let [ns-idx (inc ns-idx)]
           (when-not (== ns-idx (count token))
             (let [sym (subs token ns-idx)]
               (when (and (not (numeric? (nth sym 0)))
-                         (not (= "" sym))
-                         (not (.endsWith ns ":"))
-                         (or (= sym "/")
-                             (== -1 (.indexOf sym "/"))))
+                      (not (= "" sym))
+                      (not (.endsWith ns ":"))
+                      (or (= sym "/")
+                        (== -1 (.indexOf sym "/"))))
                 [ns sym]))))
         (when (or (= token "/")
-                  (== -1 (.indexOf token "/")))
+                (== -1 (.indexOf token "/")))
           [nil token])))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

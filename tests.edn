@@ -1,26 +1,11 @@
 #kaocha/v1
-{:tests    [{:id           :unit
-             :ns-patterns  ["-test$" "-spec$"]
-             :test-paths   ["src/test"]
-             :skip-meta    [:integration]
-             :source-paths ["src/main"]}
-            {:id           :integration
-             :ns-patterns  ["-test$" "-spec$"]
-             :test-paths   ["src/test"]
-             :focus-meta   [:integration]
-             :skip-meta    [:unit]
-             :source-paths ["src/main"]}
-            {:id           :test-case
-             :ns-patterns  ["^test-cases"]
-             :test-paths   ["src/test_cases"]
-             :source-paths ["src/main" "src/test"]
-             :focus-meta   [:test-case]
-             :skip-meta    [:unit :integration]}]
- ;:reporter [kaocha.report/documentation]
- :reporter [fulcro-spec.reporters.terminal/fulcro-report]
- :plugins  []
- :capture-output? false
- :bindings {kaocha.stacktrace/*stacktrace-filters*
-            ["java.lang." "java.util.concurrent."
-             "clojure.test$" "clojure.lang." "clojure.core" "clojure.main" "clojure.walk"
-             "orchestra." "kaocha." "lambdaisland.tools.namespace.reload"]}}
+        {:tests           [{:id           :unit
+                            :ns-patterns  ["-test$" "-spec$"]
+                            :test-paths   ["src/test"]
+                            :source-paths ["src/main"]}]
+         :plugins         []
+         :capture-output? true
+         :bindings        {kaocha.stacktrace/*stacktrace-filters*
+                           ["java.lang." "java.util.concurrent."
+                            "clojure.test$" "clojure.lang." "clojure.core" "clojure.main" "clojure.walk"
+                            "orchestra." "kaocha." "lambdaisland.tools.namespace.reload"]}}

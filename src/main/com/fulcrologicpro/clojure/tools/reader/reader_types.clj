@@ -6,13 +6,13 @@
 ;;   the terms of this license.
 ;;   You must not remove this notice, or any other, from this software.
 
-(ns ^{:doc "Protocols and default Reader types implementation"
+(ns ^{:doc    "Protocols and default Reader types implementation"
       :author "Bronsa"}
-    com.fulcrologicpro.clojure.tools.reader.reader-types
+  com.fulcrologicpro.clojure.tools.reader.reader-types
   (:refer-clojure :exclude [char read-line])
-  (:require [com.fulcrologicpro.clojure.tools.reader.impl.utils :refer [char whitespace? newline? make-var]])
+  (:require [com.fulcrologicpro.clojure.tools.reader.impl.utils :refer [char make-var newline? whitespace?]])
   (:import clojure.lang.LineNumberingPushbackReader
-           (java.io InputStream BufferedReader Closeable)))
+           (java.io BufferedReader Closeable InputStream)))
 
 (defmacro ^:private update! [what f]
   (list 'set! what (list f what)))
@@ -44,7 +44,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype StringReader
-    [^String s ^long s-len ^:unsynchronized-mutable ^long s-pos]
+  [^String s ^long s-len ^:unsynchronized-mutable ^long s-pos]
   Reader
   (read-char [reader]
     (when (> s-len s-pos)
@@ -77,20 +77,20 @@
     (.close is)))
 
 (deftype PushbackReader
-    [rdr ^"[Ljava.lang.Object;" buf ^long buf-len ^:unsynchronized-mutable ^long buf-pos]
+  [rdr ^"[Ljava.lang.Object;" buf ^long buf-len ^:unsynchronized-mutable ^long buf-pos]
   Reader
   (read-char [reader]
     (char
-     (if (< buf-pos buf-len)
-       (let [r (aget buf buf-pos)]
-         (update! buf-pos inc)
-         r)
-       (read-char rdr))))
+      (if (< buf-pos buf-len)
+        (let [r (aget buf buf-pos)]
+          (update! buf-pos inc)
+          r)
+        (read-char rdr))))
   (peek-char [reader]
     (char
-     (if (< buf-pos buf-len)
-       (aget buf buf-pos)
-       (peek-char rdr))))
+      (if (< buf-pos buf-len)
+        (aget buf buf-pos)
+        (peek-char rdr))))
   IPushbackReader
   (unread [reader ch]
     (when ch
@@ -103,17 +103,17 @@
       (.close ^Closeable rdr))))
 
 (deftype IndexingPushbackReader
-    [rdr ^:unsynchronized-mutable ^long line ^:unsynchronized-mutable ^long column
-     ^:unsynchronized-mutable line-start? ^:unsynchronized-mutable prev
-     ^:unsynchronized-mutable ^long prev-column file-name
-     ^:unsynchronized-mutable normalize?]
+  [rdr ^:unsynchronized-mutable ^long line ^:unsynchronized-mutable ^long column
+   ^:unsynchronized-mutable line-start? ^:unsynchronized-mutable prev
+   ^:unsynchronized-mutable ^long prev-column file-name
+   ^:unsynchronized-mutable normalize?]
   Reader
   (read-char [reader]
     (when-let [ch (read-char rdr)]
       (let [ch (if normalize?
                  (do (set! normalize? false)
                      (if (or (identical? \newline ch)
-                             (identical? \formfeed ch))
+                           (identical? \formfeed ch))
                        (read-char rdr)
                        ch))
                  ch)
@@ -189,10 +189,10 @@
 
 (extend LineNumberingPushbackReader
   IndexingReader
-  {:get-line-number (fn [rdr] (.getLineNumber ^LineNumberingPushbackReader rdr))
+  {:get-line-number   (fn [rdr] (.getLineNumber ^LineNumberingPushbackReader rdr))
    :get-column-number (fn [rdr]
                         (.getColumnNumber ^LineNumberingPushbackReader rdr))
-   :get-file-name (constantly nil)})
+   :get-file-name     (constantly nil)})
 
 (defprotocol ReaderCoercer
   (to-rdr [rdr]))
@@ -261,17 +261,17 @@
     (.deleteCharAt buffer (dec (.length buffer)))))
 
 (deftype SourceLoggingPushbackReader
-    [rdr ^:unsynchronized-mutable ^long line ^:unsynchronized-mutable ^long column
-     ^:unsynchronized-mutable line-start? ^:unsynchronized-mutable prev
-     ^:unsynchronized-mutable ^long prev-column file-name source-log-frames
-     ^:unsynchronized-mutable normalize?]
+  [rdr ^:unsynchronized-mutable ^long line ^:unsynchronized-mutable ^long column
+   ^:unsynchronized-mutable line-start? ^:unsynchronized-mutable prev
+   ^:unsynchronized-mutable ^long prev-column file-name source-log-frames
+   ^:unsynchronized-mutable normalize?]
   Reader
   (read-char [reader]
     (when-let [ch (read-char rdr)]
       (let [ch (if normalize?
                  (do (set! normalize? false)
                      (if (or (identical? \newline ch)
-                             (identical? \formfeed ch))
+                           (identical? \formfeed ch))
                        (read-char rdr)
                        ch))
                  ch)
@@ -315,9 +315,9 @@
 
 (defn log-source*
   [reader f]
-  (let [frame (.source-log-frames ^SourceLoggingPushbackReader reader)
+  (let [frame                 (.source-log-frames ^SourceLoggingPushbackReader reader)
         ^StringBuilder buffer (:buffer @frame)
-        new-frame (assoc-in @frame [:offset] (.length buffer))]
+        new-frame             (assoc-in @frame [:offset] (.length buffer))]
     (with-bindings {frame new-frame}
       (let [ret (f)]
         (if (instance? clojure.lang.IObj ret)
@@ -333,11 +333,11 @@
   "Returns true if the reader satisfies IndexingReader"
   [rdr]
   (or (instance? com.fulcrologicpro.clojure.tools.reader.reader_types.IndexingReader rdr)
-      (instance? LineNumberingPushbackReader rdr)
-      (and (not (instance? com.fulcrologicpro.clojure.tools.reader.reader_types.PushbackReader rdr))
-           (not (instance? com.fulcrologicpro.clojure.tools.reader.reader_types.StringReader rdr))
-           (not (instance? com.fulcrologicpro.clojure.tools.reader.reader_types.InputStreamReader rdr))
-           (get (:impls IndexingReader) (class rdr)))))
+    (instance? LineNumberingPushbackReader rdr)
+    (and (not (instance? com.fulcrologicpro.clojure.tools.reader.reader_types.PushbackReader rdr))
+      (not (instance? com.fulcrologicpro.clojure.tools.reader.reader_types.StringReader rdr))
+      (not (instance? com.fulcrologicpro.clojure.tools.reader.reader_types.InputStreamReader rdr))
+      (get (:impls IndexingReader) (class rdr)))))
 
 (defn string-reader
   "Creates a StringReader from a given string"
@@ -376,7 +376,7 @@
    (indexing-push-back-reader s-or-rdr buf-len nil))
   ([s-or-rdr buf-len file-name]
    (IndexingPushbackReader.
-    (to-pbr s-or-rdr buf-len) 1 1 true nil 0 file-name false)))
+     (to-pbr s-or-rdr buf-len) 1 1 true nil 0 file-name false)))
 
 (defn ^Closeable source-logging-push-back-reader
   "Creates a SourceLoggingPushbackReader from a given string or PushbackReader"
@@ -386,24 +386,24 @@
    (source-logging-push-back-reader s-or-rdr buf-len nil))
   ([s-or-rdr buf-len file-name]
    (SourceLoggingPushbackReader.
-    (to-pbr s-or-rdr buf-len)
-    1
-    1
-    true
-    nil
-    0
-    file-name
-    (doto (make-var)
-      (alter-var-root (constantly {:buffer (StringBuilder.)
-                                   :offset 0})))
-    false)))
+     (to-pbr s-or-rdr buf-len)
+     1
+     1
+     true
+     nil
+     0
+     file-name
+     (doto (make-var)
+       (alter-var-root (constantly {:buffer (StringBuilder.)
+                                    :offset 0})))
+     false)))
 
 (defn read-line
   "Reads a line from the reader or from *in* if no reader is specified"
   ([] (read-line *in*))
   ([rdr]
    (if (or (instance? LineNumberingPushbackReader rdr)
-           (instance? BufferedReader rdr))
+         (instance? BufferedReader rdr))
      (binding [*in* rdr]
        (clojure.core/read-line))
      (loop [c (read-char rdr) s (StringBuilder.)]
@@ -420,7 +420,7 @@
   logging context. Otherwise, execute body, returning the result."
   [reader & body]
   `(if (and (source-logging-reader? ~reader)
-            (not (whitespace? (peek-char ~reader))))
+         (not (whitespace? (peek-char ~reader))))
      (log-source* ~reader (^:once fn* [] ~@body))
      (do ~@body)))
 

@@ -18,10 +18,10 @@
     [com.fulcrologic.copilot.artifacts :as cp.art]))
 
 (defn analyze:get-in [env [this-sym m path & [dflt]]]
-  (let [get-in-td   (cp.art/external-function-detail env this-sym)
-        map-td      (cp.ana.disp/-analyze! env m)
-        path-td     (cp.ana.disp/-analyze! env path)
-        dflt-td     (when dflt (cp.ana.disp/-analyze! env dflt)) ]
+  (let [get-in-td (cp.art/external-function-detail env this-sym)
+        map-td    (cp.ana.disp/-analyze! env m)
+        path-td   (cp.ana.disp/-analyze! env path)
+        dflt-td   (when dflt (cp.ana.disp/-analyze! env dflt))]
     (let [env (cp.art/update-location env (meta path))]
       (doseq [sample-path (::cp.art/samples path-td)]
         (reduce (fn [samples ?k]
@@ -40,6 +40,6 @@
                      (cp.fnt/analyze-function-call! env get-in-td
                        (cond-> [map-td {::cp.art/samples #{sample-path}}]
                          dflt (conj dflt-td))))))
-         (::cp.art/samples path-td))) }))
+         (::cp.art/samples path-td)))}))
 
 (defmethod cp.ana.disp/analyze-mm 'clojure.core/get-in [env sexpr] (analyze:get-in env sexpr))

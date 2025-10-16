@@ -15,7 +15,7 @@
                [goog.string.format]])
     [clojure.string :as str]
     [com.fulcrologic.copilot.artifacts :as cp.art]
-    [com.fulcrologicpro.com.rpl.specter :as $]
+    [com.rpl.specter :as $]
     [com.fulcrologicpro.taoensso.timbre :as log]))
 
 (defn html-escape [s]
@@ -70,6 +70,37 @@
 (defn format-expr [problem]
   (::cp.art/original-expression problem))
 
+(defn format-condition-expression [expr]
+  "Format a condition expression, stripping meta-wrapper if present"
+  (if (and (map? expr) (:com.fulcrologic.copilot/meta-wrapper? expr))
+    (pr-str (:value expr))
+    (pr-str expr)))
+
+(defn format-path-condition [condition]
+  "Format a single path condition into a readable string"
+  (let [{::cp.art/keys [condition-expression branch determined? condition-value]} condition
+        cond-str   (format-condition-expression condition-expression)
+        branch-str (case branch
+                     :then "then"
+                     :else "else"
+                     (str branch))]
+    (if determined?
+      (format "%s → %s" cond-str branch-str)
+      (format "%s → %s (undetermined)" cond-str branch-str))))
+
+(defn format-path [path]
+  "Format an execution path's conditions"
+  (let [{::cp.art/keys [conditions]} path]
+    (str/join " AND " (map format-path-condition conditions))))
+
+(defn format-failing-paths [failing-paths]
+  "Format multiple failing paths for display"
+  (case (count failing-paths)
+    0 nil
+    1 (str " when " (format-path (first failing-paths)))
+    (str " on " (count failing-paths) " paths:\n  • "
+      (str/join "\n  • " (map format-path failing-paths)))))
+
 (defmethod format-problem-mm :error/value-failed-spec
   [problem params]
   {:message (format "The expression %s does not conform to the declared spec %s."
@@ -82,12 +113,19 @@
 
 (defmethod format-problem-mm :error/bad-return-value
   [problem params]
-  {:message (format "The Return spec is %s, but it is possible to return a value like %s."
-              (format-expected problem)
-              (format-actual problem))
-   :tooltip (format "The function's return spec is declared <b>%s</b><br/>It is possible for it to return a value like <b>%s</b>"
-              (html-escape (format-expected problem))
-              (html-escape (format-actual problem)))})
+  (let [failing-paths  (get-in problem [::cp.art/actual ::cp.art/failing-paths])
+        path-context   (when (seq failing-paths) (format-failing-paths failing-paths))
+        message-suffix (or path-context ".")]
+    {:message (format "The Return spec is %s, but it is possible to return a value like %s%s"
+                (format-expected problem)
+                (format-actual problem)
+                message-suffix)
+     :tooltip (format "The function's return spec is declared <b>%s</b><br/>It is possible for it to return a value like <b>%s</b>%s"
+                (html-escape (format-expected problem))
+                (html-escape (format-actual problem))
+                (if path-context
+                  (str "<br/>" (html-escape path-context))
+                  ""))}))
 
 (defmethod format-problem-mm :error/sample-generator-failed
   [problem params]

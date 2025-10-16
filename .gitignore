@@ -60,3 +60,4 @@ resources/public/workspaces
 .copilot
 docs/user-guide/UserGuide.html
 docs/user-guide/images/copilot-arch.png
+.clojure-mcp

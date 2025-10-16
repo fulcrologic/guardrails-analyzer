@@ -1,11 +1,11 @@
 (ns com.fulcrologic.copilot.daemon.server.connection-management
   (:require
-    com.wsscode.pathom.connect
-    com.wsscode.pathom.core
-    [com.fulcrologicpro.fulcro.networking.websocket-protocols :as wsp]
     [com.fulcrologic.copilot.daemon.server.bindings :as bindings]
     [com.fulcrologic.copilot.daemon.server.problems :as problems]
+    [com.fulcrologicpro.fulcro.networking.websocket-protocols :as wsp]
     [com.fulcrologicpro.taoensso.timbre :as log]
+    [com.wsscode.pathom.connect]
+    [com.wsscode.pathom.core]
     [mount.core :refer [defstate]]))
 
 (defstate connected-clients :start (atom #{}))

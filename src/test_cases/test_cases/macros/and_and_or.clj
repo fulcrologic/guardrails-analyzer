@@ -1,12 +1,6 @@
 (ns test-cases.macros.and-and-or
   (:require
-    [clojure.spec.alpha :as s]
-    [clojure.test.check.generators :as gen]
-    [com.fulcrologic.copilot.artifacts :as cp.art]
-    [com.fulcrologic.copilot.test-cases-runner :refer [deftc]]
-    [com.fulcrologic.copilot.test-checkers :as tc]
-    [com.fulcrologic.guardrails.core :refer [>defn => ?]]
-    [fulcro-spec.check :as _]))
+    [com.fulcrologic.guardrails.core :refer [=> >defn ?]]))
 
 (>defn or-type [n m o]
   [(? int?) (? boolean?) (? string?) => boolean?]

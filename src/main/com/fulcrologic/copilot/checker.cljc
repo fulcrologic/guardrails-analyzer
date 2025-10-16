@@ -11,26 +11,26 @@
 
 (ns com.fulcrologic.copilot.checker
   (:require
-    clojure.test.check.generators
-    com.fulcrologic.copilot.analysis.fdefs.clojure-core
-    com.fulcrologic.copilot.analysis.fdefs.clojure-spec-alpha
-    com.fulcrologic.copilot.analysis.fdefs.clojure-string
+    [clojure.test.check.generators]
     [com.fulcrologic.copilot.analysis.analyzer :as cp.ana]
+    [com.fulcrologic.copilot.analysis.fdefs.clojure-core]
+    [com.fulcrologic.copilot.analysis.fdefs.clojure-spec-alpha]
+    [com.fulcrologic.copilot.analysis.fdefs.clojure-string]
     [com.fulcrologic.copilot.analysis.spec :as cp.spec]
+    [com.fulcrologic.copilot.analytics :as cp.analytics]
     [com.fulcrologic.copilot.artifacts :as cp.art]
-    [com.fulcrologic.copilot.prepared-check :refer [prepared-check]]
     [com.fulcrologic.copilot.forms :as cp.forms]
+    [com.fulcrologic.copilot.prepared-check :refer [prepared-check]]
     [com.fulcrologic.copilot.ui.binding-formatter :refer [format-bindings]]
     [com.fulcrologic.copilot.ui.problem-formatter :refer [format-problems]]
-    [com.fulcrologicpro.com.rpl.specter :as $]
     [com.fulcrologicpro.taoensso.timbre :as log]
-    [com.fulcrologic.copilot.analytics :as cp.analytics]))
+    [com.rpl.specter :as $]))
 
 (defn check-form! [env form]
   (try (cp.ana/analyze! env form)
-    (catch #?(:clj Throwable :cljs :default) t
-      (cp.art/record-error! env form :error/failed-to-analyze-form)
-      (log/error t "Failed to analyze form:" form))))
+       (catch #?(:clj Throwable :cljs :default) t
+         (cp.art/record-error! env form :error/failed-to-analyze-form)
+         (log/error t "Failed to analyze form:" form))))
 
 (defn check!
   ([msg on-done]
@@ -45,11 +45,11 @@
        (cp.spec/with-empty-cache
          #?(:cljs (fn check-forms! [[form & forms]]
                     (if-not form (on-done)
-                      (js/setTimeout
-                        (fn []
-                          (check-form! env form)
-                          (check-forms! forms))
-                        100)))
+                                 (js/setTimeout
+                                   (fn []
+                                     (check-form! env form)
+                                     (check-forms! forms))
+                                   100)))
             :clj  (fn [forms]
                     (doseq [form forms]
                       (check-form! env form))
@@ -70,7 +70,7 @@
       ::cp.art/literal-value ::cp.art/original-expression)
     (assoc ::cp.art/samples (set (map pr-str (::cp.art/samples p))))
     (assoc ::cp.art/expression
-      (pr-str (::cp.art/original-expression p)))))
+           (pr-str (::cp.art/original-expression p)))))
 
 (defn- transit-safe-problems [problems]
   ($/transform [$/ALL] encode-problem problems))

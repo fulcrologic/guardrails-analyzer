@@ -5,8 +5,8 @@
     [com.fulcrologic.copilot.daemon.server.problems :refer [encode-for]]
     [com.fulcrologic.copilot.test-checkers :as tc]
     [com.fulcrologic.copilot.test-fixtures :as tf]
-    [fulcro-spec.core :refer [specification assertions component]]
-    [fulcro-spec.check :as _]))
+    [fulcro-spec.check :as _]
+    [fulcro-spec.core :refer [assertions component specification]]))
 
 (tf/use-fixtures :once tf/with-default-test-logging-config)
 

@@ -17,7 +17,7 @@
     [com.fulcrologic.copilot.analysis.sampler :as cp.sampler]
     [com.fulcrologic.copilot.analysis.spec :as cp.spec]
     [com.fulcrologic.copilot.artifacts :as cp.art]
-    [com.fulcrologic.guardrails.core :as gr :refer [>defn =>]]))
+    [com.fulcrologic.guardrails.core :refer [=> >defn]]))
 
 (>defn bind-type-desc
   [env typename clojure-spec err]
@@ -43,18 +43,38 @@
   ([env gspec {:as td ::cp.art/keys [original-expression]}]
    [::cp.art/env ::cp.art/gspec ::cp.art/type-description => any?]
    (check-return-type! env gspec td original-expression))
-  ([env {::cp.art/keys [return-type return-spec]} {::cp.art/keys [samples]} original-expression]
+  ([env {::cp.art/keys [return-type return-spec]} type-description original-expression]
    [::cp.art/env ::cp.art/gspec ::cp.art/type-description ::cp.art/original-expression => any?]
-   (let [sample-failure (some #(when-not (cp.spec/valid? env return-spec %)
-                                 {:failing-case %})
-                          samples)]
-     (when (contains? sample-failure :failing-case)
-       (let [sample-failure (:failing-case sample-failure)]
+   (if (cp.art/path-based? type-description)
+     ;; Path-based: validate each path separately and track which fail
+     (let [paths         (::cp.art/execution-paths type-description)
+           failing-paths (keep (fn [path]
+                                 (let [samples        (::cp.art/samples path)
+                                       failing-sample (some #(when-not (cp.spec/valid? env return-spec %)
+                                                               %)
+                                                        samples)]
+                                   (when failing-sample
+                                     (assoc path ::cp.art/failing-sample failing-sample))))
+                           paths)]
+       (when (seq failing-paths)
          (cp.art/record-error! env
            {::cp.art/original-expression original-expression
-            ::cp.art/actual              {::cp.art/failing-samples #{sample-failure}}
+            ::cp.art/actual              {::cp.art/failing-samples (set (map ::cp.art/failing-sample failing-paths))
+                                          ::cp.art/failing-paths   failing-paths}
             ::cp.art/expected            #::cp.art{:spec return-spec :type return-type}
-            ::cp.art/problem-type        :error/bad-return-value}))))))
+            ::cp.art/problem-type        :error/bad-return-value})))
+     ;; Non-path-based: validate all samples together (backward compatible)
+     (let [samples        (::cp.art/samples type-description)
+           sample-failure (some #(when-not (cp.spec/valid? env return-spec %)
+                                   {:failing-case %})
+                            samples)]
+       (when (contains? sample-failure :failing-case)
+         (let [sample-failure (:failing-case sample-failure)]
+           (cp.art/record-error! env
+             {::cp.art/original-expression original-expression
+              ::cp.art/actual              {::cp.art/failing-samples #{sample-failure}}
+              ::cp.art/expected            #::cp.art{:spec return-spec :type return-type}
+              ::cp.art/problem-type        :error/bad-return-value})))))))
 
 (>defn validate-argtypes!?
   [env {::cp.art/keys [arglist gspec]} argtypes]
@@ -69,7 +89,7 @@
         (reset! failed? true)
         (cp.art/record-error! env
           #::cp.art{:original-expression (map ::cp.art/original-expression argtypes)
-                     :problem-type        :error/invalid-function-arguments-count}))
+                    :problem-type        :error/invalid-function-arguments-count}))
       (when-not @failed?
         (let [[syms specials] (split-with (complement #{:as '&}) arglist)]
           (doseq [[arg-sym argument-type argument-spec [samples original-expression]]
@@ -102,9 +122,9 @@
             (reset! failed? true)
             (cp.art/record-error! env
               #::cp.art{:original-expression (map ::cp.art/original-expression rest-argtypes)
-                         :actual              {::cp.art/failing-samples #{sample-rest-arguments}}
-                         :expected            #::cp.art{:spec args-spec :type args-type}
-                         :problem-type        :error/function-arguments-failed-spec}))))
+                        :actual              {::cp.art/failing-samples #{sample-rest-arguments}}
+                        :expected            #::cp.art{:spec args-spec :type args-type}
+                        :problem-type        :error/function-arguments-failed-spec}))))
       (when (and (not @failed?) (seq argtypes))
         (doseq [sample-arguments (apply map vector (map get-samples argtypes))
                 argument-pred    argument-predicates]
@@ -139,10 +159,10 @@
           {::cp.art/keys [return-type return-spec]} gspec
           function-type #::cp.art{:type return-type :spec return-spec}]
       (assoc function-type ::cp.art/samples
-        (if (validate-argtypes!? env arity argtypes)
-          (cp.sampler/sample! env function argtypes)
-          (cp.sampler/try-sampling! env (cp.spec/generator env return-spec)
-            {::cp.art/original-expression function}))))))
+                           (if (validate-argtypes!? env arity argtypes)
+                             (cp.sampler/sample! env function argtypes)
+                             (cp.sampler/try-sampling! env (cp.spec/generator env return-spec)
+                               {::cp.art/original-expression function}))))))
 
 (>defn sample->type-description [sample]
   [any? => ::cp.art/type-description]

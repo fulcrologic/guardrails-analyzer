@@ -1,13 +1,14 @@
 (ns com.fulcrologic.copilot.analysis.sampler-spec
   (:require
     [clojure.test.check.generators :as gen]
-    [com.fulcrologic.copilot.artifacts :as cp.art]
     [com.fulcrologic.copilot.analysis.analyzer.dispatch :as cp.ana.disp]
     [com.fulcrologic.copilot.analysis.sampler :as cp.sampler]
-    [com.fulcrologic.copilot.test-fixtures :as tf]
+    [com.fulcrologic.copilot.artifacts :as cp.art]
     [com.fulcrologic.copilot.test-checkers :as tc]
+    [com.fulcrologic.copilot.test-fixtures :as tf]
     [fulcro-spec.check :as _ :refer [checker]]
-    [fulcro-spec.core :refer [specification component assertions when-mocking]]))
+    [fulcro-spec.core :refer [=> =check=> =throws=> assertions component
+                              specification when-mocking]]))
 
 (tf/use-fixtures :once tf/with-default-test-logging-config)
 
@@ -35,7 +36,7 @@
       (cp.sampler/convert-shorthand-metadata {::cp.sampler/sampler :pure :pure 4 :foo :bar})
       => {::cp.sampler/sampler ::cp.sampler/pure
           ::cp.sampler/pure    4
-          :foo                  :bar})))
+          :foo                 :bar})))
 
 (specification "derive-sampler-type"
   (assertions
@@ -76,10 +77,10 @@
       (cp.sampler/get-args env {::cp.art/samples #{123}})
       => #{123}
       (cp.sampler/get-args env {::cp.art/samples #{}
-                                 ::cp.art/fn-ref  identity})
+                                ::cp.art/fn-ref  identity})
       => [identity]
       (cp.sampler/get-args env {::cp.art/samples #{123}
-                                 ::cp.art/fn-ref  identity})
+                                ::cp.art/fn-ref  identity})
       => #{123})))
 
 (specification "samples-gen"
@@ -91,14 +92,14 @@
                  (_/seq-matches?*
                    [(_/is?* #{:a :b :c})]))
       (gen/sample (cp.sampler/args-gen env [#{:a :b :c}
-                                             #{1 2 3}]))
+                                            #{1 2 3}]))
       =check=> (_/every?*
                  (tc/of-length?* 2)
                  (_/seq-matches?*
                    [(_/is?* #{:a :b :c})
                     (_/is?* #{1 2 3})]))
       (gen/sample (cp.sampler/args-gen env [[identity]
-                                             #{:a :b :c}]))
+                                            #{:a :b :c}]))
       =check=> (_/every?*
                  (tc/of-length?* 2)
                  (_/seq-matches?*
@@ -160,10 +161,10 @@
     (component "map-like"
       (let [test-fn-type {::cp.art/fn-ref +
                           ::cp.art/arities
-                                           {:n {::cp.art/arglist '[& nums]
-                                                ::cp.art/gspec
-                                                                  {::cp.art/return-spec number?
-                                                                   ::cp.art/return-type "number?"}}}}]
+                          {:n {::cp.art/arglist '[& nums]
+                               ::cp.art/gspec
+                               {::cp.art/return-spec number?
+                                ::cp.art/return-type "number?"}}}}]
         (assertions
           (cp.sampler/map-like-args env
             [{::cp.art/samples #{[1 2 3]}}

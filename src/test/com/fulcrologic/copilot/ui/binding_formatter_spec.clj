@@ -1,10 +1,10 @@
 (ns com.fulcrologic.copilot.ui.binding-formatter-spec
   (:require
-    [com.fulcrologic.copilot.test-fixtures :as tf]
     [com.fulcrologic.copilot.analysis.analyze-test-utils :as cp.atu]
     [com.fulcrologic.copilot.artifacts :as cp.art]
+    [com.fulcrologic.copilot.test-fixtures :as tf]
     [com.fulcrologic.copilot.ui.binding-formatter :refer [format-bindings]]
-    [fulcro-spec.core :refer [specification assertions]]))
+    [fulcro-spec.core :refer [assertions specification]]))
 
 (tf/use-fixtures :once tf/with-default-test-logging-config)
 

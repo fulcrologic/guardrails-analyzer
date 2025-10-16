@@ -2,7 +2,7 @@
   (:require
     [com.fulcrologic.copilot.artifacts :as cp.art]
     [com.fulcrologic.copilot.test-cases-runner :refer [deftc]]
-    [com.fulcrologic.guardrails.core :refer [>defn =>]]))
+    [com.fulcrologic.guardrails.core :refer [=> >defn]]))
 
 (>defn t [] [=> keyword?]
   (let [k (if true :a :b)]; :problem/always-true.literal :binding/if.keyword

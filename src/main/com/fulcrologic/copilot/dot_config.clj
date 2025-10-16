@@ -24,7 +24,7 @@
 (def default-config {:logging/config {:min-level :info}})
 
 (defn show-create-config-dialog []
-  (let [options (to-array ["Yes" "No"])
+  (let [options    (to-array ["Yes" "No"])
         user-chose (JOptionPane/showOptionDialog
                      (doto (new JFrame)
                        (.setAlwaysOnTop true))
@@ -34,10 +34,10 @@
                      "Copilot: Enable Analytics?"
                      JOptionPane/DEFAULT_OPTION JOptionPane/QUESTION_MESSAGE
                      nil options nil)
-        config (merge default-config
-                 (case (get options user-chose false)
-                   "Yes" {:analytics? true}
-                   {}))]
+        config     (merge default-config
+                     (case (get options user-chose false)
+                       "Yes" {:analytics? true}
+                       {}))]
     (io/make-parents config-file)
     (spit config-file (pr-str config))
     config))

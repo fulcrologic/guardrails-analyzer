@@ -1,10 +1,10 @@
 (ns timesheets
   (:require
-    [clojure.string :as str]
+    [clojure.edn :as edn]
     [clojure.java.io :as io]
-    [clojure.test :refer [deftest are is]]
-    [clojure.tools.cli :refer [parse-opts]]
-    [clojure.edn :as edn])
+    [clojure.string :as str]
+    [clojure.test :refer [are deftest is]]
+    [clojure.tools.cli :refer [parse-opts]])
   (:gen-class)
   (:import
     (java.io File)))
@@ -12,7 +12,7 @@
 (defn military->decimal
   "Convert a time in military form to a decimal number."
   [tm]
-  (let [hrs  (int (/ tm 100))
+  (let [hrs (int (/ tm 100))
         mins (mod tm 100)]
     (+ hrs (/ mins 60.0))))
 
@@ -62,9 +62,9 @@
 
 (defn group-by-day [entries]
   (mapv (fn [[date values]]
-          {:date date
+          {:date        date
            :description (str/join " + " (map :description values))
-           :timespans (vec (mapcat :timespans values))})
+           :timespans   (vec (mapcat :timespans values))})
     (sort-by (comp #(str/split % #"\-") first)
       (group-by :date entries))))
 
@@ -74,22 +74,22 @@
       (if-not (.exists file)
         (throw (ex-info (str "Cannot read " f) {}))
         (let [file-content (-> file io/reader slurp)
-              entries      (edn/read-string file-content)
-              entries      (cond-> entries by-day (group-by-day))
+              entries (edn/read-string file-content)
+              entries (cond-> entries by-day (group-by-day))
               octal-values (seq (re-seq #"\D0\d\d\d\D" file-content))]
           (when octal-values
             (throw (ex-info (str "Octal value in time spans: " octal-values) {})))
           (let [output (atom [])
-                total  (reduce
-                         (fn [total {:as entry :keys [date description timespans]}]
-                           (validate-timespans! entry)
-                           (let [sum (sum-timespans timespans)]
-                             (swap! output conj
-                               (format "%-11.11s %-30.30s %6.2f  %s"
-                                 date description sum timespans))
-                             (+ total sum)))
-                         0
-                         entries)]
+                total (reduce
+                        (fn [total {:as entry :keys [date description timespans]}]
+                          (validate-timespans! entry)
+                          (let [sum (sum-timespans timespans)]
+                            (swap! output conj
+                              (format "%-11.11s %-30.30s %6.2f  %s"
+                                date description sum timespans))
+                            (+ total sum)))
+                        0
+                        entries)]
             (doseq [out @output] (println out))
             (println (format "\nTotal: %42.2f" total))))))))
 

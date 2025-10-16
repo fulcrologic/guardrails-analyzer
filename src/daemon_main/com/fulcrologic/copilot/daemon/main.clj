@@ -1,8 +1,8 @@
 (ns com.fulcrologic.copilot.daemon.main
   (:require
     [com.fulcrologic.copilot.daemon.logging]
-    [com.fulcrologic.copilot.daemon.server.http-server :refer [port-file]]
     [com.fulcrologic.copilot.daemon.lsp.core]
+    [com.fulcrologic.copilot.daemon.server.http-server :refer [port-file]]
     [com.fulcrologicpro.taoensso.timbre :as log]
     [mount.core :as mount])
   (:gen-class))

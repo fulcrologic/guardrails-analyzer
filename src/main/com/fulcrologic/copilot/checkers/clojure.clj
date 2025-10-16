@@ -13,7 +13,7 @@
   (:require
     [clojure.java.io :as io]
     [clojure.string :as str]
-    [clojure.tools.namespace.repl :as tools-ns :refer [refresh set-refresh-dirs]]
+    [clojure.tools.namespace.repl :refer [refresh set-refresh-dirs]]
     [com.fulcrologic.copilot.analytics :as cp.analytics]
     [com.fulcrologic.copilot.checker :as cp.checker]
     [com.fulcrologic.copilot.logging :as cp.log]
@@ -89,13 +89,13 @@
 (defn start
   "Start the checker.
 
-    :host - The IP where the checker daemon is running. Defaults to localhost.
-    :src-dirs - A vector of strings. The directories that contain source. If not supplied this assumes you will manually set-refresh-dirs from
+   :host - The IP where the checker daemon is running. Defaults to localhost.
+   :src-dirs - A vector of strings. The directories that contain source. If not supplied this assumes you will manually set-refresh-dirs from
               tools ns repl before starting the checker.
-    :main-ns - A symbol. The main ns of the software being checked. This ensures the tree of deps are required into the env at startup.
+   :main-ns - A symbol. The main ns of the software being checked. This ensures the tree of deps are required into the env at startup.
 
-    Sets an atom in this ns with the resulting websocket handler, so it can be shutdown for safe ns refresh.
-    "
+   Sets an atom in this ns with the resulting websocket handler, so it can be shutdown for safe ns refresh.
+   "
   ([] (start {}))
   ([{:keys [host src-dirs main-ns]
      :or   {host "localhost"}
@@ -147,7 +147,7 @@
     @(promise)))
 
 (comment
-  (start)
+  (start {:src-dirs ["src/dev" "src/main"]})
   )
 
 (defn -main [& args]

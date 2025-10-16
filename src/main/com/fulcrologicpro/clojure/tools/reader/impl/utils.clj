@@ -16,12 +16,12 @@
 (def <=clojure-1-7-alpha5
   (let [{:keys [minor qualifier]} *clojure-version*]
     (or (< minor 7)
-        (and (= minor 7)
-             (= "alpha"
-                (when qualifier
-                  (subs qualifier 0 (dec (count qualifier)))))
-             (<= (read-string (subs qualifier (dec (count qualifier))))
-                5)))))
+      (and (= minor 7)
+        (= "alpha"
+          (when qualifier
+            (subs qualifier 0 (dec (count qualifier)))))
+        (<= (read-string (subs qualifier (dec (count qualifier))))
+          5)))))
 
 (defmacro compile-when [cond & then]
   (when (eval cond)
@@ -78,7 +78,7 @@
   [ch]
   (when ch
     (or (Character/isWhitespace ^Character ch)
-        (identical? \,  ch))))
+      (identical? \, ch))))
 
 (defn numeric?
   "Checks whether a given character is numeric"
@@ -90,16 +90,16 @@
   "Checks whether the character is a newline"
   [c]
   (or (identical? \newline c)
-      (nil? c)))
+    (nil? c)))
 
 (defn desugar-meta
-  "Resolves syntactical sugar in metadata" ;; could be combined with some other desugar?
+  "Resolves syntactical sugar in metadata"                  ;; could be combined with some other desugar?
   [f]
   (cond
     (keyword? f) {f true}
-    (symbol? f)  {:tag f}
-    (string? f)  {:tag f}
-    :else        f))
+    (symbol? f) {:tag f}
+    (string? f) {:tag f}
+    :else f))
 
 (defn make-var
   "Returns an anonymous unbound Var"
@@ -109,7 +109,7 @@
 (defn namespace-keys [ns keys]
   (for [key keys]
     (if (or (symbol? key)
-            (keyword? key))
+          (keyword? key))
       (let [[key-ns key-name] ((juxt namespace name) key)
             ->key (if (symbol? key) symbol keyword)]
         (cond

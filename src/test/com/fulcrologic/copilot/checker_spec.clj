@@ -5,7 +5,7 @@
     [com.fulcrologic.copilot.checker :as cp.checker]
     [com.fulcrologic.copilot.test-fixtures :as tf]
     [fulcro-spec.check :as _]
-    [fulcro-spec.core :refer [specification assertions]]))
+    [fulcro-spec.core :refer [assertions specification]]))
 
 (tf/use-fixtures :once tf/with-default-test-logging-config)
 
