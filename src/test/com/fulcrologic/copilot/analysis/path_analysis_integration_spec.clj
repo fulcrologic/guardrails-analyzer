@@ -9,6 +9,7 @@
     [com.fulcrologic.copilot.artifacts :as cp.art]
     [com.fulcrologic.copilot.checker :as cp.checker]
     [com.fulcrologic.copilot.reader :as cp.reader]
+    [com.fulcrologic.copilot.test-data.path-analysis-problems]
     [com.fulcrologic.copilot.test-fixtures :as tf]
     [fulcro-spec.core :refer [=> assertions specification]]))
 

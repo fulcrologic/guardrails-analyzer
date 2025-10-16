@@ -4,7 +4,7 @@
     [com.fulcrologicpro.taoensso.timbre :as log]))
 
 (tools-ns/disable-reload!)
-(log/set-level! :fatal)
+(log/set-level! :debug)
 
 (apply tools-ns/set-refresh-dirs
   (log/spy :info :refresh-dirs
