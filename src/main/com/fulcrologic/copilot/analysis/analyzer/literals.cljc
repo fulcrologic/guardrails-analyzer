@@ -28,7 +28,8 @@
    ::regex         #::cp.art{:spec regex? :type "literal-regex"}
    ::number        #::cp.art{:spec number? :type "literal-number"}
    ::keyword       #::cp.art{:spec keyword? :type "literal-keyword"}
-   ::boolean       #::cp.art{:spec boolean :type "literal-boolean"}
+   ;; boolean? doesn't have a spec generator, so we omit :spec
+   ::boolean       #::cp.art{:type "literal-boolean"}
    ::map           #::cp.art{:spec map? :type "literal-map"}
    ::vector        #::cp.art{:spec vector? :type "literal-vector"}
    ::set           #::cp.art{:spec set? :type "literal-set"}
@@ -146,3 +147,6 @@
     (coll-td env ::set s samples)))
 
 (defmethod cp.ana.disp/analyze-mm :collection/set [env coll] (analyze-set! env coll))
+
+(defmethod cp.ana.disp/analyze-mm :literal/boolean [env sexpr]
+  (literal-td env ::boolean sexpr))

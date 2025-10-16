@@ -83,17 +83,17 @@
 
 ;; CONTEXT: Runs after each check command
 (defn gather-analytics! []
-  (try (let [now-s (now-in-seconds)
+  (try (let [now-s  (now-in-seconds)
              last-s @last-report-time]
          (when (or dev? (nil? last-s)
-                 (< report-interval (- now-s last-s) ))
-           (let [analytics {:license/number #?(:clj (cp.license/get-license-number) :cljs nil)
+                 (< report-interval (- now-s last-s)))
+           (let [analytics {:license/number  #?(:clj (cp.license/get-license-number) :cljs nil)
                             ::analyze-stats  @analyze-stats
                             ::problem-stats  @problem-stats
                             ::profiling-info @profiling-info
                             ::usage-stats    @usage-stats}]
              (reset! last-report-time now-s)
              analytics)))
-    (catch #?(:clj Exception :cljs :default) e
-      (log/error e "Failed to report analytics because:")
-      nil)))
+       (catch #?(:clj Exception :cljs :default) e
+         (log/error e "Failed to report analytics because:")
+         nil)))

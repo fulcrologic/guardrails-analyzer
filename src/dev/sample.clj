@@ -2,11 +2,10 @@
   ^{:guardrails/spec-system :my-spec-system}
   sample
   (:require
+    [clojure.spec.alpha :as s]
     [com.fulcrologic.copilot.analysis.fdefs.clojure-core]
-    [com.fulcrologic.guardrails.core :refer [>defn => | ?]]
-    [com.fulcrologic.guardrails.impl.externs :as externs]
-    [com.fulcrologic.guardrails.registry :as reg]
-    [clojure.spec.alpha :as s]))
+    [com.fulcrologic.guardrails.core :refer [=> >defn]]
+    [com.fulcrologic.guardrails.impl.externs :as externs]))
 
 (s/def :person/id int?)
 (s/def :person/first-name string?)
@@ -32,7 +31,7 @@
                                      :person/last-name
                                      :person/full-name
                                      :person/age])]
-   (let [person  {:person/id 1
+   (let [person  {:person/id         1
                   :person/first-name first-name
                   :person/last-name  "Kay"
                   :person/age        44}
@@ -46,7 +45,7 @@
                             :person/last-name
                             :person/full-name
                             :person/age])]
-   (let [person  {:person/id 1
+   (let [person  {:person/id         1
                   :person/first-name "Tony"
                   :person/last-name  "Kay"
                   :person/age        44}

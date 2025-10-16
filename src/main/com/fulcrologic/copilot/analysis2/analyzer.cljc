@@ -1,17 +1,17 @@
 (ns com.fulcrologic.copilot.analysis2.analyzer
   (:require
-    clojure.test.check.generators
-    [com.fulcrologic.guardrails.core :refer [>defn => |]]
-    com.fulcrologic.copilot.analysis.fdefs.clojure-core
-    com.fulcrologic.copilot.analysis.fdefs.clojure-spec-alpha
-    com.fulcrologic.copilot.analysis.fdefs.clojure-string
-    [com.fulcrologic.copilot.analysis2.purity :refer [pure?]]
+    [clojure.test.check.generators]
     [com.fulcrologic.copilot.analysis.analyzer.dispatch :as d]
-    [com.fulcrologic.copilot.analysis.function-type :as cp.fnt]
     [com.fulcrologic.copilot.analysis.analyzer.literals :as literals]
+    [com.fulcrologic.copilot.analysis.fdefs.clojure-core]
+    [com.fulcrologic.copilot.analysis.fdefs.clojure-spec-alpha]
+    [com.fulcrologic.copilot.analysis.fdefs.clojure-string]
+    [com.fulcrologic.copilot.analysis.function-type :as cp.fnt]
+    [com.fulcrologic.copilot.analysis.spec :as cp.spec]
+    [com.fulcrologic.copilot.analysis2.purity :refer [pure?]]
     [com.fulcrologic.copilot.artifacts :as cp.art]
     [com.fulcrologic.copilot.reader :as cp.reader]
-    [com.fulcrologic.copilot.analysis.spec :as cp.spec]
+    [com.fulcrologic.guardrails.core]
     [com.fulcrologicpro.taoensso.timbre :as log]))
 
 (declare check-form)

@@ -27,15 +27,15 @@
 (defn format-binding [bind]
   (-> bind
     (assoc ::cp.art/message
-      (str "Bindings for: " (::cp.art/original-expression bind)))
+           (str "Bindings for: " (::cp.art/original-expression bind)))
     (assoc ::cp.art/tooltip
-      (format
-        "<b>Type:</b>%s<br><b>Sample Values:</b><br>%s"
-        (some-> bind ::cp.art/type html-escape)
-        (str/join
-          (mapv (comp #(format "<pre>%s</pre>" (html-escape %))
-                  #(str/trim (with-out-str (pprint %))))
-            (::cp.art/samples bind)))))))
+           (format
+             "<b>Type:</b>%s<br><b>Sample Values:</b><br>%s"
+             (some-> bind ::cp.art/type html-escape)
+             (str/join
+               (mapv (comp #(format "<pre>%s</pre>" (html-escape %))
+                       #(str/trim (with-out-str (pprint %))))
+                 (::cp.art/samples bind)))))))
 
 (defn format-bindings [bindings]
   ($/transform [($/walker ::cp.art/samples)] format-binding bindings))

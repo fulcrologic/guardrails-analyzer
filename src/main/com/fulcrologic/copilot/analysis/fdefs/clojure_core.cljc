@@ -11,9 +11,9 @@
 
 (ns com.fulcrologic.copilot.analysis.fdefs.clojure-core
   (:require
-    clojure.test.check.generators
     [clojure.spec.alpha :as s]
-    [com.fulcrologic.guardrails.core :refer [>fdef >fspec => | ?]]
+    [clojure.test.check.generators]
+    [com.fulcrologic.guardrails.core :refer [=> >fdef >fspec ? |]]
     [com.fulcrologic.guardrails.utils :as utils]))
 
 ;; CONTEXT: Higher Order FunctionS
@@ -274,6 +274,9 @@
 
 (>fdef ^:pure clojure.core/odd?
   [n] [int? => boolean?])
+
+(>fdef ^:pure clojure.core/pos?
+  [n] [number? => boolean?])
 
 (>fdef clojure.core/pr
   [& xs] [(s/* any?) => nil?])

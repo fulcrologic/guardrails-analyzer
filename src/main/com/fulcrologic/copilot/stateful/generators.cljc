@@ -11,8 +11,8 @@
 
 (ns com.fulcrologic.copilot.stateful.generators
   (:require
-    [com.fulcrologic.copilot.stateful.rose-tree :as rose]
-    [clojure.test.check.generators :as gen]))
+    [clojure.test.check.generators :as gen]
+    [com.fulcrologic.copilot.stateful.rose-tree :as rose]))
 
 (def ^:private ^:dynamic *state* ::none)
 
@@ -20,37 +20,37 @@
   (when (= *state* ::none)
     (throw
       #?(:cljs (ex-info "A stateful generator was called within a non-stateful generator." {})
-         :clj (IllegalStateException. "A stateful generator was called within a non-stateful generator.")))))
+         :clj  (IllegalStateException. "A stateful generator was called within a non-stateful generator.")))))
 
 (defn stateful
   ([g] (stateful g {}))
   ([g initial-state]
    {:pre [(map? initial-state)]}
    (assoc g :gen
-     (fn [rnd size]
-       (cond
-         (= *state* ::none)
-         (let [scope initial-state
-               tree (binding [*state* scope]
-                      ((:gen g) rnd size))]
-           (binding [*state* scope]
-             (rose/bound-tree tree)))
+            (fn [rnd size]
+              (cond
+                (= *state* ::none)
+                (let [scope initial-state
+                      tree  (binding [*state* scope]
+                              ((:gen g) rnd size))]
+                  (binding [*state* scope]
+                    (rose/bound-tree tree)))
 
-         (empty? initial-state)
-         ((:gen g) rnd size)
+                (empty? initial-state)
+                ((:gen g) rnd size)
 
-         :else
-         (let [scope (merge *state* initial-state)]
-           (set! *state* scope)
-           ((:gen g) rnd size)))))))
+                :else
+                (let [scope (merge *state* initial-state)]
+                  (set! *state* scope)
+                  ((:gen g) rnd size)))))))
 
 (defn with-default-state [g default-state]
   (stateful
     (assoc g :gen
-      (fn [rnd size]
-        (let [scope (merge default-state *state*)]
-          (set! *state* scope)
-          ((:gen g) rnd size))))))
+             (fn [rnd size]
+               (let [scope (merge default-state *state*)]
+                 (set! *state* scope)
+                 ((:gen g) rnd size))))))
 
 (defn get-state []
   (gen/->Generator

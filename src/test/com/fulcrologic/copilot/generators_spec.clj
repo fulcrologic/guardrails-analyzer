@@ -2,9 +2,9 @@
   (:require
     [clojure.spec.alpha :as s]
     [clojure.spec.gen.alpha :as gen]
+    [com.fulcrologic.copilot.generators :as cp.gen]
     [fulcro-spec.check :as _]
-    [fulcro-spec.core :refer [specification assertions]]
-    [com.fulcrologic.copilot.generators :as cp.gen]))
+    [fulcro-spec.core :refer [=> =check=> assertions specification]]))
 
 (defprotocol FakeDB
   (query [this q]))

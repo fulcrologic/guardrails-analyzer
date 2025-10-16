@@ -13,14 +13,13 @@
   (:require
     [clojure.java.io :as io]
     [clojure.spec.alpha :as s]
+    [com.fulcrologic.copilot.artifacts :as cp.art]
     [com.fulcrologic.copilot.transit-handlers :as f.transit]
     [com.fulcrologicpro.clojure.tools.reader :as reader]
     [com.fulcrologicpro.clojure.tools.reader.reader-types :as readers]
-    [com.fulcrologic.copilot.artifacts :as cp.art]
-    [com.fulcrologicpro.taoensso.encore :as enc]
-    [com.fulcrologicpro.taoensso.timbre :as log])
+    [com.fulcrologicpro.taoensso.encore :as enc])
   (:import
-    (java.io PushbackReader File)))
+    (java.io File PushbackReader)))
 
 (defn default-data-reader [tag value]
   (f.transit/->UnknownTaggedValue tag value))

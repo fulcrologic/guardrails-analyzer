@@ -17,16 +17,16 @@
   [form]
   (let [x (cond
             (symbol? form) `(quote ~form)
-            (seq? form)    (list* 'list (map form-expression form))
+            (seq? form) (list* 'list (map form-expression form))
             (vector? form) (mapv form-expression form)
-            (map? form)    (reduce-kv
-                             (fn [acc k v]
-                               (assoc acc
-                                 (form-expression k)
-                                 (form-expression v)))
-                             {} form)
-            (set? form)    (set (map form-expression form))
-            :else          form)]
+            (map? form) (reduce-kv
+                          (fn [acc k v]
+                            (assoc acc
+                              (form-expression k)
+                              (form-expression v)))
+                          {} form)
+            (set? form) (set (map form-expression form))
+            :else form)]
     (if-let [m (meta form)]
       (list 'with-meta x m)
       x)))
@@ -39,8 +39,8 @@
     #_=> (apply list (map interpret (rest x)))
     (and (seq? x) (= 'quote (first x)) (symbol? (second x)))
     #_=> (symbol (second x))
-    (map? x)    (apply hash-map (mapcat interpret x))
+    (map? x) (apply hash-map (mapcat interpret x))
     (vector? x) (apply vector (map interpret x))
-    (list? x)   (apply list (map interpret x))
-    (set? x)    (set (map interpret x))
-    :else       x))
+    (list? x) (apply list (map interpret x))
+    (set? x) (set (map interpret x))
+    :else x))

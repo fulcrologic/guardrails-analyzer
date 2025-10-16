@@ -1,11 +1,11 @@
 (ns com.fulcrologicpro.fulcro.networking.websockets-client
   (:require
-    [clojure.core.async :as async :refer [go go-loop]]
+    [clojure.core.async :as async]
+    [com.fulcrologicpro.fulcro.algorithms.do-not-use :as futil]
     [com.fulcrologicpro.fulcro.algorithms.tx-processing :as txn]
     [com.fulcrologicpro.fulcro.networking.transit-packer :as tp]
     [com.fulcrologicpro.taoensso.sente :as sente]
-    [com.fulcrologicpro.taoensso.timbre :as log]
-    [com.fulcrologicpro.fulcro.algorithms.do-not-use :as futil])
+    [com.fulcrologicpro.taoensso.timbre :as log])
   (:import (clojure.lang Atom)))
 
 (defn- make-event-handler

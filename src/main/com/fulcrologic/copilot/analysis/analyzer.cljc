@@ -11,16 +11,16 @@
 
 (ns com.fulcrologic.copilot.analysis.analyzer
   (:require
-    com.fulcrologic.copilot.analysis.analyzer.functions
-    com.fulcrologic.copilot.analysis.analyzer.hofs
-    com.fulcrologic.copilot.analysis.analyzer.ifn
-    com.fulcrologic.copilot.analysis.analyzer.literals
-    com.fulcrologic.copilot.analysis.analyzer.macros
     [com.fulcrologic.copilot.analysis.analyzer.dispatch :as cp.ana.disp]
+    [com.fulcrologic.copilot.analysis.analyzer.functions]
+    [com.fulcrologic.copilot.analysis.analyzer.hofs]
+    [com.fulcrologic.copilot.analysis.analyzer.ifn]
+    [com.fulcrologic.copilot.analysis.analyzer.literals]
+    [com.fulcrologic.copilot.analysis.analyzer.macros]
     [com.fulcrologic.copilot.analysis.function-type :as cp.fnt]
     [com.fulcrologic.copilot.analytics :as cp.analytics]
     [com.fulcrologic.copilot.artifacts :as cp.art]
-    [com.fulcrologic.guardrails.core :as gr :refer [>defn =>]]
+    [com.fulcrologic.guardrails.core :refer [=> >defn]]
     [com.fulcrologicpro.taoensso.timbre :as log]))
 
 (>defn analyze!

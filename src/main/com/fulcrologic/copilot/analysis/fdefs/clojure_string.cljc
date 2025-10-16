@@ -11,9 +11,9 @@
 
 (ns com.fulcrologic.copilot.analysis.fdefs.clojure-string
   (:require
-    clojure.test.check.generators
     [clojure.spec.alpha :as s]
-    [com.fulcrologic.guardrails.core :refer [>fdef =>]]))
+    [clojure.test.check.generators]
+    [com.fulcrologic.guardrails.core :refer [=> >fdef]]))
 
 ;; TODO: Technically in Java these types are not right, but it is how most ppl use them. Also missing
 ;; CLJC spec for patterns/matchers

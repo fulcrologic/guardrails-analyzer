@@ -19,10 +19,10 @@
     (f.mut/with-server-side-mutation env 'daemon/check-current-file))
   (ok-action [{:keys [result state]}]
     (if (= :no-checkers
-            (get-in result [:body 'daemon/check-current-file :error]))
+          (get-in result [:body 'daemon/check-current-file :error]))
       (do (Thread/sleep 1000)
-        (f.comp/transact! APP
-          [(check-file params)]))
+          (f.comp/transact! APP
+            [(check-file params)]))
       (swap! state assoc :checking-file (:file params)))))
 
 (defmutation set-problems [{:keys [problems]}]
@@ -46,7 +46,7 @@
       (if-not (:checking-file @state)
         (f.comp/transact! APP [(check-file {:file tc-file})])
         (do (tcr/run-tc-file! report-failure! tc-file @state)
-          (System/exit 0))))))
+            (System/exit 0))))))
 
 (defn start [{:as opts :keys [port]}]
   (log/info ::started opts)

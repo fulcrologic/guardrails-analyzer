@@ -2,19 +2,19 @@
   (:require
     [com.fulcrologic.copilot.artifacts :as cp.art]
     [com.fulcrologic.copilot.test-cases-runner :refer [deftc]]
-    [com.fulcrologic.guardrails.core :refer [>defn =>]]
+    [com.fulcrologic.guardrails.core :refer [=> >defn]]
     [fulcro-spec.check :as _]))
 
 (>defn t [] [=> any?]
-  (-1 {}) ; :problem/number.not-an-ifn
+  (-1 {})                                                   ; :problem/number.not-an-ifn
   (let
-    [_ (:a {:a 0})   ; :binding/keyword
-     _ (:a {} 1)     ; :binding/keyword-with-default
-     _ ('a {'a 2}) ; :binding/symbol
-     _ ('a {} 3)    ; :binding/symbol-with-default
-     _ ({:kw 4} :kw) ; :binding/map
-     _ ({} :kw 5)    ; :binding/map-with-default
-     _ (#{6} 6)      ; :binding/set
+    [_ (:a {:a 0})                                          ; :binding/keyword
+     _ (:a {} 1)                                            ; :binding/keyword-with-default
+     _ ('a {'a 2})                                          ; :binding/symbol
+     _ ('a {} 3)                                            ; :binding/symbol-with-default
+     _ ({:kw 4} :kw)                                        ; :binding/map
+     _ ({} :kw 5)                                           ; :binding/map-with-default
+     _ (#{6} 6)                                             ; :binding/set
      ]))
 
 (deftc

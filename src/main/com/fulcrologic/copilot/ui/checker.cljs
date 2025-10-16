@@ -11,14 +11,14 @@
 
 (ns com.fulcrologic.copilot.ui.checker
   (:require
+    [com.fulcrologic.copilot.checker :as cp.checker]
+    [com.fulcrologic.copilot.ui.shared :as ui.shared]
     [com.fulcrologicpro.fulcro.application :as app]
     [com.fulcrologicpro.fulcro.components :as comp :refer [defsc]]
     [com.fulcrologicpro.fulcro.dom :as dom]
     [com.fulcrologicpro.fulcro.mutations :as f.m]
     [com.fulcrologicpro.fulcro.networking.websockets :as fws]
     [com.fulcrologicpro.fulcro.routing.dynamic-routing :as dr :refer [defrouter]]
-    [com.fulcrologic.copilot.checker :as cp.checker]
-    [com.fulcrologic.copilot.ui.shared :as ui.shared]
     [com.fulcrologicpro.taoensso.timbre :as log]))
 
 (f.m/defmutation register-checker [_]

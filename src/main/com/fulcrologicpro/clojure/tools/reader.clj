@@ -9,24 +9,23 @@
 (ns ^{:doc    "A clojure reader in clojure"
       :author "Bronsa"}
   com.fulcrologicpro.clojure.tools.reader
-  (:refer-clojure :exclude [read read-line read-string char read+string
-                            default-data-readers *default-data-reader-fn*
-                            *read-eval* *data-readers* *suppress-read*])
-  (:require [com.fulcrologicpro.clojure.tools.reader.reader-types :refer
-             [read-char unread peek-char indexing-reader? source-logging-push-back-reader source-logging-reader?
-              get-line-number get-column-number get-file-name string-push-back-reader log-source]]
-            [com.fulcrologicpro.clojure.tools.reader.impl.utils :refer :all] ;; [char ex-info? whitespace? numeric? desugar-meta]
+  (:refer-clojure :exclude [*data-readers* *default-data-reader-fn* *read-eval* *suppress-read* char
+                            default-data-readers read
+                            read+string read-line read-string])
+  (:require [com.fulcrologicpro.clojure.tools.reader.default-data-readers :as data-readers]
+            [com.fulcrologicpro.clojure.tools.reader.impl.commons :refer :all] ;; [char ex-info? whitespace? numeric? desugar-meta]
             [com.fulcrologicpro.clojure.tools.reader.impl.errors :as err]
-            [com.fulcrologicpro.clojure.tools.reader.impl.commons :refer :all]
-            [com.fulcrologicpro.clojure.tools.reader.default-data-readers :as data-readers]
-            [com.fulcrologicpro.taoensso.timbre :as log])
-  (:import (clojure.lang PersistentHashSet IMeta
-                         RT Symbol Reflector Var IObj
-                         PersistentVector IRecord Namespace)
+            [com.fulcrologicpro.clojure.tools.reader.impl.utils :refer :all]
+            [com.fulcrologicpro.clojure.tools.reader.reader-types :refer
+             [get-column-number get-file-name get-line-number indexing-reader? log-source peek-char
+              read-char source-logging-push-back-reader source-logging-reader? string-push-back-reader unread]])
+  (:import (clojure.lang IMeta IObj
+                         IRecord Namespace PersistentHashSet PersistentVector RT
+                         Reflector Var)
            com.fulcrologicpro.clojure.tools.reader.reader_types.SourceLoggingPushbackReader
            java.lang.reflect.Constructor
-           java.util.regex.Pattern
-           (java.util List LinkedList)))
+           (java.util LinkedList List)
+           java.util.regex.Pattern))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; helpers

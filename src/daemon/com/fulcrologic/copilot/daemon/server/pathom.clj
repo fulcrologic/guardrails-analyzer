@@ -76,7 +76,7 @@
     (let [{:keys [status] :as resp}
           (if (System/getProperty "dev")
             (do (log/debug "analytics:" analytics)
-              {:status 200})
+                {:status 200})
             (if (get dot-config :analytics? false)
               @(http/post "https://fulcrologic.com/analytics"
                  {:multipart [{:name "password" :content "!!!uploadenzie"}
@@ -86,7 +86,7 @@
       (if (= status 200)
         {:status :ok}
         (do (log/error "Failed to send analytics to server because:" resp)
-          {:status :failed})))
+            {:status :failed})))
     (catch Exception e
       (log/error e "Failed to send analytics!")
       {:status :error})))

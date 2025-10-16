@@ -52,9 +52,9 @@
    [::cp.art/env (? ::cp.art/generator) map? => ::cp.art/samples]
    (try
      (if-not gen (throw (ex-info "No generator provided!" {::silent? true}))
-       (if-let [samples (seq (cp.spec/sample env gen))]
-         (->samples (flatten-samples samples))
-         (throw (ex-info "Generator returned no samples!" {:gen gen}))))
+                 (if-let [samples (seq (cp.spec/sample env gen))]
+                   (->samples (flatten-samples samples))
+                   (throw (ex-info "Generator returned no samples!" {:gen gen}))))
      (catch #?(:clj Throwable :cljs :default) e
        (log/error (when-not (::silent? (ex-data e)) e) "Failed to generate samples!")
        (cp.art/record-error! env
@@ -70,7 +70,7 @@
 
 (>defn get-gspec [fd argtypes]
   [(s/keys :req [::cp.art/arities]) (s/coll-of any?) => ::cp.art/gspec]
-  (let [gspec (-> fd ::cp.art/arities (cp.art/get-arity argtypes) ::cp.art/gspec)
+  (let [gspec   (-> fd ::cp.art/arities (cp.art/get-arity argtypes) ::cp.art/gspec)
         sampler (some-> gspec ::cp.art/metadata convert-shorthand-metadata derive-sampler-type)]
     (cond-> gspec
       sampler (assoc ::cp.art/sampler sampler))))
@@ -83,13 +83,18 @@
 (>defn return-sample-gen [env {:as fd ::cp.art/keys [generator return-spec return-type]}]
   [::cp.art/env (s/keys :req [(or ::cp.art/generator ::cp.art/return-spec)]) => ::cp.art/generator]
   (try (or generator (cp.spec/generator env return-spec))
-    (catch #? (:clj Exception :cljs :default) e
-      (log/error e "Could not create generator for" return-type)
-      nil)))
+       (catch #?(:clj Exception :cljs :default) e
+         (log/error e "Could not create generator for" return-type)
+         nil)))
 
 (>defn get-args [env {:as td ::cp.art/keys [samples fn-ref env->fn]}]
   [::cp.art/env ::cp.art/type-description => (s/coll-of any? :min-count 1)]
   (or
+    ;; Path-based: extract all samples across paths
+    (when (cp.art/path-based? td)
+      (let [all-samples (cp.art/extract-all-samples td)]
+        (when (seq all-samples) all-samples)))
+    ;; Legacy: direct samples
     (and (seq samples) samples)
     (and fn-ref [fn-ref])
     (and env->fn [(env->fn env)])
@@ -122,7 +127,7 @@
    => ::cp.art/samples]
   (let [{::cp.art/keys [sampler] :as gspec} (get-gspec fd argtypes)
         generator (gen/let [params (params-gen env fd argtypes)
-                            args (args-gen env (map (partial get-args env) argtypes))]
+                            args   (args-gen env (map (partial get-args env) argtypes))]
                     (propagate-samples! env sampler
                       (assoc params :args args)))]
     (try-sampling! env generator
@@ -138,7 +143,7 @@
              arg
              (fn [& args]
                (let [function arg
-                     gspec (get-gspec ?fn-td args)]
+                     gspec    (get-gspec ?fn-td args)]
                  (if (= ::pure (::cp.art/sampler gspec))
                    ;; TODO: what if throws?
                    (apply function args)
@@ -172,10 +177,10 @@
                    :vec (s/and vector? #(s/valid? ::dispatch (first %)))))
 
 (>defn convert-shorthand-metadata [m] [map? => map?]
-  (let [remap {:pure      ::pure
-               :pure?     ::pure
-               :merge-arg ::merge-arg
-               :map-like  ::map-like}
+  (let [remap      {:pure      ::pure
+                    :pure?     ::pure
+                    :merge-arg ::merge-arg
+                    :map-like  ::map-like}
         rename-key (fn [disp]
                      (cond->> disp
                        (contains? remap disp)
@@ -190,7 +195,7 @@
 (>defn derive-sampler-type [m] [map? => (? ::sampler)]
   (if-let [sampler (get m ::sampler)]
     sampler
-    (let [valid-samplers (set (keys (methods propagate-samples-mm!)))
+    (let [valid-samplers  (set (keys (methods propagate-samples-mm!)))
           possible-values (keep (fn [[k v]]
                                   (when (and (valid-samplers k) (true? v)) k))
                             m)]
@@ -205,8 +210,12 @@
     (some->> tds
       (remove ::cp.art/unknown-expression)
       (keep (fn [td]
-              (when-let [samples (seq (::cp.art/samples td))]
-                (gen/elements samples))))
+              ;; Handle both path-based and legacy samples
+              (let [samples (if (cp.art/path-based? td)
+                              (cp.art/extract-all-samples td)
+                              (::cp.art/samples td))]
+                (when (seq samples)
+                  (gen/elements samples)))))
       (seq) (gen/one-of)
       (cp.spec/sample env))))
 

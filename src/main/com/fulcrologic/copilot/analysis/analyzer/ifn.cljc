@@ -23,7 +23,7 @@
                              (cons td args-td))))})
 
 (defmethod cp.ana.disp/analyze-mm :ifn/call [env [ifn & args :as sexpr]]
-  (let [ifn-td (cp.ana.disp/-analyze! env ifn)
+  (let [ifn-td  (cp.ana.disp/-analyze! env ifn)
         args-td (map (partial cp.ana.disp/-analyze! env) args)]
     (if-let [ifn-kind (::lit/kind ifn-td)]
       (case ifn-kind
@@ -35,4 +35,4 @@
 
 (defmethod cp.ana.disp/analyze-mm :ifn/literal [env sexpr]
   {::cp.art/original-expression sexpr
-   ::cp.art/samples #{sexpr}})
+   ::cp.art/samples             #{sexpr}})

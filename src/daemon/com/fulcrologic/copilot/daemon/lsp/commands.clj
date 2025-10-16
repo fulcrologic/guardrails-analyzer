@@ -1,9 +1,9 @@
 (ns com.fulcrologic.copilot.daemon.lsp.commands
   (:require
+    [com.fulcrologic.copilot.daemon.lsp.diagnostics :as lsp.diag]
     [com.fulcrologic.copilot.daemon.server.checkers :as daemon.check]
     [com.fulcrologic.copilot.daemon.server.connection-management :as cp.conn]
     [com.fulcrologic.copilot.daemon.server.websockets :refer [websockets]]
-    [com.fulcrologic.copilot.daemon.lsp.diagnostics :as lsp.diag]
     [com.fulcrologicpro.taoensso.timbre :as log]))
 
 (defn check-file! [client-id path opts]

@@ -4,6 +4,7 @@
     [com.fulcrologicpro.taoensso.timbre :as log]))
 
 (tools-ns/disable-reload!)
+(log/set-level! :fatal)
 
 (apply tools-ns/set-refresh-dirs
   (log/spy :info :refresh-dirs
@@ -17,3 +18,8 @@
   (case cmd
     "development" (do (require 'development) (eval '(development/start)))
     (log/warn "Unknown command:" cmd)))
+
+(comment
+  (tools-ns/refresh)
+  (require '[kaocha.repl :as k])
+  (k/run-all))

@@ -21,7 +21,7 @@
 (defn appender [logs-dir path-format]
   (let [timestamp (.format (new SimpleDateFormat "yyyy-MM-dd'T'HH:mm")
                     (new java.util.Date))
-        log-file (io/file logs-dir (format path-format timestamp))]
+        log-file  (io/file logs-dir (format path-format timestamp))]
     (log/info "Logging to file:" log-file)
     {:enabled?   true
      :async?     false

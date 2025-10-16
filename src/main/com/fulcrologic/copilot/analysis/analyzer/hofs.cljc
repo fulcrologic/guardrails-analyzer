@@ -80,12 +80,12 @@
                 apply-args-td)
               apply-args-td)
       {::cp.art/samples (cp.sampler/try-sampling! env
-                           (cp.spec/generator env
-                             (get-in (cp.art/get-arity
-                                       (::cp.art/arities function)
-                                       fn-args-td)
-                               [::cp.art/gspec ::cp.art/return-spec]))
-                           {::cp.art/original-expression function})}
+                          (cp.spec/generator env
+                            (get-in (cp.art/get-arity
+                                      (::cp.art/arities function)
+                                      fn-args-td)
+                              [::cp.art/gspec ::cp.art/return-spec]))
+                          {::cp.art/original-expression function})}
       (cp.fnt/analyze-function-call! env function
         (concat args-td
           (apply map #(hash-map ::cp.art/samples #{%})
@@ -118,11 +118,11 @@
               (cp.art/get-arity (::cp.art/arities some-td) [pred-td coll-td])
               [pred-td coll-td])
       {::cp.art/samples (cp.sampler/try-sampling! env
-                           (cp.spec/generator env
-                             (get-in (cp.art/get-arity
-                                       (::cp.art/arities some-td)
-                                       [pred-td coll-td])
-                               [::cp.art/gspec ::cp.art/return-spec])))}
+                          (cp.spec/generator env
+                            (get-in (cp.art/get-arity
+                                      (::cp.art/arities some-td)
+                                      [pred-td coll-td])
+                              [::cp.art/gspec ::cp.art/return-spec])))}
       ;; TODO: validate that pred accepts coll elements
       (cp.fnt/analyze-function-call! env some-td [pred-td coll-td]))))
 
@@ -136,11 +136,11 @@
               (cp.art/get-arity (::cp.art/arities split-with-td) [pred-td coll-td])
               [pred-td coll-td])
       {::cp.art/samples (cp.sampler/try-sampling! env
-                           (cp.spec/generator env
-                             (get-in (cp.art/get-arity
-                                       (::cp.art/arities split-with-td)
-                                       [pred-td coll-td])
-                               [::cp.art/gspec ::cp.art/return-spec])))}
+                          (cp.spec/generator env
+                            (get-in (cp.art/get-arity
+                                      (::cp.art/arities split-with-td)
+                                      [pred-td coll-td])
+                              [::cp.art/gspec ::cp.art/return-spec])))}
       ;; TODO: validate that pred accepts coll elements
       (cp.fnt/analyze-function-call! env split-with-td [pred-td coll-td]))))
 
@@ -156,11 +156,11 @@
               (cp.art/get-arity (::cp.art/arities swap-td) swap-args-td)
               swap-args-td)
       {::cp.art/samples (cp.sampler/try-sampling! env
-                           (cp.spec/generator env
-                             (get-in (cp.art/get-arity
-                                       (::cp.art/arities func-td)
-                                       (cons {} args-td))
-                               [::cp.art/gspec ::cp.art/return-spec])))}
+                          (cp.spec/generator env
+                            (get-in (cp.art/get-arity
+                                      (::cp.art/arities func-td)
+                                      (cons {} args-td))
+                              [::cp.art/gspec ::cp.art/return-spec])))}
       (let [func-arg-td {::cp.art/samples
                          (cp.sampler/try-sampling! env
                            (cp.spec/generator env
@@ -209,7 +209,7 @@
     (-> (get-in (cp.art/external-function-detail env this-sym)
           [::cp.art/arities 1 ::cp.art/gspec ::cp.art/return-spec])
       (merge #::cp.art{:fn-name (gensym "constantly$")
-                        :fn-ref  (fn [& _] (rand-nth (vec (::cp.art/samples value-td))))})
+                       :fn-ref  (fn [& _] (rand-nth (vec (::cp.art/samples value-td))))})
       (assoc-in [::cp.art/arities :n ::cp.art/gspec ::cp.art/sampler]
         ::cp.sampler/pure))))
 
@@ -252,14 +252,14 @@
                           ::cp.art/return-type
                           ::cp.art/return-predicates])]
       #::cp.art{:fn-name (gensym "comp$")
-                 :fn-ref  (apply comp (map (partial cp.sampler/get-fn-ref env) fns-td))
-                 :arities (utils/map-vals
-                            (fn [arity]
-                              (-> arity
-                                (update ::cp.art/gspec merge return-gspec)
-                                (cond-> (not @valid?)
-                                  (assoc-in [::cp.art/gspec ::cp.art/metadata ::cp.sampler/sampler] :default))))
-                            (get (last fns-td) ::cp.art/arities))})))
+                :fn-ref  (apply comp (map (partial cp.sampler/get-fn-ref env) fns-td))
+                :arities (utils/map-vals
+                           (fn [arity]
+                             (-> arity
+                               (update ::cp.art/gspec merge return-gspec)
+                               (cond-> (not @valid?)
+                                 (assoc-in [::cp.art/gspec ::cp.art/metadata ::cp.sampler/sampler] :default))))
+                           (get (last fns-td) ::cp.art/arities))})))
 
 (defmethod cp.ana.disp/analyze-mm 'clojure.core/comp [env sexpr] (analyze-comp! env sexpr))
 
@@ -269,7 +269,7 @@
     (update ::cp.art/arities
       (partial utils/map-vals
         #(merge % #::cp.art{:return-spec boolean?
-                             :return-type (pr-str boolean?)})))))
+                            :return-type (pr-str boolean?)})))))
 
 (defmethod cp.ana.disp/analyze-mm 'clojure.core/complement [env sexpr] (analyze-complement! env sexpr))
 
@@ -341,7 +341,7 @@
       (update ptd ::cp.fnt/partial-argtypes concat args-td)
       (do (cp.art/record-error! env args :error/invalid-partially-applied-arguments
             {:function (str (cp.art/unwrap-meta f))})
-        (cp.ana.disp/unknown-expr env sexpr)))))
+          (cp.ana.disp/unknown-expr env sexpr)))))
 
 (defn analyze-partial! [env [this-sym f & values :as sexpr]]
   (let [partial-td (cp.art/external-function-detail env this-sym)

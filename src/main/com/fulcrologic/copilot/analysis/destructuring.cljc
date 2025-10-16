@@ -12,9 +12,9 @@
 (ns com.fulcrologic.copilot.analysis.destructuring
   (:require
     [clojure.spec.alpha :as s]
-    [com.fulcrologic.copilot.artifacts :as cp.art]
     [com.fulcrologic.copilot.analysis.spec :as cp.spec]
-    [com.fulcrologic.guardrails.core :as gr :refer [>defn >defn- =>]]
+    [com.fulcrologic.copilot.artifacts :as cp.art]
+    [com.fulcrologic.guardrails.core :refer [=> >defn >defn-]]
     [com.fulcrologicpro.taoensso.timbre :as log]))
 
 (s/def ::destructurable

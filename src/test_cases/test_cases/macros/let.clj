@@ -2,11 +2,11 @@
   (:require
     [com.fulcrologic.copilot.artifacts :as cp.art]
     [com.fulcrologic.copilot.test-cases-runner :refer [deftc]]
-    [com.fulcrologic.guardrails.core :refer [>defn =>]]))
+    [com.fulcrologic.guardrails.core :refer [=> >defn]]))
 
 (>defn t [x]
   [number? => number?]
-  (let [y (str "x=" 0)]; :binding/y
+  (let [y (str "x=" 0)]                                     ; :binding/y
     x))
 
 (deftc

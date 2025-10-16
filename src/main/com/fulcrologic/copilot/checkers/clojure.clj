@@ -13,7 +13,7 @@
   (:require
     [clojure.java.io :as io]
     [clojure.string :as str]
-    [clojure.tools.namespace.repl :as tools-ns :refer [refresh set-refresh-dirs]]
+    [clojure.tools.namespace.repl :refer [refresh set-refresh-dirs]]
     [com.fulcrologic.copilot.analytics :as cp.analytics]
     [com.fulcrologic.copilot.checker :as cp.checker]
     [com.fulcrologic.copilot.logging :as cp.log]

@@ -105,5 +105,7 @@
  {:date "2021-08-10" :description "experiments on conditionals" :timespans [[1400 2200]]}
  {:date "2021-08-11" :description "experiments on conditionals" :timespans [[1400 2200]]}
  {:date "2021-08-12" :description "refine IJ plugin build" :timespans [[1800 2330]]}
- {:date "2021-08-13" :description "worked on registry helpers" :timespans [[2000 2110]]}
+ {:date "2021-08-13" :description "worked on registry helpers and webapp" :timespans [[2000 2210]]}
+ {:date "2021-08-14" :description "webapp" :timespans [[0900 1340]]}
+ {:date "2021-08-15" :description "webapp" :timespans [[1600 2030]]}
  ]

@@ -1,14 +1,14 @@
 (ns com.fulcrologic.copilot.daemon.lsp.diagnostics
   (:require
     [com.fulcrologic.copilot.artifacts :as cp.art]
-    [com.rpl.specter :as $]
-    [com.fulcrologicpro.taoensso.timbre :as log])
+    [com.fulcrologicpro.taoensso.timbre :as log]
+    [com.rpl.specter :as $])
   (:import
+    (java.net URI)
     (org.eclipse.lsp4j
       Diagnostic DiagnosticSeverity
       MessageParams MessageType
-      Position PublishDiagnosticsParams Range)
-    (java.net URI)))
+      Position PublishDiagnosticsParams Range)))
 
 (defonce client:id->info (atom {}))
 
@@ -21,13 +21,13 @@
   (new Diagnostic
     (new Range
       (new Position (dec line-start) (dec column-start))
-      (new Position (dec line-end)   (dec column-end)))
+      (new Position (dec line-end) (dec column-end)))
     message
     (case (namespace problem-type)
-      "error"   DiagnosticSeverity/Error
+      "error" DiagnosticSeverity/Error
       "warning" DiagnosticSeverity/Warning
-      "info"    DiagnosticSeverity/Information
-      "hint"    DiagnosticSeverity/Hint
+      "info" DiagnosticSeverity/Information
+      "hint" DiagnosticSeverity/Hint
       DiagnosticSeverity/Error)
     "guardrails.copilot"))
 

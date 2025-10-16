@@ -11,13 +11,13 @@
 
 (ns com.fulcrologic.copilot.ui.viewer
   (:require
+    [com.fulcrologic.copilot.ui.shared :as ui.shared]
     [com.fulcrologicpro.fulcro.application :as app]
     [com.fulcrologicpro.fulcro.components :as comp :refer [defsc]]
     [com.fulcrologicpro.fulcro.dom :as dom]
     [com.fulcrologicpro.fulcro.mutations :as f.m]
     [com.fulcrologicpro.fulcro.networking.websockets :as fws]
     [com.fulcrologicpro.fulcro.routing.dynamic-routing :as dr :refer [defrouter]]
-    [com.fulcrologic.copilot.ui.shared :as ui.shared]
     [com.fulcrologicpro.taoensso.timbre :as log]))
 
 (f.m/defmutation subscribe [_]
@@ -64,10 +64,10 @@
            (fn [{:keys [topic msg]}]
              (log/spy :info topic)
              (case topic
-               :clear!       (set-problems! [])
+               :clear! (set-problems! [])
                :new-problems (set-problems! msg)
                :new-bindings (set-bindings! msg)
-               :up-to-date   (do (log/info "Up to date with daemon!")
+               :up-to-date (do (log/info "Up to date with daemon!")
                                (app/schedule-render! @app))
                (log/error "invalid websocket message of type:" topic)))})}}))
   (hot-reload!)

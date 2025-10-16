@@ -5,7 +5,7 @@
     [com.fulcrologic.copilot.artifacts :as cp.art]
     [com.fulcrologic.copilot.test-cases-runner :refer [deftc]]
     [com.fulcrologic.copilot.test-checkers :as tc]
-    [com.fulcrologic.guardrails.core :refer [>defn =>]]
+    [com.fulcrologic.guardrails.core :refer [=> >defn]]
     [fulcro-spec.check :as _]))
 
 (s/def ::test-map (s/with-gen map?
@@ -19,12 +19,12 @@
 
 (s/def ::val (s/with-gen char? #(s/gen #{\x \y \z})))
 
-(>defn t [m p] [::test-map ::test-path => any?] ; :binding/test-map :binding/test-path
-  (let [_ (get-in {:a 0} [:a]) ; :binding/get-in.simple
-        _ (get-in {} [:b])     ; :problem/get-in.missing :binding/get-in.missing
-        _ (get-in {} [:b] 1)   ; :binding/get-in.missing.default :problem/might-never
-        _ (get-in m p)         ; :binding/get-in.locals
-        _ (get-in {} [::val])  ; :binding/get-in.fq-keyword :problem/might-never
+(>defn t [m p] [::test-map ::test-path => any?]             ; :binding/test-map :binding/test-path
+  (let [_ (get-in {:a 0} [:a])                              ; :binding/get-in.simple
+        _ (get-in {} [:b])                                  ; :problem/get-in.missing :binding/get-in.missing
+        _ (get-in {} [:b] 1)                                ; :binding/get-in.missing.default :problem/might-never
+        _ (get-in m p)                                      ; :binding/get-in.locals
+        _ (get-in {} [::val])                               ; :binding/get-in.fq-keyword :problem/might-never
         ]))
 
 (deftc
@@ -38,7 +38,7 @@
    {:expected {::cp.art/samples #{0}}}
 
    :problem/get-in.missing
-   {:expected {::cp.art/problem-type :warning/get-in-might-never-succeed
+   {:expected {::cp.art/problem-type        :warning/get-in-might-never-succeed
                ::cp.art/original-expression :b}}
 
    :binding/get-in.missing

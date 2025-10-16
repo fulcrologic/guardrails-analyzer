@@ -1,10 +1,9 @@
 (ns tools-analyzer
   (:require
-    [clojure.pprint :refer [pprint]]
-    [com.fulcrologic.copilot.reader :as drdr]
-    [clojure.tools.reader.reader-types :as readers]
     [clojure.tools.analyzer :as ana]
-    [clojure.tools.analyzer.env :as env])
+    [clojure.tools.analyzer.env :as env]
+    [clojure.tools.reader.reader-types :as readers]
+    [com.fulcrologic.copilot.reader :as drdr])
   (:import (java.io StringReader)))
 
 (defn analyze [form env]
@@ -33,9 +32,9 @@
         ;; need to read dispatch to get what we want I think. Macroexpand also seems to be something we can
         ;; mess with.
         (println (analyze form {:ns         'foo
-                        :namespaces {'foo {:aliases {'b 'bah}}
-                                     'b   {:ns 'bah}
-                                     'bah {:ns 'bah}}}))
+                                :namespaces {'foo {:aliases {'b 'bah}}
+                                             'b   {:ns 'bah}
+                                             'bah {:ns 'bah}}}))
         (recur (drdr/read-impl opts reader)))))
 
   ;; SUCKS down the memory to an OOM, slow as heck. Totally non-option

@@ -14,11 +14,11 @@
     [clojure.java.io :as io]
     [clojure.string :as str])
   (:import
-    (java.security KeyStore MessageDigest Key)
-    (java.util Base64 Arrays)
-    (javax.crypto Cipher)
     (java.io ByteArrayInputStream ByteArrayOutputStream)
-    (java.util.zip GZIPInputStream)))
+    (java.security Key KeyStore MessageDigest)
+    (java.util Arrays Base64)
+    (java.util.zip GZIPInputStream)
+    (javax.crypto Cipher)))
 
 (def license-file
   (io/file (System/getProperty "user.home")
