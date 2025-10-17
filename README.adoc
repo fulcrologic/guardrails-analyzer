@@ -29,6 +29,18 @@ Download a release from https://github.com/fulcrologic/guardrails-intellij-plugi
 
 === The Checker
 
+You must be using Guardrails, of course.
+Also, you MUST put Guardrails in either ":all" or ":pro" mode, or it won't emit the analysis data that the analyzer needs!
+
+You do this by adding JVM args to startup:
+
+[bash]
+-----
+clojure -J-Dguardrails.mode=:all -J-Dguardrails.enabled ...
+# or
+clojure -J-Dguardrails.mode=:pro ...  # ONLY static analysis, no runtime enforcement
+-----
+
 If you add this library to your project's development deps, you can start the checker in a REPL.
 Note that the checker has to reload nses as it runs to make sure it has the latest runnable specs, so you may or may not want to actually do *work* in that REPL.
 I've got internal code for starting the checker, but I need to finish the polish/docs.
