@@ -1,6 +1,120 @@
-= Copilot for Guardrails
+= Guardrails Analyzer
+
+A static analysis tool for Clojure/ClojureScript that performs compile-time type checking and validation based on https://github.com/fulcrologic/guardrails[Guardrails] specs.
+Catch type errors and spec violations during development without having to run the code.
+
+== Overview
+
+Guardrails Analyzer provides IDE-integrated static analysis for Clojure code that uses Guardrails' `>defn` macro and inline gspec syntax.
+It analyzes your code at development-time, providing real-time feedback on type errors, spec violations, and potential issues.
+
+=== Key Features
+
+* **Static Type Checking**: Validates function arguments and return values against Guardrails specs without running code
+* **Path-Based Analysis**: Tracks execution paths through conditional branches for precise error reporting
+* **IDE Integration**: Language Server Protocol (LSP) support for real-time feedback in your editor
+* **Sample-Based Validation**: Uses spec generators to create test data and validate type correctness
+* **Zero Runtime Overhead**: All analysis happens at development time
+* **Comprehensive Coverage**: Supports control flow (`if`, `when`, `cond`), higher-order functions, macros, and more
+
+=== How It Works
+
+[source,clojure]
+----
+(>defn calculate-discount
+  [price :- number?
+   customer-type :- keyword?]
+  [number? keyword? => number?]
+  (if (= customer-type :premium)
+    (* price 0.9)
+    price))
+----
+
+The analyzer:
+
+1. Parses the gspec: `[number? keyword? => number?]`
+2. Generates sample values using spec generators
+3. Traces execution through conditional branches
+4. Validates that all paths conform to the return spec
+5. Reports errors with specific path information
+
+If you accidentally return a non-number on any path, you'll get an error like:
+
+----
+The Return spec is number?, but it is possible to return
+a value like :invalid when (= customer-type :premium) → else
+----
+
+=== Path-Based Analysis
+
+The analyzer tracks execution paths through your code to provide precise error reporting:
+
+* **Determined Conditions**: Pure predicates like `(even? x)` partition samples by branch
+* **Path Tracking**: Each execution path maintains its own samples and bindings
+* **Precise Errors**: Know exactly which conditions lead to spec violations
+* **Control Flow Support**: `if`, `when`, `cond`, `and`, `or`, `cond->`, `some->`, and more
+
+See `PATH_BASED_ANALYSIS_COMPLETE.md` for comprehensive documentation.
+
+== Architecture
+
+=== Core Components
+
+* **Analyzer** (`src/main/com/fulcrologic/copilot/analysis/`)
+** Multi-method dispatch system for different expression types
+** Function, macro, literal, and higher-order function analysis
+** Destructuring and conditional handling
+
+* **Artifacts System** (`artifacts.cljc`)
+** Central data structure definitions using clojure.spec
+** Environment tracking for bindings, problems, and analysis state
+** Path management and sample partitioning
+
+* **Checker** (`checker.cljc`)
+** Main entry point for editor integration
+** Gathers problems and bindings after analysis
+** Formats output for IDE/LSP consumption
+
+* **Daemon** (`src/daemon/`)
+** Language Server Protocol implementation
+** HTTP server and WebSocket communication
+** Real-time feedback to editors/IDEs
+
+* **UI Formatters** (`src/main/com/fulcrologic/copilot/ui/`)
+** Human-readable error messages
+** Binding information display
+** Path-based error formatting
+
+=== Data Flow
+
+----
+Editor → Daemon → Checker → Analyzer → Type Checker → Formatter → Daemon → Editor
+----
+
+== Development
+
+=== Prerequisites
+
+* Clojure CLI tools
+* Node.js (for ClojureScript builds)
+* Java 21+
+
+== Relationship with Guardrails
+
+This project has a close relationship with the https://github.com/fulcrologic/guardrails[Guardrails library]:
+
+* **Guardrails** provides the `>defn` macro and inline gspec syntax
+* **Guardrails Analyzer** performs static analysis on code using those specs
+* Changes may require coordinated updates in both repositories
+* Core library function specs are defined in `analysis/fdefs/`
+
+== Documentation
+
+See the `ai/` directory and root-level markdown files for detailed documentation:
+
+* `CLAUDE.md` - Comprehensive project overview and architecture guide
+* `ai/running-tests.md` - Testing guidelines
 
 == Copyright and License
 
-Copyright 2020, Fulcrologic, LLC
-All Rights Reserved
+Copyright 2025, Fulcrologic, LLC All Rights Reserved
