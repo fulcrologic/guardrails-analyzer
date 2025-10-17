@@ -1,6 +1,9 @@
 (ns com.fulcrologic.guardrails-analyzer.test-fixtures
   (:require
     [clojure.test :as t]
+    [com.fulcrologic.guardrails-analyzer.analysis.fdefs.clojure-core]
+    [com.fulcrologic.guardrails-analyzer.analysis.fdefs.clojure-spec-alpha]
+    [com.fulcrologic.guardrails-analyzer.analysis.fdefs.clojure-string]
     [com.fulcrologic.guardrails-analyzer.analysis.spec :as cp.spec]
     [com.fulcrologic.guardrails-analyzer.artifacts :as cp.art]
     [com.fulcrologic.guardrails-analyzer.test-fixtures.logging :as tf.log]
