@@ -1,9 +1,9 @@
 (ns test-cases.macros.let-bindings-spec
   "Test cases for let binding tooltips - ensures IDE hover shows correct samples"
   (:require
-    [com.fulcrologic.copilot.artifacts :as cp.art]
-    [com.fulcrologic.copilot.test-cases-runner :refer [deftc]]
-    [com.fulcrologic.copilot.test-checkers :as tc]
+    [com.fulcrologic.guardrails-analyzer.artifacts :as cp.art]
+    [com.fulcrologic.guardrails-analyzer.test-cases-runner :refer [deftc]]
+    [com.fulcrologic.guardrails-analyzer.test-checkers :as tc]
     [com.fulcrologic.guardrails.core :refer [=> >defn]]
     [fulcro-spec.check :as _]))
 

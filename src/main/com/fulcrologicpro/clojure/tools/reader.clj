@@ -102,7 +102,7 @@
                         :column     start-column#
                         :end-line   end-line#
                         :end-column end-column#}))]
-     {:com.fulcrologic.copilot/meta-wrapper? true
+     {:com.fulcrologic.guardrails-analyzer/meta-wrapper? true
       :kind                                  ~kind :value value# :metadata metadata#}))
 
 (defn read-regex
@@ -443,7 +443,7 @@
 
 (defn- has-feature?
   [rdr feature opts]
-  (if (and (:com.fulcrologic.copilot/meta-wrapper? feature)
+  (if (and (:com.fulcrologic.guardrails-analyzer/meta-wrapper? feature)
         (keyword? (:value feature)))
     (let [feature-kw (:value feature)]
       (or (= :default feature-kw)
@@ -458,7 +458,7 @@
 
 (defn- check-reserved-features
   [rdr form]
-  (when (and (:com.fulcrologic.copilot/meta-wrapper? form)
+  (when (and (:com.fulcrologic.guardrails-analyzer/meta-wrapper? form)
           (get RESERVED_FEATURES (:value form)))
     (err/reader-error rdr "Feature name " form " is reserved")))
 

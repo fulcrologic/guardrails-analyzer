@@ -1,0 +1,74 @@
+;; Copyright (c) Fulcrologic, LLC. All rights reserved.
+;;
+;; Permission to use this software requires that you
+;; agree to our End-user License Agreement, legally obtain a license,
+;; and use this software within the constraints of the terms specified
+;; by said license.
+;;
+;; You may NOT publish, redistribute, or reproduce this software or its source
+;; code in any form (printed, electronic, or otherwise) except as explicitly
+;; allowed by your license agreement..
+
+(ns com.fulcrologic.guardrails-analyzer.ui.viewer
+  (:require
+    [com.fulcrologic.guardrails-analyzer.ui.shared :as ui.shared]
+    [com.fulcrologicpro.fulcro.application :as app]
+    [com.fulcrologicpro.fulcro.components :as comp :refer [defsc]]
+    [com.fulcrologicpro.fulcro.dom :as dom]
+    [com.fulcrologicpro.fulcro.mutations :as f.m]
+    [com.fulcrologicpro.fulcro.networking.websockets :as fws]
+    [com.fulcrologicpro.fulcro.routing.dynamic-routing :as dr :refer [defrouter]]
+    [com.fulcrologicpro.taoensso.timbre :as log]))
+
+(f.m/defmutation subscribe [_]
+  (remote [env]
+    (f.m/with-server-side-mutation env 'daemon/subscribe)))
+
+(defrouter ViewerRouter [this props]
+  {:router-targets [ui.shared/AllProblems ui.shared/NamespaceProblems]})
+
+(def ui-viewer-router (comp/factory ViewerRouter))
+
+(defsc ViewerRoot [this {:root/keys [router]}]
+  {:query         [{:root/router (comp/get-query ViewerRouter)}]
+   :initial-state {:root/router {}}}
+  (dom/div :.ui.container
+    (dom/div :.ui.top.menu
+      (dom/div :.item {:onClick (fn [] (dr/change-route! this ["all"]))}
+        (dom/a {} "All Issues")))
+    (ui-viewer-router router)))
+
+(defonce app (atom nil))
+
+(defn set-problems! [problems]
+  (swap! (::app/state-atom @app)
+    ui.shared/set-problems* problems))
+
+(defn set-bindings! [bindings]
+  (swap! (::app/state-atom @app)
+    ui.shared/set-bindings* bindings))
+
+(defn hot-reload! []
+  (app/mount! @app ViewerRoot "viewer"))
+
+(defn start!
+  [{:keys [host port]}]
+  (log/info "Starting checker app")
+  (reset! app
+    (app/fulcro-app
+      {:remotes
+       {:remote
+        (fws/fulcro-websocket-remote
+          {:sente-options {:host host :port port}
+           :push-handler
+           (fn [{:keys [topic msg]}]
+             (log/spy :info topic)
+             (case topic
+               :clear! (set-problems! [])
+               :new-problems (set-problems! msg)
+               :new-bindings (set-bindings! msg)
+               :up-to-date (do (log/info "Up to date with daemon!")
+                               (app/schedule-render! @app))
+               (log/error "invalid websocket message of type:" topic)))})}}))
+  (hot-reload!)
+  (comp/transact! @app [(subscribe {:viewer-type :browser})]))

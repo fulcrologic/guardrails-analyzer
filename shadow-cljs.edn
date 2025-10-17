@@ -4,9 +4,9 @@
  :builds   {:daemon-ui    {:target     :browser
                            :output-dir "resources/public/js/daemon-ui"
                            :asset-path "/js/daemon-ui"
-                           :modules    {:main {:init-fn com.fulcrologic.copilot.daemon.ui.main-ui/init}}
+                           :modules    {:main {:init-fn com.fulcrologic.guardrails-analyzer.daemon.ui.main-ui/init}}
                            :dev        {:compiler-options {:external-config {:guardrails {:throw? false}}}}
-                           :devtools   {:after-load com.fulcrologic.copilot.daemon.ui.main-ui/refresh
+                           :devtools   {:after-load com.fulcrologic.guardrails-analyzer.daemon.ui.main-ui/refresh
                                         :preloads   [com.fulcrologicpro.fulcro.inspect.preload]}}
 
             :self-checker {:target     :browser

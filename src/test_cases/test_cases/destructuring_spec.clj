@@ -1,8 +1,8 @@
 (ns test-cases.destructuring-spec
   (:require
     [clojure.spec.alpha :as s]
-    [com.fulcrologic.copilot.artifacts :as cp.art]
-    [com.fulcrologic.copilot.test-cases-runner :refer [deftc]]
+    [com.fulcrologic.guardrails-analyzer.artifacts :as cp.art]
+    [com.fulcrologic.guardrails-analyzer.test-cases-runner :refer [deftc]]
     [com.fulcrologic.guardrails.core :refer [=> >defn]]
     [fulcro-spec.check :as _]))
 

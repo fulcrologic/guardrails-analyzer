@@ -3,7 +3,7 @@
     [clojure.tools.analyzer :as ana]
     [clojure.tools.analyzer.env :as env]
     [clojure.tools.reader.reader-types :as readers]
-    [com.fulcrologic.copilot.reader :as drdr])
+    [com.fulcrologic.guardrails-analyzer.reader :as drdr])
   (:import (java.io StringReader)))
 
 (defn analyze [form env]

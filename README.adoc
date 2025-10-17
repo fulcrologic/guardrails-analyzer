@@ -60,7 +60,7 @@ See `PATH_BASED_ANALYSIS_COMPLETE.md` for comprehensive documentation.
 
 === Core Components
 
-* **Analyzer** (`src/main/com/fulcrologic/copilot/analysis/`)
+* **Analyzer** (`src/main/com/fulcrologic/guardrails-analyzer/analysis/`)
 ** Multi-method dispatch system for different expression types
 ** Function, macro, literal, and higher-order function analysis
 ** Destructuring and conditional handling
@@ -80,7 +80,7 @@ See `PATH_BASED_ANALYSIS_COMPLETE.md` for comprehensive documentation.
 ** HTTP server and WebSocket communication
 ** Real-time feedback to editors/IDEs
 
-* **UI Formatters** (`src/main/com/fulcrologic/copilot/ui/`)
+* **UI Formatters** (`src/main/com/fulcrologic/guardrails-analyzer/ui/`)
 ** Human-readable error messages
 ** Binding information display
 ** Path-based error formatting

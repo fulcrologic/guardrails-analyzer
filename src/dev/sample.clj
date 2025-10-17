@@ -3,7 +3,7 @@
   sample
   (:require
     [clojure.spec.alpha :as s]
-    [com.fulcrologic.copilot.analysis.fdefs.clojure-core]
+    [com.fulcrologic.guardrails-analyzer.analysis.fdefs.clojure-core]
     [com.fulcrologic.guardrails.core :refer [=> >defn]]
     [com.fulcrologic.guardrails.impl.externs :as externs]))
 

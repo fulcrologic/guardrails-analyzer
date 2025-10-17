@@ -4,10 +4,10 @@
   Most control flow constructs (cond, when, and, or, etc.) macroexpand to if,
   so they automatically benefit from path-based analysis."
   (:require
-    [com.fulcrologic.copilot.analysis.analyzer :as ana]
-    [com.fulcrologic.copilot.analysis.spec :as cp.spec]
-    [com.fulcrologic.copilot.artifacts :as cp.art]
-    [com.fulcrologic.copilot.ui.problem-formatter :as formatter]))
+    [com.fulcrologic.guardrails-analyzer.analysis.analyzer :as ana]
+    [com.fulcrologic.guardrails-analyzer.analysis.spec :as cp.spec]
+    [com.fulcrologic.guardrails-analyzer.artifacts :as cp.art]
+    [com.fulcrologic.guardrails-analyzer.ui.problem-formatter :as formatter]))
 
 (defn test-analysis
   "Helper to analyze a form and return problems"

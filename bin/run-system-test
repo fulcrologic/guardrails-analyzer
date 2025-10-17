@@ -2,16 +2,16 @@
 
 function daemon() {
   clojure -X:gr-dev:daemon:test:system-test \
-    com.fulcrologic.copilot.system-test.daemon-main/start! &
+    com.fulcrologic.guardrails-analyzer.system-test.daemon-main/start! &
   DAEMON_PID=$!
   echo "DAEMON PID: $DAEMON_PID"
 }
 
 function checker() {
   clojure \
-    -J-Dguardrails.enabled=true -J-Dguardrails.mode=:copilot \
-    -X:gr-dev:test:system-test com.fulcrologic.copilot.checkers.clojure/start! \
-    :main-ns com.fulcrologic.copilot.system-test &
+    -J-Dguardrails.enabled=true -J-Dguardrails.mode=:pro \
+    -X:gr-dev:test:system-test com.fulcrologic.guardrails-analyzer.checkers.clojure/start! \
+    :main-ns com.fulcrologic.guardrails-analyzer.system-test &
   CHECKER_PID=$!
   echo "CHECKER PID: $CHECKER_PID"
 }
@@ -24,15 +24,15 @@ function waitfor() {
 
 function test_system() {
   clojure -X:test:system-test \
-    com.fulcrologic.copilot.system-test/start \
-    :port $(cat ~/.copilot/daemon.port) &
+    com.fulcrologic.guardrails-analyzer.system-test/start \
+    :port $(cat ~/.guardrails/daemon.port) &
   TESTER_PID=$!
   echo "TESTER PID: $TESTER_PID"
 }
 
 function main() {
   daemon
-  waitfor ~/.copilot/daemon.port
+  waitfor ~/.guardrails/daemon.port
   checker
   test_system
   wait $TESTER_PID

@@ -1,0 +1,39 @@
+(ns com.fulcrologic.guardrails-analyzer.dot-config
+  (:require
+    [clojure.edn :as edn]
+    [clojure.java.io :as io])
+  (:import
+    (java.io FileNotFoundException)
+    (javax.swing JFrame JOptionPane)))
+
+(def config-file
+  (io/file (System/getProperty "user.home")
+    ".guardrails/config.edn"))
+
+(def default-config {:logging/config {:min-level :info}})
+
+(defn show-create-config-dialog []
+  (let [options    (to-array ["Yes" "No"])
+        user-chose (JOptionPane/showOptionDialog
+                     (doto (new JFrame)
+                       (.setAlwaysOnTop true))
+                     (str "Could not find config file at " config-file "."
+                       "\nCopilot will create a default config for you.\n"
+                       "\nWould you like to enable analytics to help us better improve Copilot?")
+                     "Copilot: Enable Analytics?"
+                     JOptionPane/DEFAULT_OPTION JOptionPane/QUESTION_MESSAGE
+                     nil options nil)
+        config     (merge default-config
+                     (case (get options user-chose false)
+                       "Yes" {:analytics? true}
+                       {}))]
+    (io/make-parents config-file)
+    (spit config-file (pr-str config))
+    config))
+
+(defn load-config! []
+  (try
+    (edn/read-string (slurp config-file))
+    (catch FileNotFoundException _
+      (show-create-config-dialog))
+    (catch Exception _ {})))

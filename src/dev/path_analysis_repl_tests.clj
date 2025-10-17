@@ -10,8 +10,8 @@
   To run: Load this file in the REPL and call (run-all-tests)"
   (:require
     [clojure.pprint :refer [pprint]]
-    [com.fulcrologic.copilot.analysis.analyzer :as cp.ana]
-    [com.fulcrologic.copilot.artifacts :as cp.art]
+    [com.fulcrologic.guardrails-analyzer.analysis.analyzer :as cp.ana]
+    [com.fulcrologic.guardrails-analyzer.artifacts :as cp.art]
     [com.fulcrologic.guardrails.core :refer [=> >defn]]))
 
 ;; ============================================================================

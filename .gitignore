@@ -57,7 +57,7 @@ docs/.jekyll-metadata
 .shadow-cljs
 resources/public/workspaces
 !.idea/runConfigurations
-.copilot
+.guardrails
 docs/user-guide/UserGuide.html
 docs/user-guide/images/copilot-arch.png
 .clojure-mcp

@@ -1,68 +1,15 @@
 == Getting Started
 
-When you signed up for Copilot you should have received an email with a license, maven credentials, and some basic
-setup instructions. You'll need to follow those directions first. The steps are:
-
-* Make sure you have https://clojure.org/guides/getting_started[Clojure Tools Deps] installed, and updated to the latest version.
-* Install your license file into your home directory under `$HOME/.copilot/copilot.license`
-* Add your maven credentials to `$HOME/.m2/settings.xml`
-* Add the copilot daemon as an alias in your project or global deps.
-
-=== Java JVM
-
-Copilot is tested against JDK 1.8 and 1.11. It should work with Oracle's official JDK and OpenJDK.
-
 === Supported Operating Systems
 
-Copilot is written in Clojure and runs on the JVM. It should work on any operating
+Guardrails Analyzer is written in Clojure and runs on the JVM. It should work on any operating
 system that is well-supported by the https://clojure.org/guides/getting_started[Clojure tools deps] system.
 
 If you are using Windows then we recommend using Windows Subsystem for Linux.
 
-=== Your License
+=== Running the Guardrails Daemon
 
-Copilot requires a valid license to run. You must place your license file in
-`$HOME/.copilot/copilot.license`. You can find your $HOME directory using a REPL:
-
-[source, clojure]
------
-(System/getProperty "user.dir")
-=> "/Users/bob"
------
-
-NOTE: We will use the common *NIX shorthand `~` to mean `$HOME` in the remainder of this document.
-
-=== Maven Credentials
-
-The commercial code for Copilot is on a private maven repository. You should have received credentials and instructions
-in your license email. Basically you just add a section for authorizing against the `fulcrologic` repository:
-
-[source, xml]
------
-<settings>
-    <servers>
-        <server>
-            <id>fulcrologic</id>
-            <username>YOUR-EMAIL-ADDRESS</username>
-            <password>YOUR-MVN-PASSWORD</password>
-        </server>
-    </servers>
-</settings>
------
-
-Each project that you use with Copilot will also need to specify that it uses the `fulcrologic` repository. You can
-do this in the global deps.edn file (once), or on each project individually:
-
-[source, clojure]
------
-{:mvn/repos {"fulcrologic" {:url "https://mvn.fulcrologic.com"}}
- ...}
------
-
-
-=== Running the Copilot Daemon
-
-You have two choices when running the Copilot Daemon: Use the `clojure` command or a runnable jar.
+You have two choices when running the Guardrails Daemon: Use the `clojure` command or a runnable jar.
 
 ==== Runnable JAR
 
@@ -90,7 +37,7 @@ setup. You just have to add this in your global deps file:
  :aliases
   {:copilotd
     {:extra-deps {com.fulcrologic/copilot-daemon {:mvn/version "1.0.0-SNAPSHOT"}}
-     :exec-fn com.fulcrologic.copilot.daemon.main/-main}}}
+     :exec-fn com.fulcrologic.guardrails-analyzer.daemon.main/-main}}}
 -----
 
 and you should then be able to start it with:
@@ -105,20 +52,17 @@ Be sure to use a version of the daemon that matches your copilot checker version
 
 === The Checker
 
-A checker is a persistent process that runs the *environment* of your program. This is what enables Copilot to
-understand your specs, no matter how complex they are, or what strange features they may use.
-When designing Copilot we decided that it would
-be best if the checker *not* run in your development REPL (even though it has everything the checker needs).
-*You* still need to work at full speed, and you should not have tooling interfering with your ability to start/stop
-your REPL, or otherwise block your normal development progress.
+A checker is a persistent process that runs the *environment* of your program. This is what enables Guardrails Analyzer to understand your specs, no matter how complex they are, or what strange features they may use. When designing Guardrails Analyzer we decided that it would often be best if the checker *not* run in your development REPL (even though it has everything the checker needs). *You* still need to work at full speed, and you should not have tooling interfering with your ability to start/stop your REPL, or otherwise block your normal development progress.
 
-We were also careful to minimize the checker's runtime dependencies, so they do not conflict with things you use. We did not
-want you to have to juggle the version of libraries you use in order to run Copilot!
+You *may* choose to run the checker in your project development REPL to reduce the number of things running, but because the checker reloads namespaces it make cause unexpected behaviors. If you run into that, change over to using the external process.
 
-The primary dependency is the most recent version of https://github.com/fulcrologic/guardrails[Guardrails]. You cannot
-write Copilot-supported functions without that.
+This is the trickiest part of the whole system. Problems can arise if you try to check a ns with syntax errors (the checker reload will fail). This could lead to an inconsistent state in the checker, and result in failures to analyze the code. This is a work in progress.
 
-The Copilot checker for Clojure also includes the following dependencies on the classpath when you run it:
+We were also careful to minimize the checker's runtime dependencies, so they do not conflict with things you use. We did not want you to have to juggle the version of libraries you use in order to run Guardrails Analyzer!
+
+The primary dependency is the most recent version of https://github.com/fulcrologic/guardrails[Guardrails]. You cannot write Guardrails Analyzer-supported functions without that.
+
+The Guardrails Analyzer checker for Clojure also includes the following dependencies on the classpath when you run it:
 
 [source]
 -----
@@ -128,7 +72,7 @@ The Copilot checker for Clojure also includes the following dependencies on the 
            org.clojure/tools.namespace    {:mvn/version "1.0.0"}}
 -----
 
-Copilot requires at least Clojure 1.9.
+Guardrails Analyzer requires at least Clojure 1.10.
 
 These libraries tend to follow the "higher version means better" philosophy, so we hope they do not
 conflict with your application. Please let us know if these dependencies cause problems with
@@ -141,7 +85,7 @@ The easiest way to set up a Clojure checker is to add the following to your `dep
 [source]
 -----
 {:aliases {:clj-checker {:extra-deps {com.fulcrologic/copilot {:mvn/version "x.x.x"}}
-                         :exec-fn    com.fulcrologic.copilot.checkers.clojure/start!
+                         :exec-fn    com.fulcrologic.guardrails-analyzer.checkers.clojure/start!
                          :exec-args  {:src-dirs ["src/main" "src/test"]}}}}
 -----
 

@@ -1,7 +1,7 @@
 (ns test-cases.higher-order-functions.partial
   (:require
-    [com.fulcrologic.copilot.artifacts :as cp.art]
-    [com.fulcrologic.copilot.test-cases-runner :refer [deftc]]
+    [com.fulcrologic.guardrails-analyzer.artifacts :as cp.art]
+    [com.fulcrologic.guardrails-analyzer.test-cases-runner :refer [deftc]]
     [com.fulcrologic.guardrails.core :refer [=> >defn]]
     [fulcro-spec.check :as _]))
 

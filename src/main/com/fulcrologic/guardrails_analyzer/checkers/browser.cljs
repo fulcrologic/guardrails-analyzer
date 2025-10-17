@@ -1,0 +1,20 @@
+;; Copyright (c) Fulcrologic, LLC. All rights reserved.
+;;
+;; Permission to use this software requires that you
+;; agree to our End-user License Agreement, legally obtain a license,
+;; and use this software within the constraints of the terms specified
+;; by said license.
+;;
+;; You may NOT publish, redistribute, or reproduce this software or its source
+;; code in any form (printed, electronic, or otherwise) except as explicitly
+;; allowed by your license agreement..
+
+(ns com.fulcrologic.guardrails-analyzer.checkers.browser
+  (:require
+    [com.fulcrologic.guardrails-analyzer.ui.checker :as checker]))
+
+(defn start! [opts]
+  (checker/start! opts))
+
+(defn reload! []
+  (checker/hot-reload!))

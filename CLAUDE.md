@@ -14,7 +14,7 @@ See the ai directory for architecture and testing documentation.
 
 ### Core Components
 
-1. **Analyzer System** (`src/main/com/fulcrologic/copilot/analysis/`)
+1. **Analyzer System** (`src/main/com/fulcrologic/guardrails-analyzer/analysis/`)
    - `analyzer.cljc` - Main entry point for analysis via `analyze!` function
    - `analyzer/dispatch.cljc` - Multi-method dispatch system for different expression types
    - `analyzer/functions.cljc` - Analyzes function definitions and calls
@@ -43,7 +43,7 @@ See the ai directory for architecture and testing documentation.
    - `server/` - HTTP server and WebSocket communication
    - Provides real-time feedback to editors/IDEs
 
-5. **UI Formatters** (`src/main/com/fulcrologic/copilot/ui/`)
+5. **UI Formatters** (`src/main/com/fulcrologic/guardrails-analyzer/ui/`)
    - `problem_formatter.cljc` - Formats type errors for display
    - `binding_formatter.cljc` - Formats binding information for display
 
