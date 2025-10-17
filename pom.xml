@@ -8,6 +8,8 @@
     <version>1.0.0-SNAPSHOT</version>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
     </properties>
     <name>fulcro</name>
     <description>A library for using Clojure specs more like a type system during development.</description>
@@ -19,6 +21,8 @@
     </licenses>
     <scm>
         <url>https://github.com/fulcrologic/guardrails-analyzer</url>
+        <connection>scm:git:git://github.com/fulcrologic/guardrails-analyzer.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/fulcrologic/guardrails-analyzer.git</developerConnection>
         <tag>HEAD</tag>
     </scm>
     <distributionManagement>
