@@ -11,6 +11,39 @@ Documentation and nice-factors still in progress (e.g. it's a little rough aroun
 NOTE: I was originally going to call this copilot for Guardrails when I started tinkering with this in 2020, and now obviously someone else tool that name, so I've renamed this project.
 Any stray references to copilot in this project should be read as "guardrails analyzer" instead.
 
+== Quickstart
+
+I'm still working on the work flow.
+So bear with me.
+
+=== Daemon
+
+You have to first start a daemon which acts as the communication server.
+If you clone this project, and run `make Daemon.jar`.
+That is an uberjard (`java -jar Daemon.jar`), but you must currently run it from your home directory.
+This has to be running for the checker to be able to communicate with the IDE.
+
+=== IntelliJ Plugin
+
+Download a release from https://github.com/fulcrologic/guardrails-intellij-plugin (releases) and install it from disk
+
+=== The Checker
+
+If you add this library to your project's development deps, you can start the checker in a REPL.
+Note that the checker will reload nses, so you may or may not want to *work* in that REPL.
+
+[source,clojure]
+-----
+(require '[com.fulcrologic.guardrails-analyzer.checkers.clojure :as cc])
+;; List the source dirs you want to be able to run checks on
+(cc/start {:src-dirs ["src/dev" "src/main"]})
+-----
+
+Now you can trigger IntelliJ commands (add kb shortcuts) for guardrails actions like "Check Namespace".
+E.g. press your shortcut for Run Action (i.e. CMD-SHIFT-A) and type "Check Namespace".
+
+See ~/.guardrails/logs for logs.
+
 == Overview
 
 Guardrails Analyzer provides REPL and IDE-integrated static analysis for Clojure code that uses Guardrails' `>defn` macro and inline gspec syntax.
