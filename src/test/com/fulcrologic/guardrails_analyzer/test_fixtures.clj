@@ -5,6 +5,9 @@
     [com.fulcrologic.guardrails-analyzer.analysis.fdefs.clojure-spec-alpha]
     [com.fulcrologic.guardrails-analyzer.analysis.fdefs.clojure-string]
     [com.fulcrologic.guardrails-analyzer.analysis.spec :as cp.spec]
+    [com.fulcrologic.guardrails-analyzer.analysis.analyzer.macros]
+    [com.fulcrologic.guardrails-analyzer.analysis2.purity]
+    [com.fulcrologic.guardrails-analyzer.analysis.purity-data]
     [com.fulcrologic.guardrails-analyzer.artifacts :as cp.art]
     [com.fulcrologic.guardrails-analyzer.test-fixtures.logging :as tf.log]
     [com.fulcrologicpro.taoensso.timbre :as log]))

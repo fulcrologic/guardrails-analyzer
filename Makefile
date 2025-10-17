@@ -2,10 +2,7 @@ DAEMONUI := $(shell find src/daemon* src/main -name '*.cljs' -o -name '*.cljc')
 DAEMON := $(shell find src/daemon* src/main -name '*.clj' -o -name '*.cljc')
 
 tests:
-	yarn
-	npx shadow-cljs compile ci-tests
-	npx karma start --single-run
-	clojure -A:provided:cljs:dev:test:clj-tests -J-Dguardrails.config=guardrails-test.edn -J-Dguardrails.enabled
+	clojure -J-Dtest -J-Dguardrails.mode=:all -A:dev:daemon:test:system-test:clj-tests
 
 resources/public/js/daemon-ui/main.js: $(DAEMONUI)
 	shadow-cljs release daemon-ui

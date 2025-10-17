@@ -1,8 +1,8 @@
 #kaocha/v1
         {:tests           [{:id           :unit
                             :ns-patterns  ["-test$" "-spec$"]
-                            :test-paths   ["src/test" "src/test_cases"]
-                            :source-paths ["src/main"]}]
+                            :test-paths   ["src/test" "src/test_cases" "src/system_test"]
+                            :source-paths ["src/main" "src/daemon"]}]
          :plugins         []
          :capture-output? true
          :bindings        {kaocha.stacktrace/*stacktrace-filters*

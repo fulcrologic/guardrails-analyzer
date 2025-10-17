@@ -1,4 +1,15 @@
+:source-highlighter: coderay
+:source-language: clojure
+:toc:
+:toc-placement: preamble
+:sectlinks:
+:sectanchors:
+:sectnums:
+
 = Guardrails Analyzer
+
+image:https://img.shields.io/clojars/v/com.fulcrologic/guardrails-analyzer.svg[link=https://clojars.org/com.fulcrologic/guardrails-analyzer]
+image:https://circleci.com/gh/fulcrologic/guardrails-analyzer/tree/main.svg?style=svg["CircleCI", link="https://circleci.com/gh/fulcrologic/guardrails-analyzer/tree/main"]
 
 A static analysis tool for Clojure/ClojureScript that performs compile-time type checking and validation based on https://github.com/fulcrologic/guardrails[Guardrails] specs.
 Catch type errors and spec violations during development without having to run the code.
