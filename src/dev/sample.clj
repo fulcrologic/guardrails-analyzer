@@ -21,9 +21,7 @@
 
 (>defn person? [v]
   ^:pure [any? => boolean?]
-  (and
-    (map? v)
-    (contains? v :person/id)))
+  (contains? v :person/id))
 
 (>defn new-person
   ([first-name]
@@ -35,11 +33,8 @@
                   :person/first-name first-name
                   :person/last-name  "Kay"
                   :person/age        44}
-         person2 (full-name person)
-         v       (if (person? person2)
-                   1
-                   "hello")]
-     v))
+         person2 (if (> 0.5 (rand)) (full-name person) person)]
+     person2))
   ([]
    ^:pure [=> (s/keys :req [:person/first-name
                             :person/last-name
@@ -51,8 +46,8 @@
                   :person/age        44}
          person2 (full-name person)
          v       (if (person? person2)
-                   1
-                   "hello")]
+                   person2
+                   :error)]
      v)))
 
 

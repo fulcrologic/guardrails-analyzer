@@ -42,19 +42,19 @@
      (cp.art/clear-problems! file)
      (cp.art/clear-bindings! file)
      (cp.analytics/profile ::check!
-                           (cp.spec/with-empty-cache
-                             #?(:cljs (fn check-forms! [[form & forms]]
-                                        (if-not form (on-done)
-                                                (js/setTimeout
-                                                 (fn []
-                                                   (check-form! env form)
-                                                   (check-forms! forms))
-                                                 100)))
-                                :clj (fn [forms]
-                                       (doseq [form forms]
-                                         (check-form! env form))
-                                       (on-done)))
-                             forms)))))
+       (cp.spec/with-empty-cache
+         #?(:cljs (fn check-forms! [[form & forms]]
+                    (if-not form (on-done)
+                                 (js/setTimeout
+                                   (fn []
+                                     (check-form! env form)
+                                     (check-forms! forms))
+                                   100)))
+            :clj  (fn [forms]
+                    (doseq [form forms]
+                      (check-form! env form))
+                    (on-done)))
+         forms)))))
 
 (defn prepare-check! [msg cb]
   (reset! prepared-check [msg cb]))
@@ -66,11 +66,11 @@
 (defn- encode-problem [p]
   (-> p
     ;; TODO: recursive-description
-      (dissoc ::cp.art/actual ::cp.art/expected ::cp.art/spec
-              ::cp.art/literal-value ::cp.art/original-expression)
-      (assoc ::cp.art/samples (set (map pr-str (::cp.art/samples p))))
-      (assoc ::cp.art/expression
-             (pr-str (::cp.art/original-expression p)))))
+    (dissoc ::cp.art/actual ::cp.art/expected ::cp.art/spec
+      ::cp.art/literal-value ::cp.art/original-expression)
+    (assoc ::cp.art/samples (set (map pr-str (::cp.art/samples p))))
+    (assoc ::cp.art/expression
+           (pr-str (::cp.art/original-expression p)))))
 
 (defn- transit-safe-problems [problems]
   ($/transform [$/ALL] encode-problem problems))

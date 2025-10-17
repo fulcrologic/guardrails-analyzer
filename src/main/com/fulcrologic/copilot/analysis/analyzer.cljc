@@ -11,23 +11,23 @@
 
 (ns com.fulcrologic.copilot.analysis.analyzer
   (:require
-   [com.fulcrologic.copilot.analysis.analyzer.dispatch :as cp.ana.disp]
-   [com.fulcrologic.copilot.analysis.analyzer.functions]
-   [com.fulcrologic.copilot.analysis.analyzer.hofs]
-   [com.fulcrologic.copilot.analysis.analyzer.ifn]
-   [com.fulcrologic.copilot.analysis.analyzer.literals]
-   [com.fulcrologic.copilot.analysis.analyzer.macros]
-   [com.fulcrologic.copilot.analysis.function-type :as cp.fnt]
-   [com.fulcrologic.copilot.analysis2.purity]
-   [com.fulcrologic.copilot.analytics :as cp.analytics]
-   [com.fulcrologic.copilot.artifacts :as cp.art]
-   [com.fulcrologic.guardrails.core :refer [=> >defn]]
-   [com.fulcrologicpro.taoensso.timbre :as log]))
+    [com.fulcrologic.copilot.analysis.analyzer.dispatch :as cp.ana.disp]
+    [com.fulcrologic.copilot.analysis.analyzer.functions]
+    [com.fulcrologic.copilot.analysis.analyzer.hofs]
+    [com.fulcrologic.copilot.analysis.analyzer.ifn]
+    [com.fulcrologic.copilot.analysis.analyzer.literals]
+    [com.fulcrologic.copilot.analysis.analyzer.macros]
+    [com.fulcrologic.copilot.analysis.function-type :as cp.fnt]
+    [com.fulcrologic.copilot.analysis2.purity]
+    [com.fulcrologic.copilot.analytics :as cp.analytics]
+    [com.fulcrologic.copilot.artifacts :as cp.art]
+    [com.fulcrologic.guardrails.core :refer [=> >defn]]
+    [com.fulcrologicpro.taoensso.timbre :as log]))
 
 (>defn analyze!
-       [env sexpr]
-       [::cp.art/env any? => ::cp.art/type-description]
-       (cp.ana.disp/-analyze! env sexpr))
+  [env sexpr]
+  [::cp.art/env any? => ::cp.art/type-description]
+  (cp.ana.disp/-analyze! env sexpr))
 
 (defmacro defanalyzer [disp arglist & body]
   `(defmethod cp.ana.disp/analyze-mm '~disp ~arglist ~@body))
@@ -38,10 +38,10 @@
 
 (defmethod cp.ana.disp/analyze-mm :symbol.local/lookup [env sym]
   (or
-   (cp.art/symbol-detail env sym)
-   (cp.art/function-detail env sym)
-   (cp.art/external-function-detail env sym)
-   (cp.ana.disp/unknown-expr env sym)))
+    (cp.art/symbol-detail env sym)
+    (cp.art/function-detail env sym)
+    (cp.art/external-function-detail env sym)
+    (cp.ana.disp/unknown-expr env sym)))
 
 (defmethod cp.ana.disp/analyze-mm :symbol.local/call [env [sym & args]]
   (let [function (cp.art/symbol-detail env sym)

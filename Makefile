@@ -13,6 +13,9 @@ resources/public/js/daemon-ui/main.js: $(DAEMONUI)
 Checker.jar: pom.xml $(CHECKERSRC)
 	clojure -A:provided -X:checker-uberjar
 
+Daemon.jar: pom.xml $(CHECKERSRC)
+	clojure -A:daemon:provided -X:uberjar
+
 deploy-daemon: Daemon.jar
 	mvn deploy:deploy-file -Dfile=Daemon.jar -DpomFile=pom-daemon.xml -DrepositoryId=fulcrologic-publish -Durl=https://mvn.fulcrologic.com/mvn
 

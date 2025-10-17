@@ -178,6 +178,8 @@
 (s/def ::current-ns string?)
 (s/def ::local-symbols (s/every-kv symbol? ::type-description
                          :gen-max 10))
+(s/def ::binding-expressions (s/every-kv symbol? ::form
+                               :gen-max 10))
 (s/def ::externs-registry (s/every-kv string?
                             (s/every-kv symbol?
                               (s/every-kv symbol? ::extern
@@ -202,6 +204,7 @@
                      ::externs-registry
                      ::spec-registry
                      ::local-symbols
+                     ::binding-expressions
                      ::checking-sym
                      ::current-form
                      ::current-ns
@@ -304,6 +307,21 @@
 (>defn remember-local [env sym td]
   [::env symbol? ::type-description => ::env]
   (assoc-in env [::local-symbols sym] td))
+
+(>defn remember-binding-expression
+  "Store the expression that created a binding for a symbol.
+  This allows the if analyzer to look up the original predicate expression
+  when the condition is a simple symbol (e.g., from let bindings)."
+  [env sym expr]
+  [::env symbol? ::form => ::env]
+  (assoc-in env [::binding-expressions sym] expr))
+
+(>defn lookup-binding-expression
+  "Look up the expression that created a binding for a symbol.
+  Returns nil if the symbol has no tracked binding expression."
+  [env sym]
+  [::env symbol? => (? ::form)]
+  (get-in env [::binding-expressions sym]))
 
 (>defn lookup-symbol
   "Used by >fn to lookup sample values for symbols"

@@ -68,25 +68,48 @@
     (or type spec)))
 
 (defn format-expr [problem]
-  (::cp.art/original-expression problem))
+  (pr-str (::cp.art/original-expression problem)))
+
+(defn strip-meta-wrappers
+  "Recursively strip meta-wrapper maps from an expression"
+  [expr]
+  (cond
+    ;; If it's a meta-wrapper, extract the value and recurse
+    (and (map? expr) (:com.fulcrologic.copilot/meta-wrapper? expr))
+    (strip-meta-wrappers (:value expr))
+
+    ;; If it's a list, recursively process each element
+    (list? expr)
+    (apply list (map strip-meta-wrappers expr))
+
+    ;; If it's a vector, recursively process each element
+    (vector? expr)
+    (vec (map strip-meta-wrappers expr))
+
+    ;; If it's a map (but not a meta-wrapper), recursively process values
+    (map? expr)
+    (into {} (map (fn [[k v]] [k (strip-meta-wrappers v)]) expr))
+
+    ;; Otherwise, return as-is
+    :else
+    expr))
 
 (defn format-condition-expression [expr]
-  "Format a condition expression, stripping meta-wrapper if present"
-  (if (and (map? expr) (:com.fulcrologic.copilot/meta-wrapper? expr))
-    (pr-str (:value expr))
-    (pr-str expr)))
+  "Format a condition expression, stripping meta-wrappers recursively"
+  (pr-str (strip-meta-wrappers expr)))
 
 (defn format-path-condition [condition]
   "Format a single path condition into a readable string"
-  (let [{::cp.art/keys [condition-expression branch determined? condition-value]} condition
+  (let [{::cp.art/keys [condition-expression condition-location branch determined? condition-value]} condition
         cond-str   (format-condition-expression condition-expression)
+        line-num   (::cp.art/line-start condition-location)
         branch-str (case branch
                      :then "then"
                      :else "else"
                      (str branch))]
     (if determined?
-      (format "%s → %s" cond-str branch-str)
-      (format "%s → %s (undetermined)" cond-str branch-str))))
+      (format "%s → %s (line %s)" cond-str branch-str line-num)
+      (format "%s → %s (line %s, indeterminate)" cond-str branch-str line-num))))
 
 (defn format-path [path]
   "Format an execution path's conditions"

@@ -148,6 +148,8 @@
 
 (comment
   (start {:src-dirs ["src/dev" "src/main"]})
+  (check! {:NS 'sample})
+  @com.fulcrologic.copilot.artifacts/problems
   )
 
 (defn -main [& args]

@@ -47,9 +47,16 @@
 
 (defn analyze-let-bindings! [env bindings]
   (reduce (fn [env [bind-sexpr sexpr]]
-            (reduce-kv cp.art/remember-local
-              env (cp.destr/destructure! env bind-sexpr
-                    (cp.ana.disp/-analyze! env sexpr))))
+            (let [;; Analyze the expression
+                  td                (cp.ana.disp/-analyze! env sexpr)
+                  ;; Destructure to get symbol->type-description map
+                  destructured-syms (cp.destr/destructure! env bind-sexpr td)
+                  ;; Remember the original expression for each bound symbol
+                  env-with-exprs    (reduce (fn [env' sym]
+                                              (cp.art/remember-binding-expression env' sym sexpr))
+                                      env (keys destructured-syms))]
+              ;; Remember the type descriptions for each symbol
+              (reduce-kv cp.art/remember-local env-with-exprs destructured-syms)))
     env (partition 2 bindings)))
 
 (defn analyze-let-like-form! [env [_ bindings & body]]
@@ -79,6 +86,7 @@
   4. Add condition tracking to resulting paths
 
   Currently handles simple conditions that test a single symbol (e.g., `(even? x)`).
+  Also handles conditions that are bound symbols (e.g., `t#` from `(let [t# (even? x)] (if t# ...))`).
   TODO: Extend to handle complex conditions with multiple symbols."
   [env condition-expr condition-td then-expr else-expr condition-id location]
   (let [;; Helper to extract the symbol being tested in a simple predicate
@@ -88,7 +96,14 @@
                                   (let [[_pred sym] expr]
                                     (when (symbol? sym) sym))))
 
-        tested-sym            (extract-tested-symbol condition-expr)
+        ;; If condition is a simple symbol, look up its binding expression
+        ;; E.g., (let [t# (map? v)] (if t# ...)) => use (map? v) as predicate-expr
+        predicate-expr        (if (symbol? condition-expr)
+                                (or (cp.art/lookup-binding-expression env condition-expr)
+                                  condition-expr)
+                                condition-expr)
+
+        tested-sym            (extract-tested-symbol predicate-expr)
 
         ;; Look up the symbol's samples from the environment (not from condition paths)
         sym-td                (when tested-sym (cp.art/symbol-detail env tested-sym))
@@ -97,7 +112,7 @@
     (if (and tested-sym (seq sym-samples))
       ;; Case 1: Simple condition testing a single symbol with samples available
       (let [{:keys [true-samples false-samples determined?]}
-            (cp.art/partition-samples-by-condition env condition-expr tested-sym sym-samples)]
+            (cp.art/partition-samples-by-condition env predicate-expr tested-sym sym-samples)]
 
         (if-not determined?
           ;; Partitioning failed, fall back to undetermined
