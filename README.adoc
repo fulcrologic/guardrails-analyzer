@@ -3,10 +3,28 @@
 A static analysis tool for Clojure/ClojureScript that performs compile-time type checking and validation based on https://github.com/fulcrologic/guardrails[Guardrails] specs.
 Catch type errors and spec violations during development without having to run the code.
 
+Status: ALPHA quality.
+Mostly API Stable.
+
+Documentation and nice-factors still in progress (e.g. it's a little rough around the edges)
+
+NOTE: I was originally going to call this copilot for Guardrails when I started tinkering with this in 2020, and now obviously someone else tool that name, so I've renamed this project.
+Any stray references to copilot in this project should be read as "guardrails analyzer" instead.
+
 == Overview
 
-Guardrails Analyzer provides IDE-integrated static analysis for Clojure code that uses Guardrails' `>defn` macro and inline gspec syntax.
+Guardrails Analyzer provides REPL and IDE-integrated static analysis for Clojure code that uses Guardrails' `>defn` macro and inline gspec syntax.
 It analyzes your code at development-time, providing real-time feedback on type errors, spec violations, and potential issues.
+
+The base idea is to use generators (Clojure spec or Malli) to generate data and flow it through a simulation of your code, tracking what happens, and warning when something looks fishy.
+Because that requires running *your* specs, it means we have to run a process that has your code in it, as well as the checker.
+
+This goes beyond pure static analysis (like clj-kondo) in that it is able to find a LOT more possible problems with your actual algorithm data flow.
+When used with IntelliJ you can even see the flowed values on bindings in let to see what's going on!
+
+In order to facilitate communication between this checker and editors this project includes a daemon that runs as both an IntelliJ and LSP server.
+
+An IntellJ Plugin already exists, and is published as a separate project.
 
 === Key Features
 
