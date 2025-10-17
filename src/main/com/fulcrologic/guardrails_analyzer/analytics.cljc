@@ -1,19 +1,7 @@
-;; Copyright (c) Fulcrologic, LLC. All rights reserved.
-;;
-;; Permission to use this software requires that you
-;; agree to our End-user License Agreement, legally obtain a license,
-;; and use this software within the constraints of the terms specified
-;; by said license.
-;;
-;; You may NOT publish, redistribute, or reproduce this software or its source
-;; code in any form (printed, electronic, or otherwise) except as explicitly
-;; allowed by your license agreement..
-
 (ns com.fulcrologic.guardrails-analyzer.analytics
   #?(:cljs (:require-macros [com.fulcrologic.guardrails-analyzer.analytics]))
   (:require
     #?(:cljs [goog.object :as g.obj])
-    #?(:clj [com.fulcrologic.guardrails-analyzer.licensing :as cp.license])
     [com.fulcrologicpro.taoensso.timbre :as log]))
 
 (def dev?
@@ -87,8 +75,7 @@
              last-s @last-report-time]
          (when (or dev? (nil? last-s)
                  (< report-interval (- now-s last-s)))
-           (let [analytics {:license/number  #?(:clj (cp.license/get-license-number) :cljs nil)
-                            ::analyze-stats  @analyze-stats
+           (let [analytics {::analyze-stats  @analyze-stats
                             ::problem-stats  @problem-stats
                             ::profiling-info @profiling-info
                             ::usage-stats    @usage-stats}]

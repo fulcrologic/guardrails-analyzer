@@ -1,8 +1,7 @@
 == Support for Other Editors
 
 The Copliot daemon makes diagnostics available via an LSP server port.
-This port is advertised as the daemon starts, and can be configured
-in the `~/.copilot/config.edn` file.
+This port is advertised as the daemon starts, and can be configured in the `~/.guardrails/config.edn` file.
 
 [source, clojure]
 -----
