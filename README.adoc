@@ -30,7 +30,11 @@ Download a release from https://github.com/fulcrologic/guardrails-intellij-plugi
 === The Checker
 
 If you add this library to your project's development deps, you can start the checker in a REPL.
-Note that the checker will reload nses, so you may or may not want to *work* in that REPL.
+Note that the checker has to reload nses as it runs to make sure it has the latest runnable specs, so you may or may not want to actually do *work* in that REPL.
+I've got internal code for starting the checker, but I need to finish the polish/docs.
+
+IMPORTANT: It won't be able to check until the code is loaded, so you should probably load your top-level entry point ns before you start the checker.
+That way you'll know it's basically ready.
 
 [source,clojure]
 -----
