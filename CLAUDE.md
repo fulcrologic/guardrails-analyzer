@@ -439,3 +439,4 @@ Copilot analyzes code that uses Guardrails' `>defn` macro. When working on Copil
 
 When adding features, create test cases in `src/test_cases/` that demonstrate the expected behavior.
 - Always run tests with @ai/running-tests.md
+- Use @ai/running-tests.md to run tests in the nREPL. If that fails. Stop
