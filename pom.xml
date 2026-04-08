@@ -98,19 +98,14 @@
             <version>1.5.0</version>
         </dependency>
         <dependency>
-            <groupId>com.rpl</groupId>
-            <artifactId>specter</artifactId>
-            <version>1.1.6</version>
-        </dependency>
-        <dependency>
             <groupId>org.clojure</groupId>
             <artifactId>test.check</artifactId>
             <version>1.1.1</version>
         </dependency>
         <dependency>
-            <groupId>com.fulcrologic</groupId>
-            <artifactId>alternate-deps</artifactId>
-            <version>1.0.1</version>
+            <groupId>io.aviso</groupId>
+            <artifactId>pretty</artifactId>
+            <version>0.1.37</version>
         </dependency>
         <dependency>
             <groupId>org.clojure</groupId>

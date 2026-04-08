@@ -11,20 +11,19 @@
 
 (ns com.fulcrologic.guardrails-analyzer.checker
   (:require
-    [clojure.test.check.generators]
-    [com.fulcrologic.guardrails-analyzer.analysis.analyzer :as cp.ana]
-    [com.fulcrologic.guardrails-analyzer.analysis.fdefs.clojure-core]
-    [com.fulcrologic.guardrails-analyzer.analysis.fdefs.clojure-spec-alpha]
-    [com.fulcrologic.guardrails-analyzer.analysis.fdefs.clojure-string]
-    [com.fulcrologic.guardrails-analyzer.analysis.spec :as cp.spec]
-    [com.fulcrologic.guardrails-analyzer.analytics :as cp.analytics]
-    [com.fulcrologic.guardrails-analyzer.artifacts :as cp.art]
-    [com.fulcrologic.guardrails-analyzer.forms :as cp.forms]
-    [com.fulcrologic.guardrails-analyzer.prepared-check :refer [prepared-check]]
-    [com.fulcrologic.guardrails-analyzer.ui.binding-formatter :refer [format-bindings]]
-    [com.fulcrologic.guardrails-analyzer.ui.problem-formatter :refer [format-problems]]
-    [com.fulcrologicpro.taoensso.timbre :as log]
-    [com.rpl.specter :as $]))
+   [clojure.test.check.generators]
+   [com.fulcrologic.guardrails-analyzer.analysis.analyzer :as cp.ana]
+   [com.fulcrologic.guardrails-analyzer.analysis.fdefs.clojure-core]
+   [com.fulcrologic.guardrails-analyzer.analysis.fdefs.clojure-spec-alpha]
+   [com.fulcrologic.guardrails-analyzer.analysis.fdefs.clojure-string]
+   [com.fulcrologic.guardrails-analyzer.analysis.spec :as cp.spec]
+   [com.fulcrologic.guardrails-analyzer.analytics :as cp.analytics]
+   [com.fulcrologic.guardrails-analyzer.artifacts :as cp.art]
+   [com.fulcrologic.guardrails-analyzer.forms :as cp.forms]
+   [com.fulcrologic.guardrails-analyzer.prepared-check :refer [prepared-check]]
+   [com.fulcrologic.guardrails-analyzer.ui.binding-formatter :refer [format-bindings]]
+   [com.fulcrologic.guardrails-analyzer.ui.problem-formatter :refer [format-problems]]
+   [com.fulcrologicpro.taoensso.timbre :as log]))
 
 (defn check-form! [env form]
   (try (cp.ana/analyze! env form)
@@ -42,19 +41,19 @@
      (cp.art/clear-problems! file)
      (cp.art/clear-bindings! file)
      (cp.analytics/profile ::check!
-       (cp.spec/with-empty-cache
-         #?(:cljs (fn check-forms! [[form & forms]]
-                    (if-not form (on-done)
-                                 (js/setTimeout
-                                   (fn []
-                                     (check-form! env form)
-                                     (check-forms! forms))
-                                   100)))
-            :clj  (fn [forms]
-                    (doseq [form forms]
-                      (check-form! env form))
-                    (on-done)))
-         forms)))))
+                           (cp.spec/with-empty-cache
+                             #?(:cljs (fn check-forms! [[form & forms]]
+                                        (if-not form (on-done)
+                                                (js/setTimeout
+                                                 (fn []
+                                                   (check-form! env form)
+                                                   (check-forms! forms))
+                                                 100)))
+                                :clj  (fn [forms]
+                                        (doseq [form forms]
+                                          (check-form! env form))
+                                        (on-done)))
+                             forms)))))
 
 (defn prepare-check! [msg cb]
   (reset! prepared-check [msg cb]))
@@ -66,14 +65,14 @@
 (defn- encode-problem [p]
   (-> p
     ;; TODO: recursive-description
-    (dissoc ::cp.art/actual ::cp.art/expected ::cp.art/spec
-      ::cp.art/literal-value ::cp.art/original-expression)
-    (assoc ::cp.art/samples (set (map pr-str (::cp.art/samples p))))
-    (assoc ::cp.art/expression
-           (pr-str (::cp.art/original-expression p)))))
+      (dissoc ::cp.art/actual ::cp.art/expected ::cp.art/spec
+              ::cp.art/literal-value ::cp.art/original-expression)
+      (assoc ::cp.art/samples (set (map pr-str (::cp.art/samples p))))
+      (assoc ::cp.art/expression
+             (pr-str (::cp.art/original-expression p)))))
 
 (defn- transit-safe-problems [problems]
-  ($/transform [$/ALL] encode-problem problems))
+  (mapv encode-problem problems))
 
 (defn gather-analysis! []
   {:problems (-> @cp.art/problems cp.art/unwrap-meta format-problems transit-safe-problems)

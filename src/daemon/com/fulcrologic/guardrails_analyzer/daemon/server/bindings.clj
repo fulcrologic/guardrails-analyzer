@@ -1,7 +1,7 @@
 (ns com.fulcrologic.guardrails-analyzer.daemon.server.bindings
   (:require
-    [com.fulcrologic.guardrails-analyzer.artifacts :as cp.art]
-    [com.rpl.specter :as $]))
+   [clojure.walk :as walk]
+   [com.fulcrologic.guardrails-analyzer.artifacts :as cp.art]))
 
 (defonce bindings (atom {}))
 
@@ -20,12 +20,13 @@
 (defmethod encode-for-mm :default [_ binds] (default-encoder binds))
 
 (defmethod encode-for-mm :IDEA [_ binds]
-  (reduce (fn [acc {:as bind ::cp.art/keys [file line-start column-start]}]
-            (update-in acc [file line-start column-start]
-              (fnil conj [])
-              (-> ($/transform [($/walker keyword?)] name bind)
-                (assoc "severity" (namespace (::cp.art/problem-type bind))))))
-    {} ($/select [($/walker ::cp.art/samples)] binds)))
+  (let [binds-with-samples (filterv #(and (map? %) (::cp.art/samples %)) binds)]
+    (reduce (fn [acc {:as bind ::cp.art/keys [file line-start column-start]}]
+              (update-in acc [file line-start column-start]
+                         (fnil conj [])
+                         (-> (walk/postwalk (fn [node] (if (keyword? node) (name node) node)) bind)
+                             (assoc "severity" (namespace (::cp.art/problem-type bind))))))
+            {} binds-with-samples)))
 
 (defn encode-for [{:keys [viewer-type]} binds]
   (encode-for-mm viewer-type binds))

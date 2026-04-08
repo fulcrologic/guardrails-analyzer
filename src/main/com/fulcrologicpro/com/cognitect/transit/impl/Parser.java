@@ -1,0 +1,16 @@
+// Copyright (c) Cognitect, Inc.
+// All rights reserved.
+
+package com.fulcrologicpro.com.cognitect.transit.impl;
+
+import com.fulcrologicpro.com.cognitect.transit.ArrayReadHandler;
+import com.fulcrologicpro.com.cognitect.transit.MapReadHandler;
+
+import java.io.IOException;
+
+public interface Parser {
+    Object parse(ReadCache cache) throws IOException;
+    Object parseVal(boolean asMapKey, ReadCache cache) throws IOException;
+    Object parseMap(boolean asMapKey, ReadCache cache, MapReadHandler<Object, ?, Object, Object, ?> handler) throws IOException;
+    Object parseArray(boolean asMapKey, ReadCache cache, ArrayReadHandler<Object, ?, Object, ?> handler) throws IOException;
+}

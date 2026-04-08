@@ -2,8 +2,7 @@
 
  :deps    {com.fulcrologic/guardrails     {:mvn/version "1.2.9"}
            org.clojure/core.async         {:mvn/version "1.8.741"}
-           com.rpl/specter                {:mvn/version "1.1.6"}
-           com.fulcrologic/alternate-deps {:mvn/version "1.0.1"}
+           io.aviso/pretty               {:mvn/version "0.1.37"}
            org.clojure/test.check         {:mvn/version "1.1.1"}
            org.clojure/clojure            {:mvn/version "1.12.3"}
            org.clojure/clojurescript      {:mvn/version "1.12.42"}
@@ -14,8 +13,6 @@
                                            metosin/malli           {:mvn/version "0.19.2"}
                                            lambdaisland/kaocha     {:mvn/version "1.91.1392"}}
                              :jvm-opts    ["-Dtest"]}
-
-
 
            :daemon          {:extra-paths ["src/daemon" "src/daemon_main" "resources"]
                              :extra-deps  {bidi/bidi                           {:mvn/version "2.1.6"}

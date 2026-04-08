@@ -1,0 +1,19 @@
+// Copyright (c) Cognitect, Inc.
+// All rights reserved.
+
+package com.fulcrologicpro.com.cognitect.transit.impl;
+
+import com.fulcrologicpro.com.cognitect.transit.WriteHandler;
+
+public abstract class AbstractWriteHandler<T, Rep> implements WriteHandler<T, Rep> {
+
+    @Override
+    public String stringRep(T o) {
+        return null;
+    }
+
+    @Override
+    public <V> WriteHandler<T, V> getVerboseHandler() {
+        return null;
+    }
+}

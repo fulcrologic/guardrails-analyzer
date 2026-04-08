@@ -11,38 +11,41 @@
 
 (ns com.fulcrologic.guardrails-analyzer.ui.binding-formatter
   (:require
-    #?@(:cljs [[goog.string :refer [format]]
-               [goog.string.format]])
-    [clojure.pprint :refer [pprint]]
-    [clojure.string :as str]
-    [com.fulcrologic.guardrails-analyzer.artifacts :as cp.art]
-    [com.rpl.specter :as $]))
+   #?@(:cljs [[goog.string :refer [format]]
+              [goog.string.format]])
+   [clojure.pprint :refer [pprint]]
+   [clojure.string :as str]
+   [clojure.walk :as walk]
+   [com.fulcrologic.guardrails-analyzer.artifacts :as cp.art]))
 
 (defn html-escape [s]
   (-> s
-    (str/replace "&" "&amp;")
-    (str/replace "<" "&lt;")
-    (str/replace ">" "&gt;")))
+      (str/replace "&" "&amp;")
+      (str/replace "<" "&lt;")
+      (str/replace ">" "&gt;")))
 
 (defn format-binding [bind]
   (let [samples (if (cp.art/path-based? bind)
                   (cp.art/extract-all-samples bind)
                   (::cp.art/samples bind))]
     (-> bind
-      (assoc ::cp.art/message
-             (str "Bindings for: " (::cp.art/original-expression bind)))
-      (assoc ::cp.art/tooltip
-             (format
-               "<b>Type:</b>%s<br><b>Sample Values:</b><br>%s"
-               (some-> bind ::cp.art/type html-escape)
-               (str/join
+        (assoc ::cp.art/message
+               (str "Bindings for: " (::cp.art/original-expression bind)))
+        (assoc ::cp.art/tooltip
+               (format
+                "<b>Type:</b>%s<br><b>Sample Values:</b><br>%s"
+                (some-> bind ::cp.art/type html-escape)
+                (str/join
                  (mapv (comp #(format "<pre>%s</pre>" (html-escape %))
-                         #(str/trim (with-out-str (pprint %))))
-                   samples)))))))
+                             #(str/trim (with-out-str (pprint %))))
+                       samples)))))))
 
 (defn format-bindings [bindings]
-  ($/transform [($/walker (fn [x]
-                            (and (map? x)
-                              (or (contains? x ::cp.art/samples)
-                                (contains? x ::cp.art/execution-paths)))))]
-    format-binding bindings))
+  (walk/postwalk
+   (fn [node]
+     (if (and (map? node)
+              (or (contains? node ::cp.art/samples)
+                  (contains? node ::cp.art/execution-paths)))
+       (format-binding node)
+       node))
+   bindings))
