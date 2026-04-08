@@ -10,7 +10,7 @@
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
   </properties>
-  <name>fulcro</name>
+  <name>guardrails-analyzer</name>
   <description>A library for using Clojure specs more like a type system during development.</description>
   <url>https://github.com/fulcrologic/guardrails-analyzer</url>
   <licenses>
@@ -37,7 +37,18 @@
       <resource>
         <directory>src/main</directory>
         <excludes>
-          <exclude>daemon/**</exclude>
+          <exclude>**/*.java</exclude>
+        </excludes>
+      </resource>
+      <resource>
+        <directory>src/daemon</directory>
+        <excludes>
+          <exclude>**/*.java</exclude>
+        </excludes>
+      </resource>
+      <resource>
+        <directory>src/daemon_main</directory>
+        <excludes>
           <exclude>**/*.java</exclude>
         </excludes>
       </resource>
