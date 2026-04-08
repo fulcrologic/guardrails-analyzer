@@ -37,7 +37,8 @@
    [com.fulcrologicpro.fulcro.networking.websockets-client :as fws]
    [com.fulcrologicpro.taoensso.timbre :as log])
   (:import
-   (java.io File FileNotFoundException)))
+   (java.io File FileNotFoundException)
+   (java.net Socket)))
 
 (defonce APP (app/headless-synchronous-app {}))
 (defonce ^:private reload-enabled? (atom false))
@@ -115,11 +116,27 @@
   ^File []
   (io/file (System/getProperty "user.home") ".guardrails" "daemon.port"))
 
+(defn- port-reachable?
+  "Returns true if a TCP connection can be established to localhost on `port`."
+  [port]
+  (try
+    (with-open [_ (Socket. "localhost" (int port))]
+      true)
+    (catch Exception _ false)))
+
 (defn- ?read-port
-  "Reads the daemon port from the port file, or returns nil if not found."
+  "Reads the daemon port from the port file and verifies the daemon is
+   actually listening. Returns the port number or nil if the port file
+   is missing or the daemon is not responding."
   []
-  (try (some-> (port-file) slurp str/trim Integer/parseInt)
-       (catch FileNotFoundException _ nil)))
+  (when-let [port (try (some-> (port-file) slurp str/trim Integer/parseInt)
+                       (catch FileNotFoundException _ nil))]
+    (if (port-reachable? port)
+      port
+      (do
+        (log/info "Stale port file found (port" port "not reachable). Removing.")
+        (.delete (port-file))
+        nil))))
 
 (defn- find-clojure-cmd
   "Finds the `clojure` command on PATH. Returns the path string or nil."
@@ -137,14 +154,37 @@
               (catch Exception _ nil)))
           candidates)))
 
+(defn- latest-daemon-version
+  "Queries Clojars for the latest version of guardrails-analyzer-daemon.
+   Returns the version string or nil on failure."
+  []
+  (try
+    (let [url  "https://clojars.org/api/artifacts/com.fulcrologic/guardrails-analyzer-daemon"
+          conn (doto (.openConnection (java.net.URL. url))
+                 (.setRequestProperty "Accept" "application/json")
+                 (.setConnectTimeout 5000)
+                 (.setReadTimeout 5000))
+          body (slurp (.getInputStream conn))]
+      (second (re-find #"\"latest_release\"\s*:\s*\"([^\"]+)\"" body)))
+    (catch Exception e
+      (log/warn "Could not query Clojars for daemon version:" (.getMessage e))
+      nil)))
+
 (defn- launch-daemon!
   "Launches the daemon as a subprocess. Returns true if the daemon starts
-   successfully (port file appears within timeout), false otherwise."
+   successfully (port file appears within timeout), false otherwise.
+   Uses -Srepro -Sdeps to pull the daemon artifact from Clojars,
+   independent of the user's project deps.edn."
   []
   (if-let [clj-cmd (find-clojure-cmd)]
     (let [log-file (io/file (System/getProperty "user.home") ".guardrails" "daemon.log")
           _        (io/make-parents log-file)
-          cmd      [clj-cmd "-M" "-m" "com.fulcrologic.guardrails-analyzer.daemon.main"]
+          version  (latest-daemon-version)
+          cmd      (if version
+                     [clj-cmd "-Srepro"
+                      "-Sdeps" (str "{:deps {com.fulcrologic/guardrails-analyzer-daemon {:mvn/version \"" version "\"}}}")
+                      "-M" "-m" "com.fulcrologic.guardrails-analyzer.daemon.main"]
+                     [clj-cmd "-M" "-m" "com.fulcrologic.guardrails-analyzer.daemon.main"])
           builder  (doto (ProcessBuilder. ^java.util.List cmd)
                      (.directory (io/file (System/getProperty "user.dir")))
                      (.redirectOutput log-file)
@@ -241,11 +281,12 @@
   "Finds and reads the source file for `ns-sym` on the classpath.
    Returns the parsed message map or nil."
   [ns-sym]
-  (let [path (-> (str ns-sym)
+  (let [base (-> (str ns-sym)
                  (str/replace \. \/)
-                 (str/replace \- \_)
-                 (str ".clj"))]
-    (if-let [resource (io/resource path)]
+                 (str/replace \- \_))]
+    (if-let [resource (some (fn [ext]
+                              (io/resource (str base ext)))
+                            [".cljc" ".clj"])]
       (-> (cp.reader/read-file (str resource) :clj)
           (update :forms cp.forms/form-expression))
       (do (log/error "Could not find source file for namespace" ns-sym)
@@ -269,7 +310,10 @@
              :column   (::cp.art/column-start p)
              :severity (some-> (::cp.art/problem-type p) namespace)
              :message  (::cp.art/message p)})
-          (filterv ::cp.art/message problems))))
+          (filterv (fn [p]
+                     (and (::cp.art/message p)
+                          (not= "info" (some-> (::cp.art/problem-type p) namespace))))
+                   problems))))
 
 (defn check-file
   "Checks a source file at `path` and returns a vector of problems.

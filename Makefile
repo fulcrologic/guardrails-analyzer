@@ -2,7 +2,7 @@ DAEMONUI := $(shell find src/daemon* src/main -name '*.cljs' -o -name '*.cljc')
 DAEMON := $(shell find src/daemon* src/main -name '*.clj' -o -name '*.cljc')
 
 tests:
-	clojure -J-Dtest -J-Dguardrails.mode=:all -A:dev:test:system-test:clj-tests
+	clojure -J-Dtest -J-Dguardrails.mode=:all -A:dev:daemon:test:system-test:clj-tests
 
 resources/public/js/daemon-ui/main.js: $(DAEMONUI)
 	shadow-cljs release daemon-ui
@@ -14,7 +14,7 @@ Daemon.jar: pom.xml $(CHECKERSRC)
 	clojure -A:daemon:provided -X:uberjar
 
 deploy-daemon: Daemon.jar
-	mvn deploy:deploy-file -Dfile=Daemon.jar -DpomFile=pom-daemon.xml -DrepositoryId=fulcrologic-publish -Durl=https://mvn.fulcrologic.com/mvn
+	mvn deploy:deploy-file -Dfile=Daemon.jar -DpomFile=pom-daemon.xml -DrepositoryId=clojars -Durl=https://clojars.org/repo
 
 install-daemon: Daemon.jar
 	mvn install:install-file -Dfile=Daemon.jar -DpomFile=pom-daemon.xml

@@ -1,11 +1,11 @@
 (ns com.fulcrologicpro.fulcro.networking.websockets-client
   (:require
-    [clojure.core.async :as async]
-    [com.fulcrologicpro.fulcro.algorithms.do-not-use :as futil]
-    [com.fulcrologicpro.fulcro.algorithms.tx-processing :as txn]
-    [com.fulcrologicpro.fulcro.networking.transit-packer :as tp]
-    [com.fulcrologicpro.taoensso.sente :as sente]
-    [com.fulcrologicpro.taoensso.timbre :as log])
+   [clojure.core.async :as async]
+   [com.fulcrologicpro.fulcro.algorithms.do-not-use :as futil]
+   [com.fulcrologicpro.fulcro.algorithms.tx-processing :as txn]
+   [com.fulcrologicpro.fulcro.networking.transit-packer :as tp]
+   [com.fulcrologicpro.taoensso.sente :as sente]
+   [com.fulcrologicpro.taoensso.timbre :as log])
   (:import (clojure.lang Atom)))
 
 (defn- make-event-handler
@@ -41,15 +41,15 @@
           csrf-token       (or csrf-token "NO CSRF TOKEN SUPPLIED")
           queue            (:queue @fwstate)
           {:keys [ch-recv state send-fn] :as cs} (sente/make-channel-socket-client!
-                                                   websockets-uri ; path on server
-                                                   csrf-token
-                                                   (merge {:packer         (tp/make-packer transit-handlers)
-                                                           :host           host
-                                                           :type           :ws
-                                                           :backoff-ms-fn  (fn [attempt] (min (* attempt 1000) 4000))
-                                                           :params         req-params
-                                                           :wrap-recv-evs? false}
-                                                     sente-options))
+                                                  websockets-uri ; path on server
+                                                  csrf-token
+                                                  (merge {:packer         (tp/make-packer transit-handlers)
+                                                          :host           host
+                                                          :type           :ws
+                                                          :backoff-ms-fn  (fn [attempt] (min (* attempt 1000) 4000))
+                                                          :params         req-params
+                                                          :wrap-recv-evs? false}
+                                                         sente-options))
           message-received (make-event-handler push-handler)]
       (when-not (pos-int? request-timeout-ms)
         (throw (ex-info "Request timeout must be a positive integer." {})))
@@ -76,28 +76,28 @@
       (swap! fwstate assoc :stop-chsk-router! (sente/start-client-chsk-router! ch-recv message-received))
 
       (log/debug "Starting request processing loop with overall timeout of " request-timeout-ms "ms."
-        (str "(" (/ request-timeout-ms 60000.0) " minutes)"))
+                 (str "(" (/ request-timeout-ms 60000.0) " minutes)"))
       (async/go-loop []
         (if (some-> fwstate deref :ready?)
           (let [{:keys [edn handler]} (async/<! queue)]
             (try
               (swap! fwstate assoc ::in-flight-handler handler)
               (send-fn [:fulcro.client/API edn] request-timeout-ms
-                (fn process-response [resp]
-                  (swap! fwstate dissoc ::in-flight-handler)
-                  (cond
-                    (cb-success? resp) (let [{:keys [status body]} resp]
-                                         (handler {:status-code status
-                                                   :body        body})
-                                         (when (and (not= 200 status) global-error-callback)
-                                           (global-error-callback resp)))
-                    (= :chsk/timeout resp) (let [result {:status-code 408
-                                                         :body        "Request timed out."}]
-                                             (log/error "websocket processing timeout! Request failed.")
-                                             (handler result)
-                                             (when global-error-callback (global-error-callback result)))
-                    :else (network-request-failed! remote handler))))
-              (catch :default e
+                       (fn process-response [resp]
+                         (swap! fwstate dissoc ::in-flight-handler)
+                         (cond
+                           (cb-success? resp) (let [{:keys [status body]} resp]
+                                                (handler {:status-code status
+                                                          :body        body})
+                                                (when (and (not= 200 status) global-error-callback)
+                                                  (global-error-callback resp)))
+                           (= :chsk/timeout resp) (let [result {:status-code 408
+                                                                :body        "Request timed out."}]
+                                                    (log/error "websocket processing timeout! Request failed.")
+                                                    (handler result)
+                                                    (when global-error-callback (global-error-callback result)))
+                           :else (network-request-failed! remote handler))))
+              (catch Exception e
                 (log/error "Sente send failure!" e))))
           (do
             (log/info "Send attempted before channel ready...waiting")
@@ -117,8 +117,8 @@
         {:keys [chsk]} channel-socket]
     (swap! fwstate (fn [s]
                      (-> s
-                       (assoc :started? false :ready? false)
-                       (dissoc :stop-chsk-router! :channel-socket))))
+                         (assoc :started? false :ready? false)
+                         (dissoc :stop-chsk-router! :channel-socket))))
     ;; drain the queue
     (async/go-loop []
       (let [{:keys [edn handler] :as request} (async/poll! queue)]
@@ -169,11 +169,11 @@
                     (let [edn (futil/ast->query ast)]
                       (send! edn result-handler)))
         fwstate   (atom
-                    {:channel-socket nil
-                     :queue          queue
-                     :started?       false
-                     :ready?         false
-                     :auto-retry?    auto-retry?})
+                   {:channel-socket nil
+                    :queue          queue
+                    :started?       false
+                    :ready?         false
+                    :auto-retry?    auto-retry?})
         remote    {::fwstate  fwstate
                    ::options  options
                    ::send!    send!

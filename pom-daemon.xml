@@ -3,16 +3,14 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.fulcrologic</groupId>
-  <artifactId>guardrails-analyzer</artifactId>
+  <artifactId>guardrails-analyzer-daemon</artifactId>
   <packaging>jar</packaging>
   <version>1.0.0-alpha2-SNAPSHOT</version>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <maven.compiler.source>1.8</maven.compiler.source>
-    <maven.compiler.target>1.8</maven.compiler.target>
   </properties>
-  <name>guardrails-analyzer</name>
-  <description>A library for using Clojure specs more like a type system during development.</description>
+  <name>guardrails-analyzer-daemon</name>
+  <description>A background process necessary for using Guardrails Analyzer with IDEs/LSP</description>
   <url>https://github.com/fulcrologic/guardrails-analyzer</url>
   <licenses>
     <license>
@@ -37,6 +35,18 @@
     <resources>
       <resource>
         <directory>src/main</directory>
+        <excludes>
+          <exclude>**/*.java</exclude>
+        </excludes>
+      </resource>
+      <resource>
+        <directory>src/daemon</directory>
+        <excludes>
+          <exclude>**/*.java</exclude>
+        </excludes>
+      </resource>
+      <resource>
+        <directory>src/daemon_main</directory>
         <excludes>
           <exclude>**/*.java</exclude>
         </excludes>
@@ -79,7 +89,11 @@
       <groupId>org.clojure</groupId>
       <artifactId>clojure</artifactId>
       <version>1.12.3</version>
-      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.wsscode</groupId>
+      <artifactId>pathom</artifactId>
+      <version>2.2.30</version>
     </dependency>
     <dependency>
       <groupId>com.fulcrologic</groupId>
@@ -87,20 +101,14 @@
       <version>1.2.9</version>
     </dependency>
     <dependency>
-      <groupId>org.clojure</groupId>
-      <artifactId>clojurescript</artifactId>
-      <version>1.12.42</version>
-      <scope>provided</scope>
+      <groupId>org.eclipse.lsp4j</groupId>
+      <artifactId>org.eclipse.lsp4j</artifactId>
+      <version>0.9.0</version>
     </dependency>
     <dependency>
-      <groupId>org.clojure</groupId>
-      <artifactId>test.check</artifactId>
-      <version>1.1.1</version>
-    </dependency>
-    <dependency>
-      <groupId>metosin</groupId>
-      <artifactId>malli</artifactId>
-      <version>0.19.2</version>
+      <groupId>ring</groupId>
+      <artifactId>ring-defaults</artifactId>
+      <version>0.3.2</version>
     </dependency>
     <dependency>
       <groupId>io.aviso</groupId>
@@ -108,9 +116,39 @@
       <version>0.1.37</version>
     </dependency>
     <dependency>
+      <groupId>io.github.tonsky</groupId>
+      <artifactId>clj-reload</artifactId>
+      <version>1.0.0</version>
+    </dependency>
+    <dependency>
+      <groupId>mount</groupId>
+      <artifactId>mount</artifactId>
+      <version>0.1.12</version>
+    </dependency>
+    <dependency>
+      <groupId>bidi</groupId>
+      <artifactId>bidi</artifactId>
+      <version>2.1.6</version>
+    </dependency>
+    <dependency>
+      <groupId>org.clojure</groupId>
+      <artifactId>test.check</artifactId>
+      <version>1.1.1</version>
+    </dependency>
+    <dependency>
+      <groupId>ring</groupId>
+      <artifactId>ring-core</artifactId>
+      <version>1.8.1</version>
+    </dependency>
+    <dependency>
       <groupId>org.clojure</groupId>
       <artifactId>core.async</artifactId>
       <version>1.8.741</version>
+    </dependency>
+    <dependency>
+      <groupId>http-kit</groupId>
+      <artifactId>http-kit</artifactId>
+      <version>2.5.0</version>
     </dependency>
   </dependencies>
 </project>

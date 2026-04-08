@@ -1,18 +1,18 @@
 (ns com.fulcrologic.guardrails-analyzer.analysis2.analyzer
   (:require
-    [clojure.test.check.generators]
-    [com.fulcrologic.guardrails-analyzer.analysis.analyzer.dispatch :as d]
-    [com.fulcrologic.guardrails-analyzer.analysis.analyzer.literals :as literals]
-    [com.fulcrologic.guardrails-analyzer.analysis.fdefs.clojure-core]
-    [com.fulcrologic.guardrails-analyzer.analysis.fdefs.clojure-spec-alpha]
-    [com.fulcrologic.guardrails-analyzer.analysis.fdefs.clojure-string]
-    [com.fulcrologic.guardrails-analyzer.analysis.function-type :as cp.fnt]
-    [com.fulcrologic.guardrails-analyzer.analysis.spec :as cp.spec]
-    [com.fulcrologic.guardrails-analyzer.analysis2.purity :refer [pure?]]
-    [com.fulcrologic.guardrails-analyzer.artifacts :as cp.art]
-    [com.fulcrologic.guardrails-analyzer.reader :as cp.reader]
-    [com.fulcrologic.guardrails.core]
-    [com.fulcrologicpro.taoensso.timbre :as log]))
+   [clojure.test.check.generators]
+   [com.fulcrologic.guardrails-analyzer.analysis.analyzer.dispatch :as d]
+   [com.fulcrologic.guardrails-analyzer.analysis.analyzer.literals :as literals]
+   [com.fulcrologic.guardrails-analyzer.analysis.fdefs.clojure-core]
+   [com.fulcrologic.guardrails-analyzer.analysis.fdefs.clojure-spec-alpha]
+   [com.fulcrologic.guardrails-analyzer.analysis.fdefs.clojure-string]
+   [com.fulcrologic.guardrails-analyzer.analysis.function-type :as cp.fnt]
+   [com.fulcrologic.guardrails-analyzer.analysis.spec :as cp.spec]
+   [com.fulcrologic.guardrails-analyzer.analysis2.purity :refer [pure?]]
+   [com.fulcrologic.guardrails-analyzer.artifacts :as cp.art]
+   [com.fulcrologic.guardrails-analyzer.reader :as cp.reader]
+   [com.fulcrologic.guardrails.core]
+   [com.fulcrologicpro.taoensso.timbre :as log]))
 
 (declare check-form)
 
@@ -32,11 +32,11 @@
    (with-report env expr nil nil nil level problem-type))
   ([env expr failure spec type level problem-type]
    (update env ::errors (fnil conj [])
-     (cond-> {::cp.art/original-expression expr
-              ::cp.art/level               level
-              ::cp.art/problem-type        problem-type}
-       failure (assoc ::cp.art/actual {::cp.art/failing-samples #{failure}})
-       (and spec type) (assoc ::cp.art/expected #::cp.art{:spec spec :type type})))))
+           (cond-> {::cp.art/original-expression expr
+                    ::cp.art/level               level
+                    ::cp.art/problem-type        problem-type}
+             failure (assoc ::cp.art/actual {::cp.art/failing-samples #{failure}})
+             (and spec type) (assoc ::cp.art/expected #::cp.art{:spec spec :type type})))))
 
 (defn check-return-type
   "Check that the current env's expression result is OK with respect to the given gspec. The
@@ -45,12 +45,12 @@
   (let [{::cp.art/keys [samples]} (::expression-result env)
         sample-failure (some #(when-not (cp.spec/valid? env return-spec %)
                                 {:failing-case %})
-                         samples)]
+                             samples)]
     (if (contains? sample-failure :failing-case)
       (let [sample-failure (:failing-case sample-failure)]
         (-> env
-          (with-report original-expression sample-failure return-spec return-type
-            10 :error/bad-return-value))))))
+            (with-report original-expression sample-failure return-spec return-type
+              10 :error/bad-return-value))))))
 
 (defn fork-the-world
   "Determine what bindings are used by `sexpr` and the find a combinatorial series of `env`s that contain each known sample
@@ -72,22 +72,24 @@
    expression; however, it collects any errors from the rest of the body into the returned envs."
   [env body]
   (let [body-env (assoc env
-                   ::errors (reduce
-                              (fn [errs expr]
-                                (let [envs (check-form env expr)]
-                                  (reduce
-                                    (fn [errs env] (into errs (errors env)))
-                                    errs
-                                    envs)))
-                              []
-                              (butlast body)))]
+                        ::errors (reduce
+                                  (fn [errs expr]
+                                    (let [envs (check-form env expr)]
+                                      (reduce
+                                       (fn [errs env] (into errs (errors env)))
+                                       errs
+                                       envs)))
+                                  []
+                                  (butlast body)))]
     (if-not (last body)
       [(with-report env body 1 :warning/empty-body)]
       (check-form body-env (last body)))))
 
 (defn analyze-single-arity! [env defn-sym [arglist _ & body]]
-  (let [gspec       (get-in (cp.art/function-detail env defn-sym)
-                      [::cp.art/arities (count arglist) ::cp.art/gspec])
+  (let [fd          (cp.art/function-detail env defn-sym)
+        spec-system (or (::cp.art/spec-system env) (cp.art/fn-spec-system fd))
+        env         (cp.spec/with-spec-system env spec-system)
+        gspec       (get-in fd [::cp.art/arities (count arglist) ::cp.art/gspec])
         env         (cp.fnt/bind-argument-types env arglist gspec)
         result-envs (analyze-statements env body)]
     (map #(check-return-type % gspec defn-sym) result-envs)))
@@ -117,7 +119,7 @@
 
 (defmethod check-form :literal/wrapped [env {:keys [kind value] :as orig}]
   (let [missing-spec?   (and (qualified-keyword? value)
-                          (not (cp.spec/lookup env value)))
+                             (not (cp.spec/lookup env value)))
         lit-kind        (if-not (namespace kind)
                           (keyword (namespace ::_) (name kind))
                           kind)
@@ -132,7 +134,10 @@
   (analyze:>defn! env form))
 (defmethod check-form `com.fulcrologic.guardrails.core/>defn- [env form]
   (analyze:>defn! env form))
-
+(defmethod check-form 'com.fulcrologic.guardrails.malli.core/>defn [env form]
+  (analyze:>defn! (assoc env ::cp.art/spec-system :malli) form))
+(defmethod check-form 'com.fulcrologic.guardrails.malli.core/>defn- [env form]
+  (analyze:>defn! (assoc env ::cp.art/spec-system :malli) form))
 
 (defn check!
   "Check a file.
@@ -145,27 +150,26 @@
         env   (cp.art/build-env forms)
         {:keys [forms file aliases refers]} forms]
     #_(mapcat
-        (fn [envs]
-          (map errors envs))
-        (for [form forms
-              env  [env]]
-          (check-form env form)))
+       (fn [envs]
+         (map errors envs))
+       (for [form forms
+             env  [env]]
+         (check-form env form)))
 
     #_(cp.analytics/profile ::check!
-        (cp.spec/with-empty-cache
-          #?(:cljs (fn check-forms! [[form & forms]]
-                     (if-not form (on-done)
-                                  (js/setTimeout
-                                    (fn []
-                                      (check-form! env form)
-                                      (check-forms! forms))
-                                    100)))
-             :clj  (fn [forms]
-                     (doseq [form forms]
-                       (check-form! env form))
-                     (on-done)))
-          forms))
-    ))
+                            (cp.spec/with-empty-cache
+                              #?(:cljs (fn check-forms! [[form & forms]]
+                                         (if-not form (on-done)
+                                                 (js/setTimeout
+                                                  (fn []
+                                                    (check-form! env form)
+                                                    (check-forms! forms))
+                                                  100)))
+                                 :clj  (fn [forms]
+                                         (doseq [form forms]
+                                           (check-form! env form))
+                                         (on-done)))
+                              forms))))
 
 (comment
   (tap> (cp.art/build-env []))

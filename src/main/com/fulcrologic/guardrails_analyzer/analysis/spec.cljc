@@ -19,7 +19,10 @@
    [clojure.test.check.random :as tc.random]
    [clojure.test.check.rose-tree :as tc.rose]
    [com.fulcrologic.guardrails-analyzer.analytics :as cp.analytics]
-   [com.fulcrologicpro.taoensso.timbre :as log]))
+   [com.fulcrologic.guardrails.malli.registry :as gr.malli.reg]
+   [com.fulcrologicpro.taoensso.timbre :as log]
+   [malli.core :as m]
+   [malli.generator :as mg]))
 
 (defn make-size-range-seq [max-size]
   (cycle (mapcat #(repeat 5 %) (range 0 max-size))))
@@ -50,15 +53,26 @@
   (-generate [this spec] (gen/generate spec))
   (-sample [this spec] (seq (take (:num-samples opts) (sample-seq spec)))))
 
-(comment
-  (defrecord Malli [opts]
-    ISpec
-    (-lookup [this value] (malli/schema value))
-    (-valid? [this spec value] (boolean (malli/validate spec value)))
-    (-explain [this spec value] (malli/explain spec value))
-    (-generator [this spec] (malli/generator spec))
-    (-generate [this spec] (malli/generate spec))
-    (-sample [this spec] (malli/sample spec))))
+(defrecord MalliSpec [opts]
+  ISpec
+  (-lookup [this value]
+    (try
+      (m/schema value {:registry gr.malli.reg/registry})
+      value
+      (catch #?(:clj Exception :cljs :default) _ nil)))
+  (-valid? [this spec value]
+    (boolean (m/validate spec value {:registry gr.malli.reg/registry})))
+  (-explain [this spec value]
+    (let [explanation (m/explain spec value {:registry gr.malli.reg/registry})]
+      (if explanation
+        (pr-str explanation)
+        "Success")))
+  (-generator [this spec]
+    (assoc (mg/generator spec {:registry gr.malli.reg/registry}) ::spec spec))
+  (-generate [this spec]
+    (mg/generate spec {:registry gr.malli.reg/registry}))
+  (-sample [this spec]
+    (seq (take (:num-samples opts) (sample-seq spec)))))
 
 (defn with-spec-impl
   ([env impl-type] (with-spec-impl env impl-type {}))
@@ -69,7 +83,33 @@
      (assoc env ::impl
             (case impl-type
               :clojure.spec.alpha (->ClojureSpecAlpha opts)
+              :malli (->MalliSpec opts)
               (->ClojureSpecAlpha opts))))))
+
+(defn with-both-impls
+  "Initializes the env with both spec implementations available.
+   The default active impl is ClojureSpecAlpha. Use `with-spec-system`
+   to switch the active impl per-function."
+  ([env] (with-both-impls env {}))
+  ([env opts]
+   (let [opts (merge {:num-samples 10 :cache-samples? true} opts)]
+     (assoc env
+            ::impl (->ClojureSpecAlpha opts)
+            ::malli-impl (->MalliSpec opts)
+            ::spec-impl (->ClojureSpecAlpha opts)))))
+
+(defn with-spec-system
+  "Switch the active spec impl in env based on the spec-system keyword.
+   :org.clojure/spec1 or nil -> ClojureSpecAlpha (default)
+   :malli -> MalliSpec"
+  [env spec-system]
+  (case spec-system
+    :malli (if-let [malli-impl (::malli-impl env)]
+             (assoc env ::impl malli-impl)
+             env)
+    (if-let [spec-impl (::spec-impl env)]
+      (assoc env ::impl spec-impl)
+      env)))
 
 (defn lookup [env value] (-lookup (::impl env) value))
 (defn valid? [env spec value] (cp.analytics/profile ::valid? (-valid? (::impl env) spec value)))

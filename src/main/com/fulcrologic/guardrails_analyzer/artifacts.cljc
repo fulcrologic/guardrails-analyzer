@@ -281,7 +281,7 @@
                      (->> @gr.externs/function-registry
                           (fix-kw-nss)
                           (resolve-quoted-specs env))})
-             (cp.spec/with-spec-impl :clojure.spec.alpha))))
+             (cp.spec/with-both-impls))))
 
 (>defn qualify-extern
        [env sym]
@@ -295,6 +295,37 @@
            (symbol (str fq-ns) (name sym)))
          (get (::refers env) sym)
          sym)))
+
+(defn- malli-spec-form?
+  "Returns true if the spec form looks like a malli schema rather than clojure.spec.
+   Malli specs are simple keywords (:string, :int) or vectors ([:maybe :string]),
+   while clojure.spec specs are typically symbols (int?, string?) or lists."
+  [spec-form]
+  (or (simple-keyword? spec-form)
+      (and (vector? spec-form) (keyword? (first spec-form)))))
+
+(defn- infer-spec-system
+  "Infers the spec system from the function's gspec forms when ::spec-system
+   is not explicitly set (pre-1.3.0 guardrails compatibility)."
+  [fn-detail]
+  (let [arities (vals (::arities fn-detail))]
+    (when (seq arities)
+      (let [specs (mapcat (fn [arity]
+                            (concat (::quoted.argument-specs (::gspec arity))
+                                    (when-let [rs (::quoted.return-spec (::gspec arity))]
+                                      [rs])))
+                          arities)]
+        (when (some malli-spec-form? specs)
+          :malli)))))
+
+(defn fn-spec-system
+  "Returns the spec system for a function detail (:org.clojure/spec1 or :malli).
+   Checks explicit ::spec-system first, then infers from spec forms."
+  [fn-detail]
+  (let [explicit (::spec-system fn-detail)]
+    (if (and explicit (not= explicit :org.clojure/spec1))
+      explicit
+      (or (infer-spec-system fn-detail) :org.clojure/spec1))))
 
 (>defn function-detail [env sym]
        [::env symbol? => (? ::function)]
