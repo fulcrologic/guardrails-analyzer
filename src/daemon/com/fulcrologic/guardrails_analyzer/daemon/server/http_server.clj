@@ -1,12 +1,12 @@
-(ns com.fulcrologic.guardrails-analyzer.daemon.server.http-server
+(ns ^:clj-reload/no-reload com.fulcrologic.guardrails-analyzer.daemon.server.http-server
   (:require
-    [clojure.java.io :as io]
-    [com.fulcrologic.guardrails-analyzer.daemon.server.middleware :refer [middleware]]
-    [com.fulcrologicpro.taoensso.timbre :as log]
-    [mount.core :refer [defstate]]
-    [org.httpkit.server :as http-kit])
+   [clojure.java.io :as io]
+   [com.fulcrologic.guardrails-analyzer.daemon.server.middleware :refer [middleware]]
+   [com.fulcrologicpro.taoensso.timbre :as log]
+   [mount.core :refer [defstate]]
+   [org.httpkit.server :as http-kit])
   (:import
-    (java.net ServerSocket)))
+   (java.net ServerSocket)))
 
 (defn write-port-to-file! [file port]
   (io/make-parents file)
@@ -14,7 +14,7 @@
 
 (defonce port-file
   (io/file (System/getProperty "user.home")
-    ".guardrails/daemon.port"))
+           ".guardrails/daemon.port"))
 
 (defstate http-server
   :start (let [socket    (new ServerSocket 0)

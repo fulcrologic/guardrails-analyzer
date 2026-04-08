@@ -1,19 +1,19 @@
 == IntelliJ Plugin
 
-Our IntelliJ plugin provide the best overall experience for editor
+Our IntelliJ plugin provides the best overall experience for editor
 integration. You can download and install it from the IntelliJ
-Marketplace. It is listed as the "Guardrails Copilot". It should work with
+Marketplace. It is listed as the "Guardrails Analyzer". It should work with
 the Community and Ultimate editions, but it *does* require the "Cursive" plugin
 as well.
 
-The plugin will automatically connect to the Copilot Daemon when it is running.
-The IDE commands that invoke Copilot logic actually send instructions to the daemon,
-and it communicates with one or more checkers to coordinate and accomplis the
+The plugin will automatically connect to the Guardrails Analyzer daemon when it is running.
+The IDE commands that invoke Guardrails Analyzer logic actually send instructions to the daemon,
+and it communicates with the analyzer in your REPL to coordinate and accomplish the
 checking task(s).
 
 === Available Actions
 
-The menu for controlling Copilot is in the `Tools` menu under Copilot.
+The menu for controlling Guardrails Analyzer is in the `Tools` menu under Guardrails Analyzer.
 We recommend you add a key binding for the actions you use the most.
 
 The check commands have two variants: Ones that refresh the entire
@@ -24,6 +24,8 @@ you feel that files (other than the current one) may need to
 be reloaded by the checker for it to have a correct understanding of
 your program. Refreshing everything can be quite slow, so only use
 these variants if you think things have gotten out-of-sync.
+
+NOTE: The "Refresh" variants reload code before checking. This only works if the analyzer was started with `:src-dirs` (dedicated REPL mode). In dev REPL mode, refresh commands behave the same as regular check commands. Reload your code in your REPL first, then use the regular check command.
 
 Check Namespace:: Checks everything possible in the current namespace. This
 is probably the most commonly used command, and should work well for

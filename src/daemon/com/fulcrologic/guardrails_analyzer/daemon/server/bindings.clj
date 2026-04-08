@@ -1,4 +1,4 @@
-(ns com.fulcrologic.guardrails-analyzer.daemon.server.bindings
+(ns ^:clj-reload/no-reload com.fulcrologic.guardrails-analyzer.daemon.server.bindings
   (:require
    [clojure.walk :as walk]
    [com.fulcrologic.guardrails-analyzer.artifacts :as cp.art]))

@@ -1,4 +1,4 @@
-= Copilot User Guide
+= Guardrails Analyzer User Guide
 :author: Fulcrologic, LLC
 :email: support@fulcrologic.com
 :imagesdir: ./images
@@ -98,6 +98,3 @@ themselves. The checker will *never* run your code unless you declare it pure so
 
 WARNING: If you declare a function as pure then the checker will consider it safe to run. It does no recursive checking
 to make sure you have not accidentally caused a nested side-effect. We hope to address this in an upcoming version.
-
-// NOTE: We can probably have the `>defn` macro emit no body in functions that are not declared pure. This would eliminate
-// the danger.

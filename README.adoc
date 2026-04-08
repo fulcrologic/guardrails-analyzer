@@ -1,90 +1,15 @@
 :source-highlighter: coderay
 :source-language: clojure
-:toc:
-:toc-placement: preamble
 :sectlinks:
 :sectanchors:
-:sectnums:
 
 = Guardrails Analyzer
 
 image:https://img.shields.io/clojars/v/com.fulcrologic/guardrails-analyzer.svg[link=https://clojars.org/com.fulcrologic/guardrails-analyzer]
 image:https://circleci.com/gh/fulcrologic/guardrails-analyzer/tree/main.svg?style=svg["CircleCI", link="https://circleci.com/gh/fulcrologic/guardrails-analyzer/tree/main"]
 
-A static analysis tool for Clojure/ClojureScript that performs compile-time type checking and validation based on https://github.com/fulcrologic/guardrails[Guardrails] specs.
-Catch type errors and spec violations during development without having to run the code.
-
-Status: ALPHA quality.
-Mostly API Stable.
-
-Documentation and nice-factors still in progress (e.g. it's a little rough around the edges)
-
-NOTE: I was originally going to call this copilot for Guardrails when I started tinkering with this in 2020, and now obviously someone else tool that name, so I've renamed this project.
-Any stray references to copilot in this project should be read as "guardrails analyzer" instead.
-
-== Quickstart
-
-I'm still working on the work flow.
-So bear with me.
-
-=== Daemon
-
-You have to first start a daemon which acts as the communication server.
-If you clone this project, and run `make Daemon.jar`.
-That is an uberjard (`java -jar Daemon.jar`), but you must currently run it from your home directory.
-This has to be running for the checker to be able to communicate with the IDE.
-
-=== IntelliJ Plugin
-
-Download a release from https://github.com/fulcrologic/guardrails-intellij-plugin (releases) and install it from disk
-
-=== The Checker
-
-You must be using Guardrails, of course.
-Also, you MUST put Guardrails in either ":all" or ":pro" mode, or it won't emit the analysis data that the analyzer needs!
-
-You do this by adding JVM args to startup:
-
-[bash]
------
-clojure -J-Dguardrails.mode=:all -J-Dguardrails.enabled ...
-# or
-clojure -J-Dguardrails.mode=:pro ...  # ONLY static analysis, no runtime enforcement
------
-
-If you add this library to your project's development deps, you can start the checker in a REPL.
-Note that the checker has to reload nses as it runs to make sure it has the latest runnable specs, so you may or may not want to actually do *work* in that REPL.
-I've got internal code for starting the checker, but I need to finish the polish/docs.
-
-IMPORTANT: It won't be able to check until the code is loaded, so you should probably load your top-level entry point ns before you start the checker.
-That way you'll know it's basically ready.
-
-[source,clojure]
------
-(require '[com.fulcrologic.guardrails-analyzer.checkers.clojure :as cc])
-;; List the source dirs you want to be able to run checks on
-(cc/start {:src-dirs ["src/dev" "src/main"]})
------
-
-Now you can trigger IntelliJ commands (add kb shortcuts) for guardrails actions like "Check Namespace".
-E.g. press your shortcut for Run Action (i.e. CMD-SHIFT-A) and type "Check Namespace".
-
-See ~/.guardrails/logs for logs.
-
-== Overview
-
-Guardrails Analyzer provides REPL and IDE-integrated static analysis for Clojure code that uses Guardrails' `>defn` macro and inline gspec syntax.
-It analyzes your code at development-time, providing real-time feedback on type errors, spec violations, and potential issues.
-
-The base idea is to use generators (Clojure spec or Malli) to generate data and flow it through a simulation of your code, tracking what happens, and warning when something looks fishy.
-Because that requires running *your* specs, it means we have to run a process that has your code in it, as well as the checker.
-
-This goes beyond pure static analysis (like clj-kondo) in that it is able to find a LOT more possible problems with your actual algorithm data flow.
-When used with IntelliJ you can even see the flowed values on bindings in let to see what's going on!
-
-In order to facilitate communication between this checker and editors this project includes a daemon that runs as both an IntelliJ and LSP server.
-
-An IntellJ Plugin already exists, and is published as a separate project.
+A static analysis tool for Clojure that validates code using https://github.com/fulcrologic/guardrails[Guardrails] specs at development time.
+It uses generators to flow sample data through your code and catch type errors without running it.
 
 === Key Features
 
@@ -95,7 +20,80 @@ An IntellJ Plugin already exists, and is published as a separate project.
 * **Zero Runtime Overhead**: All analysis happens at development time
 * **Comprehensive Coverage**: Supports control flow (`if`, `when`, `cond`), higher-order functions, macros, and more
 
-=== How It Works
+== Quick Start
+
+=== 1. Add the dependency
+
+In your `deps.edn`, add the analyzer as a dev dependency and set the JVM mode:
+
+[source,clojure]
+----
+{:deps    {com.fulcrologic/guardrails {:mvn/version "1.2.9"}
+           ;; ... your other deps
+           }
+ :aliases {:dev {:extra-deps {com.fulcrologic/guardrails-analyzer {:mvn/version "CURRENT"}}
+                 :jvm-opts   ["-Dguardrails.mode=:pro"]}}}
+----
+
+The `-Dguardrails.mode=:pro` property is essential -- it tells the `>defn` macro to register spec
+information that the analyzer needs. Without it, the analyzer has nothing to work with.
+
+=== 2. Start your REPL and load your code
+
+Start your REPL with the dev alias, then load your application:
+
+[source,bash]
+----
+clojure -A:dev -M:nrepl  # or however you start your REPL
+----
+
+[source,clojure]
+----
+;; Load your app so specs are registered
+(require 'my.app.main)
+----
+
+=== 3. Start the analyzer
+
+[source,clojure]
+----
+(require '[com.fulcrologic.guardrails-analyzer.checkers.repl :as ga])
+(ga/start)
+----
+
+The daemon (a background process that bridges the analyzer to your editor) auto-launches if
+one isn't already running. You'll see a log message confirming the connection.
+
+=== 4. Check your code
+
+**From your editor**: Use editor commands like IntelliJ's "Check Namespace" (under Tools > Guardrails Analyzer).
+
+**From the REPL**:
+
+[source,clojure]
+----
+;; Returns problems as data (works without any editor)
+(ga/check-ns 'my.app.core)
+;; => [{:file "..." :line 42 :column 3 :severity "error" :message "..."}]
+
+;; Pushes results to your editor as diagnostic annotations
+(ga/check-ns! 'my.app.core)
+
+;; Both also work with file paths
+(ga/check-file "src/main/my/app/core.clj")
+(ga/check-file! "src/main/my/app/core.clj")
+----
+
+The `check-ns` / `check-file` variants return a compact vector of problems -- useful from a pure
+REPL with no IDE, for scripting, or for building lightweight editor integrations (Vim, Emacs, etc.).
+The `!` variants push results through the daemon to your connected editor.
+
+== Tutorial: How the Analyzer Sees Your Code
+
+The analyzer works by generating sample data from your specs and flowing it through your code.
+Understanding this is key to getting good results.
+
+=== Basic checking
 
 [source,clojure]
 ----
@@ -111,71 +109,125 @@ An IntellJ Plugin already exists, and is published as a separate project.
 The analyzer:
 
 1. Parses the gspec: `[number? keyword? => number?]`
-2. Generates sample values using spec generators
-3. Traces execution through conditional branches
-4. Validates that all paths conform to the return spec
-5. Reports errors with specific path information
+2. Generates sample values (e.g. `42`, `:foo`) from the specs
+3. Traces execution through both branches of the `if`
+4. Validates that all paths return a `number?`
 
-If you accidentally return a non-number on any path, you'll get an error like:
+If you accidentally return a non-number:
 
 ----
 The Return spec is number?, but it is possible to return
-a value like :invalid when (= customer-type :premium) → else
+a value like :invalid when (= customer-type :premium) -> else
 ----
 
-=== Path-Based Analysis
+=== The `^:pure` annotation: why it matters
 
-The analyzer tracks execution paths through your code to provide precise error reporting:
+Without `^:pure`, the analyzer treats function calls as black boxes -- it knows the return spec
+but can't see how data flows _through_ the function. This leads to false positives.
 
-* **Determined Conditions**: Pure predicates like `(even? x)` partition samples by branch
-* **Path Tracking**: Each execution path maintains its own samples and bindings
-* **Precise Errors**: Know exactly which conditions lead to spec violations
-* **Control Flow Support**: `if`, `when`, `cond`, `and`, `or`, `cond->`, `some->`, and more
+Consider these two functions:
 
-See `PATH_BASED_ANALYSIS_COMPLETE.md` for comprehensive documentation.
-
-== Architecture
-
-=== Core Components
-
-* **Analyzer** (`src/main/com/fulcrologic/guardrails-analyzer/analysis/`)
-** Multi-method dispatch system for different expression types
-** Function, macro, literal, and higher-order function analysis
-** Destructuring and conditional handling
-
-* **Artifacts System** (`artifacts.cljc`)
-** Central data structure definitions using clojure.spec
-** Environment tracking for bindings, problems, and analysis state
-** Path management and sample partitioning
-
-* **Checker** (`checker.cljc`)
-** Main entry point for editor integration
-** Gathers problems and bindings after analysis
-** Formats output for IDE/LSP consumption
-
-* **Daemon** (`src/daemon/`)
-** Language Server Protocol implementation
-** HTTP server and WebSocket communication
-** Real-time feedback to editors/IDEs
-
-* **UI Formatters** (`src/main/com/fulcrologic/guardrails-analyzer/ui/`)
-** Human-readable error messages
-** Binding information display
-** Path-based error formatting
-
-=== Data Flow
-
+[source,clojure]
 ----
-Editor → Daemon → Checker → Analyzer → Type Checker → Formatter → Daemon → Editor
+(>defn with-full-name [{:person/keys [first-name last-name] :as person}]
+  [(s/keys :req [:person/first-name :person/last-name])
+   => (s/keys :req [:person/full-name])]
+  (assoc person :person/full-name (str first-name " " last-name)))
+
+(>defn greeting-for [person]
+  [(s/keys :req [:person/first-name :person/last-name])
+   => string?]
+  (let [p (with-full-name person)]
+    (str "Hello, " (:person/full-name p))))
 ----
 
-== Development
+**Without `^:pure`**: The analyzer knows `with-full-name` returns something matching
+`(s/keys :req [:person/full-name])`, but it generates _new_ random samples for the return value.
+The input data (`:person/first-name`, `:person/last-name`) is lost.  If `greeting-for` tried to
+access `:person/first-name` from `p`, the analyzer would warn that it might not be there --
+even though `with-full-name` passes the whole map through via `assoc`.
 
-=== Prerequisites
+**With `^:pure`**: The analyzer actually _runs_ the function on the sample data, so `p` contains
+the real result -- including all the keys that flowed through:
 
-* Clojure CLI tools
-* Node.js (for ClojureScript builds)
-* Java 21+
+[source,clojure]
+----
+(>defn with-full-name [{:person/keys [first-name last-name] :as person}]
+  ^:pure [(s/keys :req [:person/first-name :person/last-name])
+          => (s/keys :req [:person/full-name])]
+  (assoc person :person/full-name (str first-name " " last-name)))
+----
+
+Now the analyzer can trace data flow accurately through `with-full-name` and won't issue
+false warnings about missing keys downstream.
+
+**Rule of thumb**: Mark any function as `^:pure` if it:
+
+* Has no side effects (no I/O, no mutation, no state changes)
+* Transforms data in a way that downstream code depends on
+
+This is the single most impactful thing you can do to improve analyzer accuracy.
+
+=== Side-effecting functions with `^{:pure-fn ...}`
+
+If a function has side effects but you still want the analyzer to understand its data flow,
+provide a pure stand-in:
+
+[source,clojure]
+----
+(>defn save-and-return! [conn person]
+  ^{:pure-fn (fn [_ person] (assoc person :person/saved? true))}
+  [any? (s/keys :req [:person/name]) => (s/keys :req [:person/name :person/saved?])]
+  (db/save! conn person)
+  (assoc person :person/saved? true))
+----
+
+The `:pure-fn` is never called at runtime -- it's only used by the analyzer to simulate data flow.
+
+== Usage Modes
+
+=== Dev REPL (default)
+
+[source,clojure]
+----
+(ga/start)
+----
+
+The analyzer checks against currently-loaded code. You manage your own code loading and reloading.
+This is the best option for most users -- the analyzer never interferes with your running system.
+
+=== Dedicated REPL
+
+[source,clojure]
+----
+(ga/start {:src-dirs ["src/main" "src/dev"]})
+----
+
+Auto-reloads changed namespaces when the editor triggers a refresh-and-check.
+Use a separate REPL that you don't work in directly. This is useful if you want
+fully automatic checking without manual reloads.
+
+== The Daemon
+
+The daemon is a shared background process that bridges the analyzer and your editor.
+It auto-launches when you call `start`. One daemon serves all projects on your machine.
+
+To start manually:
+
+[source,bash]
+----
+clojure -M -m com.fulcrologic.guardrails-analyzer.daemon.main
+----
+
+* Port file: `~/.guardrails/daemon.port`
+* Logs: `~/.guardrails/`
+
+== Editor Integration
+
+* **IntelliJ**: Plugin at https://github.com/fulcrologic/guardrails-intellij-plugin. The plugin
+  auto-discovers the daemon and provides check commands under Tools > Guardrails Analyzer.
+* **Other editors**: The daemon runs an LSP server. Configure your editor's LSP client to connect
+  to the port advertised in `~/.guardrails/lsp-server.port`.
 
 == Relationship with Guardrails
 
@@ -188,11 +240,11 @@ This project has a close relationship with the https://github.com/fulcrologic/gu
 
 == Documentation
 
-See the `ai/` directory and root-level markdown files for detailed documentation:
+See link:docs/user-guide/UserGuide.adoc[User Guide] for detailed usage documentation,
+including spec writing guidelines and editor-specific setup.
 
-* `CLAUDE.md` - Comprehensive project overview and architecture guide
-* `ai/running-tests.md` - Testing guidelines
+== License
 
-== Copyright and License
+Copyright (C) 2025 Fulcrologic, LLC.
 
-Copyright 2025, Fulcrologic, LLC All Rights Reserved
+Distributed under the MIT License. See link:LICENSE[LICENSE] for details.

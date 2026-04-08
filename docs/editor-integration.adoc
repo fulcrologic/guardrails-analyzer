@@ -4,16 +4,16 @@ CLJ Kondo has a binary (clj-kondo). It gets passed a filename as a command line 
 to stdout. The IDE can then put the markup on lines based on that stdout.
 
 So, our checker will be high-overhead, and potentially running in browser. So, the exe above is just an interface to
-reading errors that are kept by GRP.
+reading errors that are kept by Guardrails Analyzer.
 
 Suggested implementation:
 
-* Write a daemon that is started when you want to use GRP (perhaps automatically by the above exe if it isn't running)
+* Write a daemon that is started when you want to use Guardrails Analyzer (perhaps automatically by the above exe if it isn't running)
 ** The daemon keeps a stateful list of problems.
 ** Daemon is super stupid simple: Just an atom holding errors with three API calls: save-errors, get-errors (sync call
    that triggers server push to connected checkers), clear-errors
 * The runtime checkers connect via websockets and report problems.
-** Checker is run by file watcher or shadow reload started by user of GRP.
+** Checker is run by file watcher or shadow reload started by user of Guardrails Analyzer.
 * The exe just asks the daemon for problems (by filename), and reports back the response to stdout
 
 [ditaa]
@@ -22,21 +22,21 @@ Suggested implementation:
 
   +--------------------------------------------+
   |                                            |
-  |  +-----------+   JSON      +-----------+   |               +-----------+
-  |  | LSP Client+<----------->+ LSP Server+<----------------->+ GRP Daemon| (cache of errors)
-  |  |           |             | LVL1 CACHE|   |               | LVL2 CACHE|
-  |  +----+------+             +-----------+   |               +-----+-----+
-  |       |                                    |                     ^
-  |       v                                    |                     |
-  |   editor                                   |                     |
-  |                                            |                     |
-  |                                            |                     |
-  +--------------------------------------------+                     |
-                                                                 +---+--------+
-                                                                 |            |
-                                                                 |            |
+  |  +-----------+   JSON      +-----------+   |               +-------------------+
+  |  | LSP Client+<----------->+ LSP Server+<----------------->+ Guardrails Daemon | (cache of errors)
+  |  |           |             | LVL1 CACHE|   |               | LVL2 CACHE        |
+  |  +----+------+             +-----------+   |               +--------+----------+
+  |       |                                    |                        ^
+  |       v                                    |                        |
+  |   editor                                   |                        |
+  |                                            |                        |
+  |                                            |                        |
+  +--------------------------------------------+                        |
+                                                                 +------+------+
+                                                                 |             |
+                                                                 |             |
                                                           +-----------+   +-----------+
-                                                          | GRP CHKR  |   | GRP CHKR  |
+                                                          | Analyzer  |   | Analyzer  |
                                                           | JVM       |   | JS        |
                                                           +-----------+   +-----------+
 -----
@@ -47,21 +47,21 @@ Suggested implementation:
 
   +--------------------------------------------+
   |                                            |
-  |  +-----------+   JSON      +-----------+   |               +-----------+
-  |  | LSP Client+<----------->+ LSP Server+<------EXE-------->+ GRP Daemon| (cache of errors)
-  |  |           |             | LVL1 CACHE|   |               | LVL2 CACHE|
-  |  +----+------+             +-----------+   |               +-----+-----+
-  |       |                                    |                     ^
-  |       v                                    |                     |
-  |   editor                                   |                     |
-  |                                            |                     |
-  |                                            |                     |
-  +--------------------------------------------+                     |
-                                                                 +---+--------+
-                                                                 |            |
-                                                                 v            v
+  |  +-----------+   JSON      +-----------+   |               +-------------------+
+  |  | LSP Client+<----------->+ LSP Server+<------EXE-------->+ Guardrails Daemon | (cache of errors)
+  |  |           |             | LVL1 CACHE|   |               | LVL2 CACHE        |
+  |  +----+------+             +-----------+   |               +--------+----------+
+  |       |                                    |                        ^
+  |       v                                    |                        |
+  |   editor                                   |                        |
+  |                                            |                        |
+  |                                            |                        |
+  +--------------------------------------------+                        |
+                                                                 +------+------+
+                                                                 |             |
+                                                                 v             v
                                                           +-----------+   +-----------+
-                                                          | GRP CHKR  |   | GRP CHKR  |
+                                                          | Analyzer  |   | Analyzer  |
                                                           | JVM       |   | JS        |
                                                           +-----------+   +-----------+
 -----

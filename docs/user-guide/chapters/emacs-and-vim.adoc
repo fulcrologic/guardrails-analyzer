@@ -1,6 +1,6 @@
 == Support for Other Editors
 
-The Copliot daemon makes diagnostics available via an LSP server port.
+The Guardrails Analyzer daemon makes diagnostics available via an LSP server port.
 This port is advertised as the daemon starts, and can be configured in the `~/.guardrails/config.edn` file.
 
 [source, clojure]
@@ -19,4 +19,4 @@ for setting up Emacs.
 === Calva
 
 Early access releases do not yet have official documentation or support
-for setting up Emacs.
+for setting up Calva.

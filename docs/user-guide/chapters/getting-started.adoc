@@ -7,50 +7,13 @@ system that is well-supported by the https://clojure.org/guides/getting_started[
 
 If you are using Windows then we recommend using Windows Subsystem for Linux.
 
-=== Running the Guardrails Daemon
+=== Prerequisites
 
-You have two choices when running the Guardrails Daemon: Use the `clojure` command or a runnable jar.
+* Clojure 1.12+ with CLI tools
+* Java 21+
+* The https://github.com/fulcrologic/guardrails[Guardrails] library in your project
 
-==== Runnable JAR
-
-The maven dependency for the daemon *is* actually a runnable jar. If you want to run it this way, then first specify
-it as a dependency of *any* project, resolve the dependencies (which will download it), and then copy the jar file
-from the maven repository cache.  Usually this cache is under the path `~/.m2/repository`, where
-the actual artifacts can be found under subdirectories from there. For example: `/com/fulcrologic/copilot-daemon/...`.
-
-If you were to copy the jar to `/usr/local/jars/copilotd.jar`, then you'd run it with:
-
-[source, bash]
------
-java -jar /usr/local/jars/copilotd.jar
------
-
-==== Running Via Deps
-
-The deps approach allows you to combine the downloading, version management, and execution into one simple
-setup. You just have to add this in your global deps file:
-
-
-[souce]
------
-{:mvn/repos {"fulcrologic" {:url "https://mvn.fulcrologic.com"}}
- :aliases
-  {:copilotd
-    {:extra-deps {com.fulcrologic/copilot-daemon {:mvn/version "1.0.0-SNAPSHOT"}}
-     :exec-fn com.fulcrologic.guardrails-analyzer.daemon.main/-main}}}
------
-
-and you should then be able to start it with:
-
-[source, bash]
------
-clojure -X:copilotd
------
-
-Be sure to use a version of the daemon that matches your copilot checker version.
-
-
-=== JVM Mode Requirement: `-Dguardrails.mode=:pro`
+=== JVM Mode Requirement
 
 For Guardrails Analyzer to work, the `>defn` macro must expand in a way that registers specs and
 function metadata with the analyzer. This requires setting the JVM system property at startup:
@@ -60,116 +23,103 @@ function metadata with the analyzer. This requires setting the JVM system proper
 -Dguardrails.mode=:pro
 -----
 
-Without this property, `>defn` expands as a standard Guardrails function and the analyzer cannot
-see the spec information it needs to perform checks.
+You can also use `:all` instead of `:pro`. Add this to your dev alias in `deps.edn`:
 
-This property must be set regardless of how you run the checker:
-
-* **Separate process** – pass it to the JVM running your checker alias, for example:
-+
-[source, bash]
------
-clj -J-Dguardrails.mode=:pro -A:dev -X:clj-checker :main-ns checker-startup
------
-
-* **In-process (same REPL JVM)** – add it to the `:jvm-opts` of your development alias in `deps.edn`:
-+
 [source]
 -----
 {:aliases
   {:dev {:jvm-opts ["-Dguardrails.mode=:pro"]}}}
 -----
 
-IMPORTANT: This property must be present at JVM *startup*. Setting it later via `System/setProperty`
+IMPORTANT: This property must be set at JVM *startup*. Setting it later via `System/setProperty`
 after the JVM has started will not affect macros that have already expanded.
 
-=== The Checker
+=== Adding to Your Project
 
-A checker is a persistent process that runs the *environment* of your program. This is what enables Guardrails Analyzer to understand your specs, no matter how complex they are, or what strange features they may use. When designing Guardrails Analyzer we decided that it would often be best if the checker *not* run in your development REPL (even though it has everything the checker needs). *You* still need to work at full speed, and you should not have tooling interfering with your ability to start/stop your REPL, or otherwise block your normal development progress.
-
-You *may* choose to run the checker in your project development REPL to reduce the number of things running, but because the checker reloads namespaces it make cause unexpected behaviors. If you run into that, change over to using the external process.
-
-This is the trickiest part of the whole system. Problems can arise if you try to check a ns with syntax errors (the checker reload will fail). This could lead to an inconsistent state in the checker, and result in failures to analyze the code. This is a work in progress.
-
-We were also careful to minimize the checker's runtime dependencies, so they do not conflict with things you use. We did not want you to have to juggle the version of libraries you use in order to run Guardrails Analyzer!
-
-The primary dependency is the most recent version of https://github.com/fulcrologic/guardrails[Guardrails]. You cannot write Guardrails Analyzer-supported functions without that.
-
-The Guardrails Analyzer checker for Clojure also includes the following dependencies on the classpath when you run it:
+Add the Guardrails Analyzer dependency and mode setting to your `deps.edn`:
 
 [source]
 -----
- :deps    {com.fulcrologic/guardrails     {:mvn/version "1.x.x"}
-           org.clojure/core.async         {:mvn/version "1.0.567"}
-           org.clojure/test.check         {:mvn/version "1.1.0"}
-           org.clojure/tools.namespace    {:mvn/version "1.0.0"}}
+{:aliases
+  {:dev {:extra-deps {com.fulcrologic/guardrails-analyzer {:mvn/version "CURRENT"}}
+         :jvm-opts ["-Dguardrails.mode=:pro"]}}}
 -----
 
-Guardrails Analyzer requires at least Clojure 1.10.
+=== Starting the Analyzer
 
-These libraries tend to follow the "higher version means better" philosophy, so we hope they do not
-conflict with your application. Please let us know if these dependencies cause problems with
-starting or running the checker.
+==== Dev REPL Mode (Recommended)
 
-=== Clojure
-
-The easiest way to set up a Clojure checker is to add the following to your `deps.edn`:
+In your normal development REPL, load your application code first, then start the analyzer:
 
 [source]
 -----
-{:aliases {:clj-checker {:extra-deps {com.fulcrologic/copilot {:mvn/version "x.x.x"}}
-                         :exec-fn    com.fulcrologic.guardrails-analyzer.checkers.clojure/start!
-                         :exec-args  {:src-dirs ["src/main" "src/test"]}}}}
+;; Load your application code first
+(require 'my.app.main)
+;; Start the analyzer
+(require '[com.fulcrologic.guardrails-analyzer.checkers.repl :as ga])
+(ga/start)
 -----
 
-// TASK: Anthony, do we need src-dirs???  Seems like all the file locating could be done via io/resource, and then
-// leveraging the URL it returns.
-The `src-dirs` option is required, and indicates the base classpath location for any files you will
-check.  Future releases will derive this information automatically.
+The daemon auto-launches if not already running.
 
-==== Initial Namespace
+==== Triggering Checks
 
-The checker loads pretty much like any other Clojure program. You use deps to configure a classpath, and then
-some namespace (optionally) gets loaded.
+**From your editor**: Use the editor's check commands (e.g. IntelliJ's "Check Namespace" action).
+Results appear as annotations in your editor.
 
-Since we want the checker to know about your specs and code it is a good idea to create a namespace that
-contains requires for the main bits of your application. This will cause them to all load at checker startup and ensure
-the checker has all the information it needs.
-
-For example, you might create:
+**From the REPL**: Two styles of check are available:
 
 [source]
 -----
-(ns checker-startup
-  (:require
-    [com.my-company.my-extra-specs]
-    [com.my-company.my-app-entry-point]))
+;; Return problems as data (no IDE required)
+(ga/check-ns 'my.app.core)
+;; => [{:file "..." :line 42 :column 3 :severity "error" :message "..."}]
+
+(ga/check-file "src/main/my/app/core.clj")
+;; => [{:file "..." :line 10 :column 1 :severity "warning" :message "..."}]
+
+;; Push results to your editor as diagnostics
+(ga/check-ns! 'my.app.core)
+(ga/check-file! "src/main/my/app/core.clj")
 -----
 
-==== Starting The Checker
+The `check-ns` / `check-file` variants return a compact vector of problems directly — useful
+from a pure REPL with no editor, for scripting, or for building lightweight editor integrations
+(e.g. Vim, Emacs). The `!` variants push results through the daemon to your connected editor.
 
-You must start the checker in your project root. You can add a `main-ns` key to exec-args, or include it as
-a command line argument:
+==== Dedicated REPL Mode (Alternative)
+
+If you prefer to run the analyzer in a separate REPL that you don't work in directly:
+
+[source]
+-----
+(require '[com.fulcrologic.guardrails-analyzer.checkers.repl :as ga])
+(ga/start {:src-dirs ["src/main" "src/dev"]
+           :main-ns 'my.app.main})
+-----
+
+In this mode, the analyzer auto-reloads changed code when the editor triggers a refresh-and-check.
+
+=== The Daemon
+
+The daemon is a shared background process that bridges the analyzer to your editor via LSP and WebSocket.
+It auto-launches when you call `start`, or you can start it manually:
 
 [source, bash]
 -----
-$ clj -A:aliases:for:development -X:clj-checker :main-ns checker-startup
+clojure -M -m com.fulcrologic.guardrails-analyzer.daemon.main
 -----
 
-The `:main-ns` points the checker to your project's primary namespace, or the special checker startup namespace.
-described in the prior section.
+One daemon serves all projects. Port file: `~/.guardrails/daemon.port`. Logs: `~/.guardrails/`.
+
+=== Loading Your Code
+
+The analyzer needs specs registered in the JVM to check your code. In `:pro` or `:all` mode,
+loading a namespace registers its specs. Make sure your code is loaded before checking:
+
+* **Dev REPL**: Load your app normally, then start the analyzer.
+* **Dedicated REPL**: Use `:main-ns` to auto-load at startup.
 
 IMPORTANT: Your project should avoid doing things as top-level namespace side-effects, because that could interfere with
-the checker's ability to reload your namespaces and might otherwise run things you do not want the checker to run.
-We assume you're using something like `mount` or `component` and that
-namespaces can be (re)loaded without causing harm.
-
-Once you have a checker running, you're ready to check some files! Read more about that in the various IDE/Editor
-integration chapters.
-
-=== Clojurescript (Browser)
-
-NOTE: The early access releases do not include Clojurescript support. Our early releases are for Clojure, but the design
-is built to work with any target runtime.  If there is sufficient demand for Clojurescript support we have
-a working checker that just needs more product refinement and will be prioritized if that demand materializes.
-
+the analyzer's ability to reload your namespaces and might otherwise run things you do not want. We assume you're
+using something like `mount` or `component` and that namespaces can be (re)loaded without causing harm.

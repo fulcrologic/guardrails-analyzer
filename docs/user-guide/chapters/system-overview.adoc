@@ -1,39 +1,41 @@
 == General Overview
 
-In order to obtain the most accurate results the checkers themselves must run in the real runtime environment of your
-application. This allows the tool to leverage your real code instead of it being a pure source-level analysis. These
-low-level checkers connect to a central daemon. The daemon serves several roles:
+The Guardrails Analyzer runs directly in your REPL, giving it full access to your application's runtime environment --
+specs, loaded code, and all dependencies. It connects to a shared daemon process that bridges communication
+between the analyzer and your editor(s).
 
-* An LSP (language server protocol) server for arbitrary editors.
-* Runtime file I/O (browser cljs environments cannot read the filesystem)
-* A central common place to run a UI for centralized configuration and control outside of editors.
+The daemon serves several roles:
+
+* An LSP (language server protocol) server for standard editors (Emacs, Vim, Calva, etc.)
+* A WebSocket API for the IntelliJ plugin
+* Runtime file I/O support
+* A central place for configuration and control
 
 The overall system diagram looks like this:
 
-[ditaa, target="copilot-arch"]
 -----
-   +------------------+ +------------------+
-   | Checker (CLJ)    | | Checker (CLJS)   |
-   | In JVM           | | Browser/Node/??? |
-   +------------------+ +------------------+
-                  ^         ^
-                  |         |
-                  +----+----+
-                       |
-                       v
-                   +--------+
-                   | Daemon |
-                   +--------+
-                       ^
-                       |
-          +---------+--+-------+
-          |         |          |
-          v         v          v
-   +---------+ +---------+
-   | Editor  | | Editor  | ...
-   +---------+ +---------+
+  +------------------+
+  | Your REPL        |
+  | (analyzer)       |
+  +--------+---------+
+           |
+           | WebSocket
+           v
+       +--------+
+       | Daemon |  (shared, auto-launched)
+       +--------+
+           ^
+           |
+    +------+------+
+    |      |      |
+    v      v      v
+ +------+ +------+
+ |Editor| |Editor| ...
+ +------+ +------+
 -----
 
-The IntelliJ plugin is pre-configured to understand how to connect to the daemon. Other editors have to
-be configured to work with the LSP support. Please see the relevant chapter in this guide for more
-information on each of these elements.
+The daemon auto-launches when you start the analyzer. One daemon serves all projects -- you only need
+a single daemon running regardless of how many REPLs or editors you have open.
+
+The IntelliJ plugin connects to the daemon automatically. Other editors use the LSP server.
+See the relevant chapters in this guide for setup details.

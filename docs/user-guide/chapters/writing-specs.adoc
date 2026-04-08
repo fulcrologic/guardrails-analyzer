@@ -1,6 +1,6 @@
 == Writing Specs and Annotating Functions
 
-Copilot uses generators based on your specs in order to do its work. This
+Guardrails Analyzer uses generators based on your specs in order to do its work. This
 means that good specs will drastically enhance your experience, and bad
 specs can make the tool completely useless. It is in your best
 interest to learn about writing good specs, and note
@@ -13,12 +13,12 @@ to run many of the examples found there.
 
 Here are some general guidelines for people that have a passing familiarity
 with specs that will help ensure you have a good experience while using
-Copilot.
+Guardrails Analyzer.
 
 === Spec Guidelines
 
 Specs *should* include generators when the values are expensive to find randomly::
-If a generator is too slow, then Copilot will give up trying
+If a generator is too slow, then Guardrails Analyzer will give up trying
 to find sample values, and will not be able to check the code that
 uses those values.
 
@@ -46,11 +46,11 @@ function like `select-keys` is a valid example of a function that
 a function like `assoc` knows it added something, but doesn't know
 what was already there.
 
-=== Copilot-Specific Spec Recommendations
+=== Guardrails Analyzer Spec Recommendations
 
 Add human-readable samples to generators that have normal predictable values::
 Part of the power of specs is that they can randomly generate samples that
-might find errors when doing generative testing. However, Copilot also
+might find errors when doing generative testing. However, Guardrails Analyzer also
 uses generated samples to show you the shape of data when you hover
 over symbols. This will make data flow hover messages easier to read. If you
 do this, make sure to include data that hits boundaries that might matter
@@ -82,7 +82,7 @@ your checker messages will be a lot more readable.
 === Protocols
 
 Protocols place their methods in the namespace of their declaration, so you can
-create a spec for a protocol that will work with Copilot as follows:
+create a spec for a protocol that will work with Guardrails Analyzer as follows:
 
 [source]
 -----

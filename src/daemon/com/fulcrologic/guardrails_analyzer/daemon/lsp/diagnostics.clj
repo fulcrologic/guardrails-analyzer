@@ -1,4 +1,4 @@
-(ns com.fulcrologic.guardrails-analyzer.daemon.lsp.diagnostics
+(ns ^:clj-reload/no-reload com.fulcrologic.guardrails-analyzer.daemon.lsp.diagnostics
   (:require
    [com.fulcrologic.guardrails-analyzer.artifacts :as cp.art]
    [com.fulcrologicpro.taoensso.timbre :as log])

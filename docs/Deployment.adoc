@@ -8,12 +8,6 @@ The maven repo for DOWNLOAD use is:
 
 `https://mvn.fulcrologic.com`
 
-It uses auth which is stored in a postgresql database. The username for that database
-is grp, and the table is users. We will need to write an admin app that can run
-to maintain this db. Users must have a username/password in this database
-in order to use the repo.
-
-
 Deps:
 
 [source, clojure]
@@ -22,51 +16,14 @@ Deps:
  ...}
 -----
 
-And in `~/.m2/settings.xml`:
-
-[source, xml]
------
-
-<settings>
-    <servers>
-        <server>
-            <id>fulcrologic</id>
-            <username>tony@fulcrologic.com</username>
-            <password>password</password>
-        </server>
-    </servers>
-</settings>
------
-
-=== Upload Access
-
-Auth is controlled by `/etc/nginx/mvn.htpasswd`. The upload URL is `https://mvn.fulcrologic.com/mvn`. The pom.xml
-contains the right distro settings in GRP.
-
-Add the proper credentials in `settings.xml`.
-
-[source, xml]
------
-<settings>
-    <servers>
-        <server>
-            <id>fulcrologic-publish</id>
-            <username>tony@fulcrolog.com</username>
-            <password>publish password</password>
-        </server>
-    </servers>
-</settings>
------
-
 == Deploying a New Version
 
-. Update pom.xml and pom-daemon.xml. Use `clj -Spom` to update deps in pom, and make sure version is what you want.
-. Use Makefile to build/deploy the jars:
+. Update pom.xml. Use `clj -Spom` to update deps in pom, and make sure version is what you want.
+. Use Makefile to build/deploy the jar:
 
 [source, bash]
 -----
-make deploy-checker
-make deploy-daemon
+make deploy
 -----
 
 == Build and Deploy User Guide
