@@ -9,7 +9,7 @@
 ;; code in any form (printed, electronic, or otherwise) except as explicitly
 ;; allowed by your license agreement..
 
-(ns com.fulcrologic.guardrails-analyzer.artifacts
+(ns ^:clj-reload/no-reload com.fulcrologic.guardrails-analyzer.artifacts
   #?(:cljs (:require-macros clojure.test.check.generators))
   (:require
    [clojure.set :as set]

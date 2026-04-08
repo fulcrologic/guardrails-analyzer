@@ -1,17 +1,16 @@
-(ns user
+(ns ^:clj-reload/no-reload user
   (:require
-    [clojure.tools.namespace.repl :as tools-ns]
-    [com.fulcrologicpro.taoensso.timbre :as log]))
+   [clj-reload.core :as reload]
+   [com.fulcrologicpro.taoensso.timbre :as log]))
 
-(tools-ns/disable-reload!)
 (log/set-level! :warn)
 
-(apply tools-ns/set-refresh-dirs
-  (log/spy :info :refresh-dirs
-    (cond-> ["src/main"]
-      (System/getProperty "daemon") (conj "src/daemon")
-      (System/getProperty "dev") (conj "src/dev")
-      (System/getProperty "test") (conj "src/test"))))
+(reload/init
+ {:dirs (log/spy :info :refresh-dirs
+                 (cond-> ["src/main"]
+                   (System/getProperty "daemon") (conj "src/daemon")
+                   (System/getProperty "dev") (conj "src/dev")
+                   (System/getProperty "test") (conj "src/test")))})
 
 (when-let [cmd (System/getProperty "user.command")]
   (log/info "Running user/command:" cmd)
@@ -20,6 +19,6 @@
     (log/warn "Unknown command:" cmd)))
 
 (comment
-  (tools-ns/refresh)
+  (reload/reload)
   (require '[kaocha.repl :as k])
   (k/run-all))

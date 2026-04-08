@@ -9,7 +9,7 @@
 ;; code in any form (printed, electronic, or otherwise) except as explicitly
 ;; allowed by your license agreement..
 
-(ns ^{:clojure.tools.namespace.repl/load false}
-  com.fulcrologic.guardrails-analyzer.prepared-check)
+(ns ^:clj-reload/no-reload
+ com.fulcrologic.guardrails-analyzer.prepared-check)
 
 (defonce prepared-check (atom nil))

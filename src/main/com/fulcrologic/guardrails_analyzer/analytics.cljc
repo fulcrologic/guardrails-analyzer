@@ -1,8 +1,8 @@
-(ns com.fulcrologic.guardrails-analyzer.analytics
+(ns ^:clj-reload/no-reload com.fulcrologic.guardrails-analyzer.analytics
   #?(:cljs (:require-macros [com.fulcrologic.guardrails-analyzer.analytics]))
   (:require
-    #?(:cljs [goog.object :as g.obj])
-    [com.fulcrologicpro.taoensso.timbre :as log]))
+   #?(:cljs [goog.object :as g.obj])
+   [com.fulcrologicpro.taoensso.timbre :as log]))
 
 (def dev?
   #?(:clj  (some? (System/getProperty "dev"))
@@ -12,26 +12,26 @@
 
 (defn record-analyze! [env sym args]
   (swap! analyze-stats conj
-    {:symbol sym
-     :arity  (count args)}))
+         {:symbol sym
+          :arity  (count args)}))
 
 (defonce problem-stats (atom {}))
 
 (defn record-problem! [env problem]
   (swap! problem-stats update
-    (:com.fulcrologic.guardrails-analyzer.artifacts/problem-type problem)
-    (fnil inc 0)))
+         (:com.fulcrologic.guardrails-analyzer.artifacts/problem-type problem)
+         (fnil inc 0)))
 
 (defonce usage-stats (atom {}))
 
 (defn record-usage! [env {:keys [forms check-command-type]}]
   (let [forms-count (count forms)]
     (swap! usage-stats
-      #(-> %
-         (update :number-of-top-level-forms-checked
-           (fnil + 0) forms-count)
-         (update-in [:usage-by-check-command check-command-type]
-           (fnil inc 0))))))
+           #(-> %
+                (update :number-of-top-level-forms-checked
+                        (fnil + 0) forms-count)
+                (update-in [:usage-by-check-command check-command-type]
+                           (fnil inc 0))))))
 
 (defonce profiling-info (atom {}))
 
@@ -65,7 +65,7 @@
 (defn now-in-seconds []
   (/ #?(:cljs (js/Date.now)
         :clj  (System/currentTimeMillis))
-    1000))
+     1000))
 
 (defonce report-interval (* 15 60))
 
@@ -74,7 +74,7 @@
   (try (let [now-s  (now-in-seconds)
              last-s @last-report-time]
          (when (or dev? (nil? last-s)
-                 (< report-interval (- now-s last-s)))
+                   (< report-interval (- now-s last-s)))
            (let [analytics {::analyze-stats  @analyze-stats
                             ::problem-stats  @problem-stats
                             ::profiling-info @profiling-info

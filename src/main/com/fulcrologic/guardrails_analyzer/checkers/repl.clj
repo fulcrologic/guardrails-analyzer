@@ -1,4 +1,13 @@
-(ns ^:clj-reload/no-reload com.fulcrologic.guardrails-analyzer.checkers.clojure
+(ns ^:clj-reload/no-reload com.fulcrologic.guardrails-analyzer.checkers.repl
+  "A simplified in-process checker for REPL-driven development.
+
+   Unlike the standalone `clojure` checker (which is designed to run in a separate JVM),
+   this checker runs inside the user's own JVM and connects to the daemon via WebSocket.
+
+   Usage:
+     (start {:src-dirs [\"src/main\" \"src/dev\"]})
+     (check-ns 'my.app.core)
+     (stop)"
   (:require
    [clj-reload.core :as reload]
    [clojure.java.io :as io]
@@ -21,7 +30,7 @@
   (remote [env]
           (m/with-server-side-mutation env 'daemon/report-analysis)))
 
-(defn report-analysis! []
+(defn- report-analysis! []
   (let [analysis (cp.checker/gather-analysis!)]
     (comp/transact! APP [(report-analysis analysis)])))
 
@@ -33,7 +42,7 @@
   (remote [env]
           (m/with-server-side-mutation env 'daemon/register-checker)))
 
-(defn report-error! [error]
+(defn- report-error! [error]
   (let [params {:error (str/join "\n"
                                  [error (when-let [cause (.getCause error)]
                                           (str "Cause: " cause))
@@ -48,11 +57,11 @@
   (remote [env]
           (m/with-server-side-mutation env 'daemon/report-analytics)))
 
-(defn on-check-done! []
+(defn- on-check-done! []
   (comp/transact! APP [(report-analytics (cp.analytics/gather-analytics!))])
   (report-analysis!))
 
-(defn check! [{:as msg :keys [NS]}]
+(defn- do-check! [{:as msg :keys [NS]}]
   (when (try (require (symbol NS) :reload) true
              (catch Exception e
                (log/error e "Failed to reload:")
@@ -60,7 +69,7 @@
                false))
     (cp.checker/check! msg on-check-done!)))
 
-(defn refresh-and-check! [msg]
+(defn- refresh-and-check! [msg]
   (cp.checker/prepare-check! msg on-check-done!)
   (try
     (reload/reload)
@@ -69,7 +78,7 @@
       (log/error ?err "Failed to reload:")
       (report-error! ?err))))
 
-(defn ?find-port []
+(defn- ?find-port []
   (try (some->> ".guardrails/daemon.port"
                 (io/file (System/getProperty "user.home"))
                 (slurp)
@@ -78,15 +87,15 @@
        (catch FileNotFoundException _ nil)))
 
 (defn start
-  "Start the checker.
+  "Starts the in-process REPL checker and connects to the daemon.
 
-   :host - The IP where the checker daemon is running. Defaults to localhost.
-   :src-dirs - A vector of strings. The directories that contain source. If not supplied this assumes you will manually
-              call `(clj-reload.core/init {:dirs [...]})` before starting the checker.
-   :main-ns - A symbol. The main ns of the software being checked. This ensures the tree of deps are required into the env at startup.
+   `opts` is a map containing:
 
-   Sets an atom in this ns with the resulting websocket handler, so it can be shutdown for safe ns refresh.
-   "
+     * `:host` - (optional) The IP where the daemon is running. Defaults to \"localhost\".
+     * `:src-dirs` - (optional) A vector of source directory strings for clj-reload. If not supplied,
+       you must call `(clj-reload.core/init {:dirs [...]})` before starting.
+     * `:main-ns` - (optional) A symbol. The main namespace to require at startup, ensuring its
+       dependency tree is loaded."
   ([] (start {}))
   ([{:keys [host src-dirs main-ns]
      :or   {host "localhost"}
@@ -97,8 +106,8 @@
            (str "JVM property `guardrails.mode` should be set to `:pro`!"
                 "\nFor clj: add `-J-Dguardrails.mode=:pro`"
                 "\nFor deps.edn: add `:jvm-opts [\"-Dguardrails.mode=:pro\"]"))))
-   (cp.log/configure-logging! "checker.clojure.%s.log")
-   (log/info "Starting checker with opts:" opts)
+   (cp.log/configure-logging! "checker.repl.%s.log")
+   (log/info "Starting REPL checker with opts:" opts)
    (when-let [ns-sym (some-> main-ns symbol)]
      (require ns-sym))
    (when (seq src-dirs)
@@ -106,7 +115,7 @@
    (let [root-ns *ns*]
      (if-let [port (?find-port)]
        (do
-         (log/info "Checker looking for Daemon on port " port)
+         (log/info "REPL checker connecting to daemon on port" port)
          (app/set-remote! APP :remote
                           (fws/fulcro-websocket-remote
                            {:host          (str "localhost:" port)
@@ -114,7 +123,7 @@
                             :push-handler  (fn [{:keys [topic msg]}]
                                              (binding [*ns* root-ns]
                                                (case topic
-                                                 :check! (check! msg)
+                                                 :check! (do-check! msg)
                                                  :refresh-and-check! (refresh-and-check! msg)
                                                  nil)))}))
          (comp/transact! APP [(register-checker {:checker-type :clj
@@ -122,25 +131,13 @@
          true)
        (log/error "No guardrails analyzer daemon found. Have you started it?")))))
 
-(defn start!
-  "Tools deps entry point. DOES NOT RETURN, but will exit if the daemon isn't started yet.
+(defn check-ns
+  "Manually checks a single namespace `ns-sym` by reloading it and running the analyzer."
+  [ns-sym]
+  (do-check! {:NS ns-sym}))
 
-   Start the checker and block forever (websocket processing happens on daemon thread). Use `start` if
-   you want to regain the thread; however, if you exit that thread the JVM can exit.
-
-  :host - The IP where the checker daemon is running. Defaults to localhost.
-  :src-dirs - A vector of strings. The directories that contain source. If not supplied this assumes you will manually
-            call `(clj-reload.core/init {:dirs [...]})` before starting the checker.
-  :main-ns - A symbol. The main ns of the software being checked. This ensures the tree of deps are required into the env at startup.
-  "
-  [options]
-  (when (start options)
-    @(promise)))
-
-(comment
-  (start {:src-dirs ["src/dev" "src/main"]})
-  (check! {:NS 'sample})
-  @com.fulcrologic.guardrails-analyzer.artifacts/problems)
-
-(defn -main [& args]
-  (start))
+(defn stop
+  "Disconnects the REPL checker from the daemon by removing the websocket remote."
+  []
+  (app/set-remote! APP :remote nil)
+  (log/info "REPL checker stopped."))

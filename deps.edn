@@ -1,4 +1,4 @@
-{:paths   ["src/main"]
+{:paths   ["src/main" "target/classes"]
 
  :deps    {com.fulcrologic/guardrails     {:mvn/version "1.2.9"}
            org.clojure/core.async         {:mvn/version "1.8.741"}
@@ -6,12 +6,19 @@
            org.clojure/test.check         {:mvn/version "1.1.1"}
            org.clojure/clojure            {:mvn/version "1.12.3"}
            org.clojure/clojurescript      {:mvn/version "1.12.42"}
-           org.clojure/tools.namespace    {:mvn/version "1.5.0"}}
+           io.github.tonsky/clj-reload    {:mvn/version "1.0.0"}}
 
- :aliases {:test            {:extra-paths ["src/test" "src/test_cases"]
+ :aliases {:test            {:extra-paths ["src/test" "src/test_cases" "src/daemon"]
                              :extra-deps  {fulcrologic/fulcro-spec {:mvn/version "3.1.14"}
                                            metosin/malli           {:mvn/version "0.19.2"}
-                                           lambdaisland/kaocha     {:mvn/version "1.91.1392"}}
+                                           lambdaisland/kaocha     {:mvn/version "1.91.1392"}
+                                           bidi/bidi                           {:mvn/version "2.1.6"}
+                                           com.wsscode/pathom                  {:mvn/version "2.2.30"}
+                                           http-kit/http-kit                   {:mvn/version "2.5.0"}
+                                           mount/mount                         {:mvn/version "0.1.12"}
+                                           org.eclipse.lsp4j/org.eclipse.lsp4j {:mvn/version "0.9.0"}
+                                           ring/ring-core                      {:mvn/version "1.8.1"}
+                                           ring/ring-defaults                  {:mvn/version "0.3.2"}}
                              :jvm-opts    ["-Dtest"]}
 
            :daemon          {:extra-paths ["src/daemon" "src/daemon_main" "resources"]

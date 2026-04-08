@@ -9,14 +9,14 @@
 ;; code in any form (printed, electronic, or otherwise) except as explicitly
 ;; allowed by your license agreement..
 
-(ns com.fulcrologic.guardrails-analyzer.transit-handlers
+(ns ^:clj-reload/no-reload com.fulcrologic.guardrails-analyzer.transit-handlers
   (:require
-    [com.fulcrologicpro.cognitect.transit :as transit]
-    [com.fulcrologicpro.fulcro.algorithms.transit :as f.transit]
-    [com.fulcrologicpro.taoensso.timbre :as log])
+   [com.fulcrologicpro.cognitect.transit :as transit]
+   [com.fulcrologicpro.fulcro.algorithms.transit :as f.transit]
+   [com.fulcrologicpro.taoensso.timbre :as log])
   (:import
-    com.fulcrologicpro.com.cognitect.transit.DefaultReadHandler
-    java.util.regex.Pattern))
+   com.fulcrologicpro.com.cognitect.transit.DefaultReadHandler
+   java.util.regex.Pattern))
 
 (deftype UnknownTaggedValue [tag value])
 
@@ -24,25 +24,25 @@
   (do
     (log/info "Installing custom type handlers")
     (f.transit/install-type-handler!
-      (f.transit/type-handler
-        Pattern "guardrails/regex"
-        str re-pattern))
+     (f.transit/type-handler
+      Pattern "guardrails/regex"
+      str re-pattern))
     ;; NOTE: for user unknown tagged values
     ;;  - but should not fail in cp code
     (f.transit/install-type-handler!
-      (f.transit/type-handler
-        UnknownTaggedValue "guardrails/unknown-tag"
-        #(vector (.tag %) (.value %))
-        (fn [[tag value]]
-          (read-string
-            (str "#" tag " " value)))))))
+     (f.transit/type-handler
+      UnknownTaggedValue "guardrails/unknown-tag"
+      #(vector (.tag %) (.value %))
+      (fn [[tag value]]
+        (read-string
+         (str "#" tag " " value)))))))
 
 ;; NOTE: for user specific tags with no transit handlers
 (def default-write-handler
   (let [tag "guardrails/default-handler"]
     (transit/write-handler
-      (fn [_] tag)
-      (fn [x] (pr-str x)))))
+     (fn [_] tag)
+     (fn [x] (pr-str x)))))
 
 (def default-read-handler
   (reify DefaultReadHandler

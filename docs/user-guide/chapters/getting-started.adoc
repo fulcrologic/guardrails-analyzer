@@ -50,6 +50,39 @@ clojure -X:copilotd
 Be sure to use a version of the daemon that matches your copilot checker version.
 
 
+=== JVM Mode Requirement: `-Dguardrails.mode=:pro`
+
+For Guardrails Analyzer to work, the `>defn` macro must expand in a way that registers specs and
+function metadata with the analyzer. This requires setting the JVM system property at startup:
+
+[source, bash]
+-----
+-Dguardrails.mode=:pro
+-----
+
+Without this property, `>defn` expands as a standard Guardrails function and the analyzer cannot
+see the spec information it needs to perform checks.
+
+This property must be set regardless of how you run the checker:
+
+* **Separate process** – pass it to the JVM running your checker alias, for example:
++
+[source, bash]
+-----
+clj -J-Dguardrails.mode=:pro -A:dev -X:clj-checker :main-ns checker-startup
+-----
+
+* **In-process (same REPL JVM)** – add it to the `:jvm-opts` of your development alias in `deps.edn`:
++
+[source]
+-----
+{:aliases
+  {:dev {:jvm-opts ["-Dguardrails.mode=:pro"]}}}
+-----
+
+IMPORTANT: This property must be present at JVM *startup*. Setting it later via `System/setProperty`
+after the JVM has started will not affect macros that have already expanded.
+
 === The Checker
 
 A checker is a persistent process that runs the *environment* of your program. This is what enables Guardrails Analyzer to understand your specs, no matter how complex they are, or what strange features they may use. When designing Guardrails Analyzer we decided that it would often be best if the checker *not* run in your development REPL (even though it has everything the checker needs). *You* still need to work at full speed, and you should not have tooling interfering with your ability to start/stop your REPL, or otherwise block your normal development progress.
