@@ -16,6 +16,8 @@
    [com.fulcrologic.guardrails-analyzer.analysis.fdefs.clojure-core]
    [com.fulcrologic.guardrails-analyzer.analysis.fdefs.clojure-spec-alpha]
    [com.fulcrologic.guardrails-analyzer.analysis.fdefs.clojure-string]
+   [com.fulcrologic.guardrails-analyzer.analysis.fdefs.malli-clojure-core]
+   [com.fulcrologic.guardrails-analyzer.analysis.fdefs.malli-clojure-string]
    [com.fulcrologic.guardrails-analyzer.analysis.spec :as cp.spec]
    [com.fulcrologic.guardrails-analyzer.analytics :as cp.analytics]
    [com.fulcrologic.guardrails-analyzer.artifacts :as cp.art]

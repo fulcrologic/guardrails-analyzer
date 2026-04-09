@@ -58,7 +58,9 @@
                 (s/or
                  :spec-name qualified-keyword?
                  :spec-object #(s/spec? %)
-                 :predicate ifn?)
+                 :predicate ifn?
+                 :malli-schema keyword?
+                 :malli-vector vector?)
                 gen-predicate))
 (s/def ::type string?)
 (s/def ::form any?)                                         ;; TODO
@@ -242,6 +244,22 @@
        [(s/keys :req [::spec-registry]) ::form => ::spec]
        (get (::spec-registry env) (unwrap-meta quoted-spec)))
 
+(defn resolve-malli-quoted-specs
+  "For malli registries, quoted spec forms ARE the actual specs — no lookup needed."
+  [registry]
+  (walk/postwalk
+   (fn [node]
+     (if (and (map? node)
+              (or (::quoted.argument-specs node)
+                  (::quoted.return-spec node)))
+       (cond-> node
+         (::quoted.argument-specs node)
+         (assoc ::argument-specs (mapv unwrap-meta (::quoted.argument-specs node)))
+         (::quoted.return-spec node)
+         (assoc ::return-spec (unwrap-meta (::quoted.return-spec node))))
+       node))
+   registry))
+
 (defn resolve-quoted-specs [env registry]
   (let [RESOLVE (fn [m]
                   (cond-> m
@@ -277,6 +295,10 @@
                      (->> @gr.externs/external-function-registry
                           (fix-kw-nss)
                           (resolve-quoted-specs env))
+                     ::malli-external-function-registry
+                     (->> @gr.externs/malli-external-function-registry
+                          (fix-kw-nss)
+                          (resolve-malli-quoted-specs))
                      ::function-registry
                      (->> @gr.externs/function-registry
                           (fix-kw-nss)
@@ -338,12 +360,18 @@
 (>defn external-function-detail [env sym]
        [::env symbol? => (? ::function)]
        (let [sym (if (qualified-symbol? sym)
-                   (cljc-rewrite-sym-ns sym)
-                   (qualify-extern env sym))]
-         (get-in env [::external-function-registry sym]
-                 (when-not (namespace sym)
-                   (external-function-detail env
-                                             (symbol "clojure.core" (name sym)))))))
+                   (let [resolved (qualify-extern env sym)]
+                     (if (= resolved sym)
+                       (cljc-rewrite-sym-ns sym)
+                       resolved))
+                   (qualify-extern env sym))
+             malli? (= :malli (::spec-system env))]
+         (or (when malli?
+               (get-in env [::malli-external-function-registry sym]))
+             (get-in env [::external-function-registry sym])
+             (when-not (namespace sym)
+               (external-function-detail env
+                                         (symbol "clojure.core" (name sym)))))))
 
 (>defn symbol-detail [env sym]
        [::env symbol? => (? ::type-description)]

@@ -6,6 +6,8 @@
    [com.fulcrologic.guardrails-analyzer.analysis.fdefs.clojure-core]
    [com.fulcrologic.guardrails-analyzer.analysis.fdefs.clojure-spec-alpha]
    [com.fulcrologic.guardrails-analyzer.analysis.fdefs.clojure-string]
+   [com.fulcrologic.guardrails-analyzer.analysis.fdefs.malli-clojure-core]
+   [com.fulcrologic.guardrails-analyzer.analysis.fdefs.malli-clojure-string]
    [com.fulcrologic.guardrails-analyzer.analysis.function-type :as cp.fnt]
    [com.fulcrologic.guardrails-analyzer.analysis.spec :as cp.spec]
    [com.fulcrologic.guardrails-analyzer.analysis2.purity :refer [pure?]]
