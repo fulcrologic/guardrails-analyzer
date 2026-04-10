@@ -216,7 +216,8 @@ To start manually:
 
 [source,bash]
 ----
-clojure -M -m com.fulcrologic.guardrails-analyzer.daemon.main
+clojure -Sdeps '{:deps {com.fulcrologic/guardrails-analyzer-daemon {:mvn/version "1.0.0-alpha2"}}}' \
+        -M -m com.fulcrologic.guardrails-analyzer.daemon.main
 ----
 
 * Port file: `~/.guardrails/daemon.port`

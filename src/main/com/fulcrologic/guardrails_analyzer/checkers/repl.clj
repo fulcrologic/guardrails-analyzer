@@ -223,7 +223,9 @@
           (do
             (log/error
              (str "Could not auto-start the daemon. Start it manually:\n"
-                  "  clojure -M -m com.fulcrologic.guardrails-analyzer.daemon.main"))
+                  "  clojure -Sdeps '{:deps {com.fulcrologic/guardrails-analyzer-daemon {:mvn/version \"VERSION\"}}}' \\\n"
+                  "          -M -m com.fulcrologic.guardrails-analyzer.daemon.main\n"
+                  "  (Find VERSION at https://clojars.org/com.fulcrologic/guardrails-analyzer-daemon)"))
             nil)))))
 
 ;; ===== Public API =====
