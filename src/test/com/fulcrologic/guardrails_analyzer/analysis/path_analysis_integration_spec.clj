@@ -190,6 +190,50 @@
                   "correct-cond has no errors"
                   (empty? (filter #(= (::cp.art/problem-type %) :error/bad-return-value)
                                   (problems-for-function problems 'correct-cond)))
+                  => true)
+
+    ;; ========================================================================
+    ;; if-let path partitioning (regression for the truthy/falsy split)
+    ;; ========================================================================
+
+                 (assertions
+                  "if-let-correct has NO bad-return errors (then-branch x is non-nil)"
+                  (empty? (filter #(= (::cp.art/problem-type %) :error/bad-return-value)
+                                  (problems-for-function problems 'if-let-correct)))
+                  => true)
+
+                 (assertions
+                  "if-let-correct has NO arg-failed-spec errors (regression: nil leaking into inc)"
+                  (empty? (filter #(= (::cp.art/problem-type %) :error/function-argument-failed-spec)
+                                  (problems-for-function problems 'if-let-correct)))
+                  => true)
+
+                 (assertions
+                  "if-let-bad-then detects a return error attributable to the then-branch"
+                  (let [fn-problems (problems-for-function problems 'if-let-bad-then)
+                        return-errs (filter #(= (::cp.art/problem-type %) :error/bad-return-value)
+                                            fn-problems)
+                        then-paths  (mapcat (fn [p]
+                                              (filter (fn [path]
+                                                        (some #(= :then (::cp.art/branch %))
+                                                              (::cp.art/conditions path)))
+                                                      (path-info p)))
+                                            return-errs)]
+                    (boolean (and (seq return-errs) (seq then-paths))))
+                  => true)
+
+                 (assertions
+                  "if-let-bad-else detects a return error attributable to the else-branch"
+                  (let [fn-problems (problems-for-function problems 'if-let-bad-else)
+                        return-errs (filter #(= (::cp.art/problem-type %) :error/bad-return-value)
+                                            fn-problems)
+                        else-paths  (mapcat (fn [p]
+                                              (filter (fn [path]
+                                                        (some #(= :else (::cp.art/branch %))
+                                                              (::cp.art/conditions path)))
+                                                      (path-info p)))
+                                            return-errs)]
+                    (boolean (and (seq return-errs) (seq else-paths))))
                   => true)))
 
 (specification "Path information in error reports" :integration

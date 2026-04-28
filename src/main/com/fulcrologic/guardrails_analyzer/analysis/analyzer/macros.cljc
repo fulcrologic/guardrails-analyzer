@@ -19,9 +19,19 @@
    [com.fulcrologic.guardrails-analyzer.analysis2.purity :as cp.purity]
    [com.fulcrologic.guardrails-analyzer.artifacts :as cp.art]
    [com.fulcrologic.guardrails.core :as gr]
-   [com.fulcrologicpro.taoensso.timbre :as log]))
+   [com.fulcrologic.guardrails-analyzer.log :as log]))
+
+(declare analyze-if-undetermined)
 
 (defmethod cp.ana.disp/analyze-mm 'comment [env sexpr] {})
+
+;; Top-level malli registrations are not analyzable expressions but are not errors either.
+(defmethod cp.ana.disp/analyze-mm 'com.fulcrologic.guardrails.malli.registry/register!
+  [_env _sexpr]
+  {})
+(defmethod cp.ana.disp/analyze-mm 'malli.registry/register!
+  [_env _sexpr]
+  {})
 
 (defn analyze-single-arity! [env defn-sym [arglist _ & body]]
   (let [fd          (cp.art/function-detail env defn-sym)
@@ -173,9 +183,14 @@
                            (-> path
                                (update ::cp.art/path-bindings assoc tested-sym false-samples)
                                (cp.art/add-determined-condition condition-id condition-expr location false :else)))
-                         else-paths)))]
+                         else-paths)))
 
-            {::cp.art/execution-paths (vec (concat then-results else-results))})))
+                all-paths (vec (concat then-results else-results))]
+
+            (if (seq all-paths)
+              {::cp.art/execution-paths all-paths}
+              ;; Both partitions were empty - fall back to undetermined
+              (analyze-if-undetermined env then-expr else-expr condition-id condition-expr location)))))
 
       ;; Case 2: Complex condition or no samples available - fall back to simple analysis
       (do
@@ -258,12 +273,53 @@
                               :warning/if-condition-never-reaches-else-branch))
     result))
 
-(defmethod cp.ana.disp/analyze-mm 'clojure.core/if-let [env [_ [bind-sym bind-expr] then & [else]]]
-  (cp.ana.disp/-analyze! env
-                         `(let [t# ~bind-expr]
-                            (if t#
-                              (let [~bind-sym t#] ~then)
-                              ~else))))
+(defn analyze-if-let!
+  "Analyzer for `(if-let [bind-sym bind-expr] then else)`.
+
+   Partitions bind-expr's samples by truthiness:
+     - then-branch: bind-sym bound to the truthy partition
+     - else-branch: bind-sym bound to the falsy partition (typically #{nil})
+
+   Records `bind-sym` as a regular binding (visible to UI), and emits
+   path-based execution-paths annotated with a determined condition on
+   bind-expr so error messages can attribute failing values to the
+   then/else branch."
+  [env [bind-sym bind-expr] then else]
+  (let [condition-id (or (::cp.art/next-condition-id env) 0)
+        env          (assoc env ::cp.art/next-condition-id (inc condition-id))
+        location     (cp.art/env-location env {::cp.art/original-expression bind-expr})
+        bind-td      (cp.ana.disp/-analyze! env bind-expr)
+        all-samples  (cp.art/extract-all-samples bind-td)
+        truthy       (set (filter identity all-samples))
+        falsy        (set (remove identity all-samples))
+        td-type      (::cp.art/type bind-td)
+        env          (cp.art/remember-binding-expression env bind-sym bind-expr)
+        analyze-branch
+        (fn [branch-samples branch-expr branch-kw cond-value]
+          (when (seq branch-samples)
+            (let [branch-td (cond-> {::cp.art/samples branch-samples}
+                              td-type (assoc ::cp.art/type td-type))
+                  env'      (cp.art/remember-local env bind-sym branch-td)]
+              (cp.art/record-binding! env' bind-sym branch-td)
+              (let [result-td  (if branch-expr
+                                 (cp.ana.disp/-analyze! env' branch-expr)
+                                 {::cp.art/execution-paths
+                                  [(cp.art/create-single-path #{nil} {})]})
+                    res-paths  (::cp.art/execution-paths
+                                (cp.art/ensure-path-based result-td))]
+                (map (fn [path]
+                       (-> path
+                           (update ::cp.art/path-bindings assoc bind-sym branch-samples)
+                           (cp.art/add-determined-condition
+                            condition-id bind-expr location cond-value branch-kw)))
+                     res-paths)))))]
+    {::cp.art/execution-paths
+     (vec (concat (analyze-branch truthy then :then true)
+                  (analyze-branch falsy  else :else false)))}))
+
+(defmethod cp.ana.disp/analyze-mm 'clojure.core/if-let
+  [env [_ bindings then & [else]]]
+  (analyze-if-let! env bindings then else))
 
 (defmethod cp.ana.disp/analyze-mm 'clojure.core/if-not [env [_ condition then & [else]]]
   (cp.ana.disp/-analyze! env

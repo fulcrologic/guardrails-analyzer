@@ -20,16 +20,21 @@
             (seq? form) (list* 'list (map form-expression form))
             (vector? form) (mapv form-expression form)
             (map? form) (reduce-kv
-                          (fn [acc k v]
-                            (assoc acc
-                              (form-expression k)
-                              (form-expression v)))
-                          {} form)
+                         (fn [acc k v]
+                           (assoc acc
+                                  (form-expression k)
+                                  (form-expression v)))
+                         {} form)
             (set? form) (set (map form-expression form))
             :else form)]
     (if-let [m (meta form)]
       (list 'with-meta x m)
       x)))
+
+(defn- preserve-meta [original rebuilt]
+  (if-let [m (meta original)]
+    (with-meta rebuilt m)
+    rebuilt))
 
 (defn interpret [x]
   (cond
@@ -39,8 +44,8 @@
     #_=> (apply list (map interpret (rest x)))
     (and (seq? x) (= 'quote (first x)) (symbol? (second x)))
     #_=> (symbol (second x))
-    (map? x) (apply hash-map (mapcat interpret x))
-    (vector? x) (apply vector (map interpret x))
-    (list? x) (apply list (map interpret x))
-    (set? x) (set (map interpret x))
+    (map? x) (preserve-meta x (apply hash-map (mapcat interpret x)))
+    (vector? x) (preserve-meta x (apply vector (map interpret x)))
+    (list? x) (preserve-meta x (apply list (map interpret x)))
+    (set? x) (preserve-meta x (set (map interpret x)))
     :else x))

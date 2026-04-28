@@ -16,7 +16,7 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [com.fulcrologic.guardrails-analyzer.artifacts :as cp.art]
-   [com.fulcrologicpro.taoensso.timbre :as log]))
+   [com.fulcrologic.guardrails-analyzer.log :as log]))
 
 (defn html-escape [s]
   (-> s
@@ -102,18 +102,30 @@
   "Format a condition expression, stripping meta-wrappers recursively"
   (pr-str (strip-meta-wrappers expr)))
 
+(defn- format-condition-loc-suffix [condition-location]
+  (let [line (::cp.art/line-start condition-location)
+        col  (::cp.art/column-start condition-location)
+        sym  (::cp.art/sym condition-location)
+        ns'  (::cp.art/NS condition-location)]
+    (cond
+      (and line col) (format " (line %s, col %s)" line col)
+      line           (format " (line %s)" line)
+      (and sym ns')  (format " (in %s/%s)" ns' sym)
+      sym            (format " (in %s)" sym)
+      :else          "")))
+
 (defn format-path-condition [condition]
   "Format a single path condition into a readable string"
   (let [{::cp.art/keys [condition-expression condition-location branch determined? condition-value]} condition
         cond-str   (format-condition-expression condition-expression)
-        line-num   (::cp.art/line-start condition-location)
+        loc-str    (format-condition-loc-suffix condition-location)
         branch-str (case branch
                      :then "then"
                      :else "else"
                      (str branch))]
     (if determined?
-      (format "%s → %s (line %s)" cond-str branch-str line-num)
-      (format "%s → %s (line %s, indeterminate)" cond-str branch-str line-num))))
+      (format "%s → %s%s" cond-str branch-str loc-str)
+      (format "%s → %s%s (indeterminate)" cond-str branch-str loc-str))))
 
 (defn format-path [path]
   "Format an execution path's conditions"
