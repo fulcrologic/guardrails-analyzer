@@ -22,7 +22,7 @@
    [com.fulcrologic.guardrails.registry :as gr.reg]
    [com.fulcrologic.guardrails.impl.externs :as gr.externs]
    [clojure.walk :as walk]
-   [com.fulcrologicpro.taoensso.timbre :as log]))
+   [com.fulcrologic.guardrails-analyzer.log :as log]))
 
 ;; ========== CLJC SYM REWRITE ==========
 
@@ -731,7 +731,7 @@ Uses dynamic vars *max-paths* and *max-samples-per-path* for configuration."
        [env location]
        [::env (? map?) => ::env]
        (log/trace :update-location (::checking-sym env) location)
-       (cond-> env location
+       (cond-> env (and location (or (:line location) (:column location)))
                (assoc ::location
                       (new-location location))))
 

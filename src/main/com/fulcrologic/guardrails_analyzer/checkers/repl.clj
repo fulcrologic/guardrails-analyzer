@@ -28,14 +28,13 @@
    [com.fulcrologic.guardrails-analyzer.artifacts :as cp.art]
    [com.fulcrologic.guardrails-analyzer.checker :as cp.checker]
    [com.fulcrologic.guardrails-analyzer.forms :as cp.forms]
-   [com.fulcrologic.guardrails-analyzer.logging :as cp.log]
    [com.fulcrologic.guardrails-analyzer.reader :as cp.reader]
    [com.fulcrologic.guardrails.config :as gr.cfg]
    [com.fulcrologicpro.fulcro.application :as app]
    [com.fulcrologicpro.fulcro.components :as comp]
    [com.fulcrologicpro.fulcro.mutations :as m :refer [defmutation]]
    [com.fulcrologicpro.fulcro.networking.websockets-client :as fws]
-   [com.fulcrologicpro.taoensso.timbre :as log])
+   [com.fulcrologic.guardrails-analyzer.log :as log])
   (:import
    (java.io File FileNotFoundException)
    (java.net Socket)))
@@ -251,7 +250,6 @@
            (str "JVM property `guardrails.mode` must be set to `:pro` or `:all`."
                 "\nFor clj: add `-J-Dguardrails.mode=:pro`"
                 "\nFor deps.edn: add `:jvm-opts [\"-Dguardrails.mode=:pro\"]`"))))
-   (cp.log/configure-logging! "checker.repl.%s.log")
    (log/info "Starting REPL checker with opts:" {:src-dirs src-dirs :main-ns main-ns})
    (when-let [ns-sym (some-> main-ns symbol)]
      (require ns-sym))

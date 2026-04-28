@@ -11,7 +11,7 @@
    [com.fulcrologic.guardrails-analyzer.analytics :as cp.analytics]
    [com.fulcrologic.guardrails-analyzer.artifacts :as cp.art]
    [com.fulcrologic.guardrails.core :refer [=> >defn]]
-   [com.fulcrologicpro.taoensso.timbre :as log]))
+   [com.fulcrologic.guardrails-analyzer.log :as log]))
 
 (>defn analyze!
        [env sexpr]

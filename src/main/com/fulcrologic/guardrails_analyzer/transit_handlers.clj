@@ -13,7 +13,7 @@
   (:require
    [com.fulcrologicpro.cognitect.transit :as transit]
    [com.fulcrologicpro.fulcro.algorithms.transit :as f.transit]
-   [com.fulcrologicpro.taoensso.timbre :as log])
+   [com.fulcrologic.guardrails-analyzer.log :as log])
   (:import
    com.fulcrologicpro.com.cognitect.transit.DefaultReadHandler
    java.util.regex.Pattern))

@@ -11,26 +11,26 @@
 
 (ns com.fulcrologic.guardrails-analyzer.ui.checker
   (:require
-    [com.fulcrologic.guardrails-analyzer.checker :as cp.checker]
-    [com.fulcrologic.guardrails-analyzer.ui.shared :as ui.shared]
-    [com.fulcrologicpro.fulcro.application :as app]
-    [com.fulcrologicpro.fulcro.components :as comp :refer [defsc]]
-    [com.fulcrologicpro.fulcro.dom :as dom]
-    [com.fulcrologicpro.fulcro.mutations :as f.m]
-    [com.fulcrologicpro.fulcro.networking.websockets :as fws]
-    [com.fulcrologicpro.fulcro.routing.dynamic-routing :as dr :refer [defrouter]]
-    [com.fulcrologicpro.taoensso.timbre :as log]))
+   [com.fulcrologic.guardrails-analyzer.checker :as cp.checker]
+   [com.fulcrologic.guardrails-analyzer.ui.shared :as ui.shared]
+   [com.fulcrologicpro.fulcro.application :as app]
+   [com.fulcrologicpro.fulcro.components :as comp :refer [defsc]]
+   [com.fulcrologicpro.fulcro.dom :as dom]
+   [com.fulcrologicpro.fulcro.mutations :as f.m]
+   [com.fulcrologicpro.fulcro.networking.websockets :as fws]
+   [com.fulcrologicpro.fulcro.routing.dynamic-routing :as dr :refer [defrouter]]
+   [com.fulcrologic.guardrails-analyzer.log :as log]))
 
 (f.m/defmutation register-checker [_]
   (remote [env]
-    (f.m/with-server-side-mutation env 'daemon/register-checker)))
+          (f.m/with-server-side-mutation env 'daemon/register-checker)))
 
 (f.m/defmutation report-analysis [{:keys [bindings problems]}]
   (action [{:keys [state]}]
-    (swap! state ui.shared/set-problems* problems)
-    (swap! state ui.shared/set-bindings* bindings))
+          (swap! state ui.shared/set-problems* problems)
+          (swap! state ui.shared/set-bindings* bindings))
   (remote [{:keys [state] :as env}]
-    (f.m/with-server-side-mutation env 'daemon/report-analysis)))
+          (f.m/with-server-side-mutation env 'daemon/report-analysis)))
 
 (defrouter CheckerRouter [this props]
   {:router-targets [ui.shared/AllProblems ui.shared/NamespaceProblems ui.shared/Settings]})
@@ -41,12 +41,12 @@
   {:query         [{:root/router (comp/get-query CheckerRouter)}]
    :initial-state {:root/router {}}}
   (dom/div :.ui.container
-    (dom/div :.ui.top.menu
-      (dom/div :.item {:onClick (fn [] (dr/change-route! this ["all"]))}
-        (dom/a {} "All Issues"))
-      (dom/div :.item {:onClick (fn [] (dr/change-route! this ["settings"]))}
-        (dom/a {} "Settings")))
-    (ui-checker-router router)))
+           (dom/div :.ui.top.menu
+                    (dom/div :.item {:onClick (fn [] (dr/change-route! this ["all"]))}
+                             (dom/a {} "All Issues"))
+                    (dom/div :.item {:onClick (fn [] (dr/change-route! this ["settings"]))}
+                             (dom/a {} "Settings")))
+           (ui-checker-router router)))
 
 (defonce app (atom nil))
 
@@ -60,7 +60,7 @@
   (DBG_ENV!)
   (try
     (cp.checker/check! msg
-      #(report-analysis!))
+                       #(report-analysis!))
     (catch :default e
       (log/error e "Failed to check!"))))
 
@@ -72,16 +72,16 @@
   [{:keys [host port]}]
   (log/info "Starting checker app")
   (reset! app
-    (app/fulcro-app
-      {:remotes
-       {:remote
-        (fws/fulcro-websocket-remote
-          {:sente-options {:host host :port port}
-           :push-handler
-           (fn [{:keys [topic msg]}]
-             (log/spy :info topic)
-             (case topic
-               :check! (check! msg)
-               (log/error "invalid websocket message of type:" topic)))})}}))
+          (app/fulcro-app
+           {:remotes
+            {:remote
+             (fws/fulcro-websocket-remote
+              {:sente-options {:host host :port port}
+               :push-handler
+               (fn [{:keys [topic msg]}]
+                 (log/spy :info topic)
+                 (case topic
+                   :check! (check! msg)
+                   (log/error "invalid websocket message of type:" topic)))})}}))
   (hot-reload!)
   (comp/transact! @app [(register-checker {:checker-type :cljs})]))

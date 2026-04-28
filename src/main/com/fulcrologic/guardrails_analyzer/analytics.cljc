@@ -2,7 +2,7 @@
   #?(:cljs (:require-macros [com.fulcrologic.guardrails-analyzer.analytics]))
   (:require
    #?(:cljs [goog.object :as g.obj])
-   [com.fulcrologicpro.taoensso.timbre :as log]))
+   [com.fulcrologic.guardrails-analyzer.log :as log]))
 
 (def dev?
   #?(:clj  (some? (System/getProperty "dev"))

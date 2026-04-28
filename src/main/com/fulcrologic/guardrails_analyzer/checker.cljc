@@ -25,7 +25,7 @@
    [com.fulcrologic.guardrails-analyzer.prepared-check :refer [prepared-check]]
    [com.fulcrologic.guardrails-analyzer.ui.binding-formatter :refer [format-bindings]]
    [com.fulcrologic.guardrails-analyzer.ui.problem-formatter :refer [format-problems]]
-   [com.fulcrologicpro.taoensso.timbre :as log]))
+   [com.fulcrologic.guardrails-analyzer.log :as log]))
 
 (defn check-form! [env form]
   (try (cp.ana/analyze! env form)

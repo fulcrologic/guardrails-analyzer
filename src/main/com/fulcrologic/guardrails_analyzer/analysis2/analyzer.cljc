@@ -14,7 +14,7 @@
    [com.fulcrologic.guardrails-analyzer.artifacts :as cp.art]
    [com.fulcrologic.guardrails-analyzer.reader :as cp.reader]
    [com.fulcrologic.guardrails.core]
-   [com.fulcrologicpro.taoensso.timbre :as log]))
+   [com.fulcrologic.guardrails-analyzer.log :as log]))
 
 (declare check-form)
 

@@ -20,7 +20,7 @@
    [clojure.test.check.rose-tree :as tc.rose]
    [com.fulcrologic.guardrails-analyzer.analytics :as cp.analytics]
    [com.fulcrologic.guardrails.malli.registry :as gr.malli.reg]
-   [com.fulcrologicpro.taoensso.timbre :as log]
+   [com.fulcrologic.guardrails-analyzer.log :as log]
    [malli.core :as m]
    [malli.generator :as mg]))
 

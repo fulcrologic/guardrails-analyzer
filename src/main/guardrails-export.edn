@@ -1,0 +1,17 @@
+;; Auto-exclude analyzer internals from Guardrails runtime checks.
+;; This prevents verbose spec failure output during analysis.
+{:exclude #{com.fulcrologic.guardrails-analyzer.analysis.analyzer
+            com.fulcrologic.guardrails-analyzer.analysis.analyzer.dispatch
+            com.fulcrologic.guardrails-analyzer.analysis.analyzer.functions
+            com.fulcrologic.guardrails-analyzer.analysis.analyzer.hofs
+            com.fulcrologic.guardrails-analyzer.analysis.analyzer.ifn
+            com.fulcrologic.guardrails-analyzer.analysis.analyzer.literals
+            com.fulcrologic.guardrails-analyzer.analysis.analyzer.macros
+            com.fulcrologic.guardrails-analyzer.analysis.destructuring
+            com.fulcrologic.guardrails-analyzer.analysis.function-type
+            com.fulcrologic.guardrails-analyzer.analysis.sampler
+            com.fulcrologic.guardrails-analyzer.analysis.spec
+            com.fulcrologic.guardrails-analyzer.artifacts
+            com.fulcrologic.guardrails-analyzer.checker
+            com.fulcrologic.guardrails-analyzer.forms
+            com.fulcrologic.guardrails-analyzer.reader}}

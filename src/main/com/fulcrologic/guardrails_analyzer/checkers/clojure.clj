@@ -5,13 +5,12 @@
    [clojure.string :as str]
    [com.fulcrologic.guardrails-analyzer.analytics :as cp.analytics]
    [com.fulcrologic.guardrails-analyzer.checker :as cp.checker]
-   [com.fulcrologic.guardrails-analyzer.logging :as cp.log]
    [com.fulcrologic.guardrails.config :as gr.cfg]
    [com.fulcrologicpro.fulcro.application :as app]
    [com.fulcrologicpro.fulcro.components :as comp]
    [com.fulcrologicpro.fulcro.mutations :as m :refer [defmutation]]
    [com.fulcrologicpro.fulcro.networking.websockets-client :as fws]
-   [com.fulcrologicpro.taoensso.timbre :as log])
+   [com.fulcrologic.guardrails-analyzer.log :as log])
   (:import
    (java.io FileNotFoundException)))
 
@@ -97,7 +96,6 @@
            (str "JVM property `guardrails.mode` should be set to `:pro`!"
                 "\nFor clj: add `-J-Dguardrails.mode=:pro`"
                 "\nFor deps.edn: add `:jvm-opts [\"-Dguardrails.mode=:pro\"]"))))
-   (cp.log/configure-logging! "checker.clojure.%s.log")
    (log/info "Starting checker with opts:" opts)
    (when-let [ns-sym (some-> main-ns symbol)]
      (require ns-sym))
