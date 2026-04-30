@@ -205,6 +205,24 @@
 (s/def ::next-condition-id nat-int?)
 (s/def ::next-path-id nat-int?)
 
+;; Per-check buffers (atoms) for problems and bindings. When present in env,
+;; record-problem!/record-binding! write to these instead of the JVM-global
+;; atoms. This isolates concurrent `check!` calls so each call sees only its
+;; own recorded state.
+(s/def ::problems-buffer #?(:clj  #(instance? clojure.lang.IAtom %)
+                            :cljs #(satisfies? IAtom %)))
+(s/def ::bindings-buffer ::problems-buffer)
+
+;; Per-check memoization cache (volatile) for `resolve-pure-function`.
+;; resolve-pure-function is called N×K times in `partition-samples-by-condition`
+;; — N samples and K subexpressions per condition. The result for a given
+;; (current-ns, checking-sym, fn-sym) tuple is stable for the duration of one
+;; `check!` invocation (the function-registry, aliases, refers, externs are all
+;; established by `build-env` and do not mutate during analysis), so we cache
+;; resolutions in a per-check volatile installed by `init-buffers`.
+(s/def ::pure-fn-cache #?(:clj  #(instance? clojure.lang.Volatile %)
+                          :cljs #(instance? Volatile %)))
+
 (s/def ::env (s/keys
               :req [::function-registry]
               :opt [::external-function-registry
@@ -219,7 +237,10 @@
                     ::aliases
                     ::refers
                     ::next-condition-id
-                    ::next-path-id]))
+                    ::next-path-id
+                    ::problems-buffer
+                    ::bindings-buffer
+                    ::pure-fn-cache]))
 
 (>defn get-arity
        [arities args]
@@ -280,29 +301,98 @@
          node))
      registry)))
 
+;; ========== BUILD-ENV REGISTRY MEMOIZATION ==========
+;; `build-env` previously postwalked five registries on every `check!`
+;; invocation. Since the source atoms in `gr.externs` are immutable maps
+;; mutated only via `swap!` (which produces fresh values), we can cache
+;; the resolved/postwalked results keyed on the *identity* of the
+;; deref'd value: a `swap!` produces a non-`identical?` map, so the
+;; cache automatically invalidates. The caches are JVM-process scoped
+;; (NOT per-check) so concurrent and successive `check!` calls share
+;; them. Each cache holds a single entry — registries change in
+;; lockstep over the life of a session, so a 1-slot LRU is sufficient.
+
+(defonce ^:private fixed-externs-cache (atom nil))
+(defonce ^:private fixed-spec-cache (atom nil))
+(defonce ^:private resolved-malli-cache (atom nil))
+(defonce ^:private resolved-external-fn-cache (atom nil))
+(defonce ^:private resolved-fn-cache (atom nil))
+
+(defn- cache-1
+  "Return `(compute input)`, caching the result in `cache-atom` keyed
+   on the reference identity of `input`. Concurrent recomputation is
+   benign (last writer wins; both writers compute the same value)."
+  [cache-atom input compute]
+  (let [c @cache-atom]
+    (if (and c (identical? (:input c) input))
+      (:result c)
+      (let [r (compute input)]
+        (reset! cache-atom {:input input :result r})
+        r))))
+
+(defn- cache-2
+  "Like `cache-1`, but keyed on the reference identities of both
+   `input-a` and `input-b`."
+  [cache-atom input-a input-b compute]
+  (let [c @cache-atom]
+    (if (and c
+             (identical? (:input-a c) input-a)
+             (identical? (:input-b c) input-b))
+      (:result c)
+      (let [r (compute input-a input-b)]
+        (reset! cache-atom {:input-a input-a :input-b input-b :result r})
+        r))))
+
+(defn invalidate-build-env-caches!
+  "Clear all `build-env` registry caches. Useful from REPL/tests when
+   the underlying gr.externs atoms are reset to a known state without
+   the usual `swap!`-creates-new-identity semantics."
+  []
+  (reset! fixed-externs-cache nil)
+  (reset! fixed-spec-cache nil)
+  (reset! resolved-malli-cache nil)
+  (reset! resolved-external-fn-cache nil)
+  (reset! resolved-fn-cache nil))
+
 (>defn build-env
        [{:keys [NS meta file aliases refers]}]
        [map? => ::env]
-       (let [env {::aliases          aliases
-                  ::checking-file    file
-                  ::current-ns       NS
-                  ::ns-meta          meta
-                  ::externs-registry (fix-kw-nss @gr.externs/externs-registry)
-                  ::refers           refers
-                  ::spec-registry    (fix-kw-nss @gr.externs/spec-registry)}]
+       (let [externs-raw   @gr.externs/externs-registry
+             spec-raw      @gr.externs/spec-registry
+             ext-fn-raw    @gr.externs/external-function-registry
+             malli-raw     @gr.externs/malli-external-function-registry
+             fn-raw        @gr.externs/function-registry
+             fixed-externs (cache-1 fixed-externs-cache externs-raw fix-kw-nss)
+             fixed-spec    (cache-1 fixed-spec-cache spec-raw fix-kw-nss)
+             ;; Lookup env for `resolve-quoted-specs` — only `::spec-registry`
+             ;; is consulted by `lookup-spec`, so this minimal env suffices.
+             resolve-env   {::spec-registry fixed-spec}
+             env           {::aliases          aliases
+                            ::checking-file    file
+                            ::current-ns       NS
+                            ::ns-meta          meta
+                            ::externs-registry fixed-externs
+                            ::refers           refers
+                            ::spec-registry    fixed-spec}]
          (-> env
              (merge {::external-function-registry
-                     (->> @gr.externs/external-function-registry
-                          (fix-kw-nss)
-                          (resolve-quoted-specs env))
+                     (cache-2 resolved-external-fn-cache ext-fn-raw spec-raw
+                              (fn [r _]
+                                (->> r
+                                     (fix-kw-nss)
+                                     (resolve-quoted-specs resolve-env))))
                      ::malli-external-function-registry
-                     (->> @gr.externs/malli-external-function-registry
-                          (fix-kw-nss)
-                          (resolve-malli-quoted-specs))
+                     (cache-1 resolved-malli-cache malli-raw
+                              (fn [r]
+                                (->> r
+                                     (fix-kw-nss)
+                                     (resolve-malli-quoted-specs))))
                      ::function-registry
-                     (->> @gr.externs/function-registry
-                          (fix-kw-nss)
-                          (resolve-quoted-specs env))})
+                     (cache-2 resolved-fn-cache fn-raw spec-raw
+                              (fn [r _]
+                                (->> r
+                                     (fix-kw-nss)
+                                     (resolve-quoted-specs resolve-env))))})
              (cp.spec/with-both-impls))))
 
 (>defn qualify-extern
@@ -509,6 +599,54 @@ to have a new path-based type-description with the filtered samples."
 
 ;; ========== SAMPLE PARTITIONING FOR PATH-BASED ANALYSIS ==========
 
+(defn- resolve-pure-function*
+  "Uncached implementation of `resolve-pure-function`. Performs ONE pass over
+   `(::arities fn-detail)` to collect both `:pure-mock` and `:pure?`/`:pure`
+   metadata, then dispatches accordingly. Falls back to multimethod-based
+   purity check + Clojure resolve when the symbol is not registered."
+  [env fn-sym]
+  (if-let [fn-detail (or (function-detail env fn-sym)
+                         (external-function-detail env fn-sym))]
+    ;; Function is in registry - single pass over arities collects both signals.
+    (let [{:keys [pure-mock is-pure?]}
+          (reduce-kv
+           (fn [acc _arity arity-detail]
+             (if-let [gspec (::gspec arity-detail)]
+               (let [metadata (::metadata gspec)]
+                 (cond-> acc
+                   (and (not (:pure-mock acc)) (:pure-mock metadata))
+                   (assoc :pure-mock (:pure-mock metadata))
+                   (or (:pure? metadata) (:pure metadata))
+                   (assoc :is-pure? true)))
+               acc))
+           {:pure-mock nil :is-pure? false}
+           (::arities fn-detail))]
+      (cond
+        ;; If there's a pure-mock, use it
+        pure-mock
+        pure-mock
+
+        ;; If the function is marked as pure, return the actual function
+        is-pure?
+        (or (::fn-ref fn-detail)
+            (when-let [env->fn (::env->fn fn-detail)]
+              (env->fn env)))
+
+        ;; Otherwise, return nil (not safe to call)
+        :else
+        nil))
+
+    ;; Function not in registry - check if it's pure via multimethod and try to resolve
+    (when (purity-data/known-pure-function? fn-sym)
+      #?(:clj
+         (try
+           (resolve fn-sym)
+           (catch Exception e
+             (log/debug "Failed to resolve pure function" fn-sym e)
+             nil))
+         :cljs
+         nil))))
+
 (>defn resolve-pure-function
        "Resolve a function symbol to an executable function or its pure-mock.
 Returns a function that can be safely called during analysis,
@@ -517,52 +655,23 @@ or nil if the function cannot be resolved or is not pure.
 Attempts to resolve in this order:
 1. Check function/external-function registries for pure-mock
 2. Check function/external-function registries for pure? metadata
-3. Fallback: If function is pure (per multimethod), try to resolve directly"
+3. Fallback: If function is pure (per multimethod), try to resolve directly
+
+When the env carries a per-check `::pure-fn-cache` volatile (installed by
+`init-buffers`), results are memoized for the lifetime of the current `check!`
+invocation. The cache key includes the current namespace and checking-sym
+because `qualify-extern` resolution depends on those values."
        [env fn-sym]
        [::env symbol? => (? fn?)]
-       (if-let [fn-detail (or (function-detail env fn-sym)
-                              (external-function-detail env fn-sym))]
-    ;; Function is in registry - check for pure-mock or pure? metadata
-         (let [arities   (::arities fn-detail)
-          ;; Check for pure-mock in metadata
-               pure-mock (some (fn [[_arity arity-detail]]
-                                 (when-let [gspec (::gspec arity-detail)]
-                                   (let [metadata (::metadata gspec)]
-                                     (:pure-mock metadata))))
-                               arities)
-          ;; Check if function is marked as pure
-               is-pure?  (boolean
-                          (some (fn [[_arity arity-detail]]
-                                  (when-let [gspec (::gspec arity-detail)]
-                                    (let [metadata (::metadata gspec)]
-                                      (or (:pure? metadata)
-                                          (:pure metadata)))))
-                                arities))]
-           (cond
-        ;; If there's a pure-mock, use it
-             pure-mock
-             pure-mock
-
-        ;; If the function is marked as pure, return the actual function
-             is-pure?
-             (or (::fn-ref fn-detail)
-                 (when-let [env->fn (::env->fn fn-detail)]
-                   (env->fn env)))
-
-        ;; Otherwise, return nil (not safe to call)
-             :else
-             nil))
-
-    ;; Function not in registry - check if it's pure via multimethod and try to resolve
-         (when (purity-data/known-pure-function? fn-sym)
-           #?(:clj
-              (try
-                (resolve fn-sym)
-                (catch Exception e
-                  (log/debug "Failed to resolve pure function" fn-sym e)
-                  nil))
-              :cljs
-              nil))))
+       (if-let [cache (::pure-fn-cache env)]
+         (let [cache-key [(::current-ns env) (::checking-sym env) fn-sym]
+               cached    @cache]
+           (if (contains? cached cache-key)
+             (get cached cache-key)
+             (let [result (resolve-pure-function* env fn-sym)]
+               (vswap! cache assoc cache-key result)
+               result)))
+         (resolve-pure-function* env fn-sym)))
 
 (>defn eval-condition
        "Evaluate a condition expression with a specific sample value for a symbol.
@@ -743,26 +852,36 @@ Uses dynamic vars *max-paths* and *max-samples-per-path* for configuration."
 
 ;; ========== BINDINGS ==========
 
-(defonce bindings (atom []))
+(defonce ^{:doc "Legacy JVM-global bindings buffer. Used as a fallback when
+  the analysis env does not carry its own ::bindings-buffer atom (e.g. tests
+  that build a bare env via `test-env` and read `@cp.art/bindings` directly).
+  Production `check!` flows install a per-call atom in env via `init-buffers`
+  to provide concurrent isolation; do not rely on this global there."}
+  bindings (atom []))
 
 (defn- clear-bindings-by-file [binds file]
   (filterv #(not= file (::file %)) binds))
 
 (defn clear-bindings!
+  "Resets the legacy global `bindings` atom. With env-local buffers, this is
+  only useful for tests that fall back to globals."
   ([] (reset! bindings []))
   ([file] (swap! bindings clear-bindings-by-file file)))
 
 (>defn record-binding!
-       "Report a type description for the given simple symbol."
+       "Report a type description for the given simple symbol. Writes to
+        the env-local `::bindings-buffer` atom when present, otherwise
+        falls back to the global `bindings` atom."
        [env sym td]
        [::env simple-symbol? ::type-description => nil?]
-       (let [env  (update-location env (meta sym))
-             bind (merge td (::location env)
-                         {::file                (::checking-file env)
-                          ::problem-type        :hint/binding-type-info
-                          ::original-expression sym})]
+       (let [env    (update-location env (meta sym))
+             bind   (merge td (::location env)
+                           {::file                (::checking-file env)
+                            ::problem-type        :hint/binding-type-info
+                            ::original-expression sym})
+             target (or (::bindings-buffer env) bindings)]
          (log/debug :record-binding! bind)
-         (swap! bindings conj bind)
+         (swap! target conj bind)
          nil))
 
 ;; ========== PROBLEMS ==========
@@ -779,7 +898,12 @@ Uses dynamic vars *max-paths* and *max-samples-per-path* for configuration."
 (s/def ::hint (s/and ::problem (comp #{"hint"} namespace ::problem-type)))
 (s/def ::problems (s/coll-of ::problem :kind vector? :gen-max 10))
 
-(defonce problems (atom []))
+(defonce ^{:doc "Legacy JVM-global problems buffer. Used as a fallback when
+  the analysis env does not carry its own ::problems-buffer atom (e.g. tests
+  that build a bare env via `test-env` and read `@cp.art/problems` directly).
+  Production `check!` flows install a per-call atom in env via `init-buffers`
+  to provide concurrent isolation; do not rely on this global there."}
+  problems (atom []))
 
 (>defn env-location [env problem]
        [::env map? => map?]
@@ -789,11 +913,15 @@ Uses dynamic vars *max-paths* and *max-samples-per-path* for configuration."
                  ::sym  (::checking-sym env)
                  ::NS   (::current-ns env)})))
 
-(defn record-problem! [env problem]
+(defn record-problem!
+  "Record `problem` in the per-check buffer when env carries one
+   (`::problems-buffer`), otherwise fall back to the legacy global."
+  [env problem]
   (log/debug :record-problem! problem)
   (cp.analytics/record-problem! env problem)
-  (swap! problems conj
-         (merge problem (env-location env problem))))
+  (let [target (or (::problems-buffer env) problems)]
+    (swap! target conj
+           (merge problem (env-location env problem)))))
 
 (>defn record-error!
        ([env original-expression problem-type]
@@ -841,5 +969,37 @@ Uses dynamic vars *max-paths* and *max-samples-per-path* for configuration."
   (filterv #(not= file (::file %)) probs))
 
 (defn clear-problems!
+  "Resets the legacy global `problems` atom. With env-local buffers, this is
+  only useful for tests that fall back to globals."
   ([] (reset! problems []))
   ([file] (swap! problems clear-problems-by-file file)))
+
+;; ========== PER-CHECK BUFFER HELPERS ==========
+
+(defn init-buffers
+  "Returns `env` with fresh per-check `::problems-buffer` and
+   `::bindings-buffer` atoms. `record-problem!` and `record-binding!` will
+   write into these atoms instead of the JVM-global atoms, which allows
+   concurrent `check!` calls to keep their state isolated.
+
+   Also installs a `::pure-fn-cache` volatile that memoizes
+   `resolve-pure-function` results for the lifetime of this check.
+
+   Call this once per `check!` invocation, immediately after `build-env`."
+  [env]
+  (assoc env
+         ::problems-buffer (atom [])
+         ::bindings-buffer (atom [])
+         ::pure-fn-cache (volatile! {})))
+
+(defn get-problems
+  "Returns the current vector of recorded problems for `env`, reading from
+   the env-local buffer when present and falling back to the legacy global."
+  [env]
+  (deref (or (::problems-buffer env) problems)))
+
+(defn get-bindings
+  "Returns the current vector of recorded bindings for `env`, reading from
+   the env-local buffer when present and falling back to the legacy global."
+  [env]
+  (deref (or (::bindings-buffer env) bindings)))

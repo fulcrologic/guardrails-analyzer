@@ -40,6 +40,13 @@
         (assoc ::cp.art/tooltip tooltip))))
 
 (defn format-problems [problems]
+  ;; Production callers (checker/gather-analysis!) pass a flat top-level
+  ;; vector, so a `mapv format-problem` would normally suffice. We keep the
+  ;; postwalk because callers/tests (see problem-formatter-spec "with nested
+  ;; structures") rely on `format-problems` walking nested maps/vectors —
+  ;; e.g. `{:by-file {"a.clj" [<problem> ...]}}` — and formatting every map
+  ;; that has ::cp.art/problem-type in place. Switching to mapv would silently
+  ;; break that nested usage.
   (walk/postwalk
    (fn [node]
      (if (and (map? node) (::cp.art/problem-type node))

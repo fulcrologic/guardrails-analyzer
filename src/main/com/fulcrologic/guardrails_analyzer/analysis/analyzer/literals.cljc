@@ -11,10 +11,10 @@
 
 (ns com.fulcrologic.guardrails-analyzer.analysis.analyzer.literals
   (:require
-    [com.fulcrologic.guardrails.core :as gr :refer [>defn => ?]]
-    [com.fulcrologic.guardrails-analyzer.artifacts :as cp.art]
-    [com.fulcrologic.guardrails-analyzer.analysis.analyzer.dispatch :as cp.ana.disp]
-    [com.fulcrologic.guardrails-analyzer.analysis.spec :as cp.spec])
+   [com.fulcrologic.guardrails.core :as gr :refer [>defn => ?]]
+   [com.fulcrologic.guardrails-analyzer.artifacts :as cp.art]
+   [com.fulcrologic.guardrails-analyzer.analysis.analyzer.dispatch :as cp.ana.disp]
+   [com.fulcrologic.guardrails-analyzer.analysis.spec :as cp.spec])
   #?(:clj (:import (java.util.regex Pattern))))
 
 (defn regex? [x]
@@ -38,14 +38,14 @@
 
 (defn literal-td [env kind sexpr & [orig]]
   (assoc (kind->td kind)
-    ::kind kind
-    ::cp.art/samples #{sexpr}
-    ::cp.art/original-expression (or orig sexpr)))
+         ::kind kind
+         ::cp.art/samples #{sexpr}
+         ::cp.art/original-expression (or orig sexpr)))
 
 (defmethod cp.ana.disp/analyze-mm :literal/wrapped
   [env {:as orig :keys [kind value]}]
   (when (and (qualified-keyword? value)
-          (not (cp.spec/lookup env value)))
+             (not (cp.spec/lookup env value)))
     (cp.art/record-warning! env value :warning/qualified-keyword-missing-spec))
   (let [lit-kind (if-not (namespace kind)
                    (keyword (namespace ::_) (name kind))
@@ -59,26 +59,26 @@
 
 (defn coll-td [env kind sexpr samples]
   (assoc (kind->td kind)
-    ::kind kind
-    ::cp.art/samples samples
-    ::cp.art/original-expression sexpr))
+         ::kind kind
+         ::cp.art/samples samples
+         ::cp.art/original-expression sexpr))
 
 (>defn validate-samples! [env k v samples]
-  [::cp.art/env any? any? ::cp.art/samples => (? ::cp.art/samples)]
-  (let [spec (cp.spec/lookup env k)]
-    (if-let [failing-sample (and spec
-                              (some (fn _invalid-sample [sample]
-                                      (when-not (cp.spec/valid? env spec sample) sample))
-                                samples))]
-      (do
-        (cp.art/record-error! env
-          {::cp.art/original-expression v
-           ::cp.art/expected            {::cp.art/spec spec ::cp.art/type (pr-str k)}
-           ::cp.art/actual              {::cp.art/failing-samples #{failing-sample}}
-           ::cp.art/problem-type        :error/value-failed-spec})
-        samples)
-      (when-let [valid-samples (and spec (seq (filter (partial cp.spec/valid? env spec) samples)))]
-        (set valid-samples)))))
+       [::cp.art/env any? any? ::cp.art/samples => (? ::cp.art/samples)]
+       (let [spec (cp.spec/lookup env k)]
+         (if-let [failing-sample (and spec
+                                      (some (fn _invalid-sample [sample]
+                                              (when-not (cp.spec/valid? env spec sample) sample))
+                                            samples))]
+           (do
+             (cp.art/record-error! env
+                                   {::cp.art/original-expression v
+                                    ::cp.art/expected            {::cp.art/spec spec ::cp.art/type (pr-str k)}
+                                    ::cp.art/actual              {::cp.art/failing-samples #{failing-sample}}
+                                    ::cp.art/problem-type        :error/value-failed-spec})
+             samples)
+           (when-let [valid-samples (and spec (seq (filter (partial cp.spec/valid? env spec) samples)))]
+             (set valid-samples)))))
 
 (defn analyze-hashmap-entry
   [env acc map-key v]
@@ -97,9 +97,9 @@
         (assoc acc k sample-value)))))
 
 (>defn analyze-hashmap! [env hashmap]
-  [::cp.art/env map? => ::cp.art/type-description]
-  (let [sample-map (reduce-kv (partial analyze-hashmap-entry env) {} hashmap)]
-    (coll-td env ::map hashmap #{sample-map})))
+       [::cp.art/env map? => ::cp.art/type-description]
+       (let [sample-map (reduce-kv (partial analyze-hashmap-entry env) {} hashmap)]
+         (coll-td env ::map hashmap #{sample-map})))
 
 (defmethod cp.ana.disp/analyze-mm :collection/map [env coll] (analyze-hashmap! env coll))
 
@@ -112,9 +112,9 @@
       (conj acc ::cp.art/unknown))))
 
 (>defn analyze-vector! [env v]
-  [::cp.art/env vector? => ::cp.art/type-description]
-  (let [sample-vector (reduce (partial analyze-vector-entry env) [] v)]
-    (coll-td env ::vector v #{sample-vector})))
+       [::cp.art/env vector? => ::cp.art/type-description]
+       (let [sample-vector (reduce (partial analyze-vector-entry env) [] v)]
+         (coll-td env ::vector v #{sample-vector})))
 
 (defmethod cp.ana.disp/analyze-mm :collection/vector [env coll] (analyze-vector! env coll))
 
@@ -128,23 +128,27 @@
                                 (fn [v-seqs]
                                   (loop [i (dec (count v-seqs)), v-seqs v-seqs]
                                     (if (= i -1) nil
-                                                 (if-let [rst (next (v-seqs i))]
-                                                   (assoc v-seqs i rst)
-                                                   (recur (dec i) (assoc v-seqs i (v-original-seqs i)))))))]
+                                        (if-let [rst (next (v-seqs i))]
+                                          (assoc v-seqs i rst)
+                                          (recur (dec i) (assoc v-seqs i (v-original-seqs i)))))))]
                             (when v-seqs
                               (cons (map first v-seqs)
-                                (lazy-seq (step (increment v-seqs)))))))]
+                                    (lazy-seq (step (increment v-seqs)))))))]
     (when (every? seq seqs)
       (lazy-seq (step v-original-seqs)))))
 
 (>defn analyze-set! [env s]
-  [::cp.art/env set? => ::cp.art/type-description]
-  (let [samples (->> s
-                  (map (comp ::cp.art/samples (partial cp.ana.disp/-analyze! env)))
-                  (apply cartesian-product)
-                  (map set)
-                  set)]
-    (coll-td env ::set s samples)))
+       [::cp.art/env set? => ::cp.art/type-description]
+  ;; Cartesian-product over N element-sample sets explodes combinatorially
+  ;; (e.g. 10^5 tuples for a 5-element set). The product returned by
+  ;; `cartesian-product` is a lazy-seq, so `take` bounds the realized work
+  ;; BEFORE we wrap each tuple as a set and collapse duplicates.
+       (let [samples (->> s
+                          (mapv (comp ::cp.art/samples (partial cp.ana.disp/-analyze! env)))
+                          (apply cartesian-product)
+                          (take cp.art/*max-samples-per-path*)
+                          (into #{} (map set)))]
+         (coll-td env ::set s samples)))
 
 (defmethod cp.ana.disp/analyze-mm :collection/set [env coll] (analyze-set! env coll))
 

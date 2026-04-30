@@ -1,17 +1,20 @@
 (ns com.fulcrologic.guardrails-analyzer.daemon.server.websockets
   (:require
-    [com.fulcrologic.guardrails-analyzer.daemon.server.connection-management :as cp.conn]
-    [com.fulcrologic.guardrails-analyzer.daemon.server.pathom :refer [parser]]
-    [com.fulcrologicpro.fulcro.networking.websocket-protocols :as wsp]
-    [com.fulcrologicpro.fulcro.networking.websockets :as fws]
-    [com.fulcrologicpro.taoensso.sente.server-adapters.http-kit :refer [get-sch-adapter]]
-    [mount.core :refer [defstate]]))
+   [com.fulcrologic.guardrails-analyzer.daemon.server.connection-management :as cp.conn]
+   [com.fulcrologic.guardrails-analyzer.daemon.server.pathom :refer [parser]]
+   [com.fulcrologicpro.fulcro.networking.websocket-protocols :as wsp]
+   [com.fulcrologicpro.fulcro.networking.websockets :as fws]
+   [com.fulcrologicpro.taoensso.sente.server-adapters.http-kit :refer [get-sch-adapter]]
+   [mount.core :refer [defstate]]))
+
+(defonce ^:private launch-csrf-token
+  (str (java.util.UUID/randomUUID)))
 
 (defstate websockets :start
   (let [ws (fws/start! (fws/make-websockets parser
-                         {:http-server-adapter (get-sch-adapter)
-                          :parser-accepts-env? true
-                          :sente-options       {:csrf-token-fn nil}}))]
+                                            {:http-server-adapter (get-sch-adapter)
+                                             :parser-accepts-env? true
+                                             :sente-options       {:csrf-token-fn (fn [_] launch-csrf-token)}}))]
     (wsp/add-listener ws cp.conn/ws-listener)
     ws)
   :stop (fws/stop! websockets))

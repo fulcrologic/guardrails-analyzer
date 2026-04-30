@@ -20,8 +20,8 @@
   (remote [env]
           (m/with-server-side-mutation env 'daemon/report-analysis)))
 
-(defn report-analysis! []
-  (let [analysis (cp.checker/gather-analysis!)]
+(defn report-analysis! [env]
+  (let [analysis (cp.checker/gather-analysis! env)]
     (comp/transact! APP [(report-analysis analysis)])))
 
 (defmutation report-error [_]
@@ -47,9 +47,9 @@
   (remote [env]
           (m/with-server-side-mutation env 'daemon/report-analytics)))
 
-(defn on-check-done! []
+(defn on-check-done! [env]
   (comp/transact! APP [(report-analytics (cp.analytics/gather-analytics!))])
-  (report-analysis!))
+  (report-analysis! env))
 
 (defn check! [{:as msg :keys [NS]}]
   (when (try (require (symbol NS) :reload) true
@@ -138,6 +138,7 @@
 (comment
   (start {:src-dirs ["src/dev" "src/main"]})
   (check! {:NS 'sample})
+  ;; Legacy global; per-check state now lives on the env passed to on-done.
   @com.fulcrologic.guardrails-analyzer.artifacts/problems)
 
 (defn -main [& args]

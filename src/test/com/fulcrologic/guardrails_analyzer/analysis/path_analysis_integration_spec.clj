@@ -22,16 +22,15 @@
 (defn analyze-namespace-file!
   "Analyze a namespace file and return problems and bindings."
   [file-path]
-  (let [file-info (cp.reader/read-file file-path :clj)]
-    (cp.art/clear-problems!)
-    (cp.art/clear-bindings!)
-    (let [result (promise)]
-      (cp.checker/check! file-info
-                         (fn []
-          ;; Return raw problems/bindings instead of formatted
-                           (deliver result {:problems @cp.art/problems
-                                            :bindings @cp.art/bindings})))
-      @result)))
+  (let [file-info (cp.reader/read-file file-path :clj)
+        result    (promise)]
+    (cp.checker/check! file-info
+                       (fn [env]
+                         ;; Return raw problems/bindings instead of formatted,
+                         ;; reading the per-check buffers off env.
+                         (deliver result {:problems (cp.art/get-problems env)
+                                          :bindings (cp.art/get-bindings env)})))
+    @result))
 
 (defn problems-for-function
   "Extract all problems for a specific function by name."
@@ -106,12 +105,29 @@
     ;; Nested Conditionals
     ;; ========================================================================
 
-                 (assertions
-                  "nested-if-error-on-inner-branch detects error on specific nested path"
-      ;; Note: This may fail to detect the error due to sampling limitations
-      ;; (requires both pos? and odd? samples), so we just check for any problems
-                  (boolean (seq (problems-for-function problems 'nested-if-error-on-inner-branch)))
-                  => true)
+                 (let [fn-problems       (problems-for-function problems 'nested-if-error-on-inner-branch)
+                       return-errs       (filter #(= (::cp.art/problem-type %) :error/bad-return-value)
+                                                 fn-problems)
+                       failing-paths     (mapcat path-info return-errs)
+                       ;; The bad return (42) lives where (pos? x) → :then AND (even? x) → :else
+                       multi-cond-paths  (filter (fn [path]
+                                                   (let [conds    (::cp.art/conditions path)
+                                                         branches (set (map ::cp.art/branch conds))]
+                                                     (and (>= (count conds) 2)
+                                                          (contains? branches :then)
+                                                          (contains? branches :else))))
+                                                 failing-paths)
+                       failing-samples   (mapcat #(get-in % [::cp.art/actual ::cp.art/failing-samples])
+                                                 return-errs)]
+                   (assertions
+                    "nested-if-error-on-inner-branch reports a :error/bad-return-value problem"
+                    (boolean (seq return-errs)) => true
+                    "nested-if-error-on-inner-branch attaches at least one failing path to the error"
+                    (boolean (seq failing-paths)) => true
+                    "nested-if-error-on-inner-branch attributes the error to a path with both :then and :else branch markers (nested conditions)"
+                    (boolean (seq multi-cond-paths)) => true
+                    "nested-if-error-on-inner-branch reports the literal int 42 as a failing return sample"
+                    (boolean (some #(= 42 %) failing-samples)) => true))
 
                  (assertions
                   "nested-if-multiple-errors detects multiple errors on different paths"
@@ -125,17 +141,38 @@
     ;; Union Types
     ;; ========================================================================
 
-                 (assertions
-                  "union-type-used-incorrectly detects union type violation"
-                  (let [fn-problems (problems-for-function problems 'union-type-used-incorrectly)]
-                    (boolean (seq fn-problems)))
-                  => true)
+                 (let [fn-problems     (problems-for-function problems 'union-type-used-incorrectly)
+                       return-errs     (filter #(= (::cp.art/problem-type %) :error/bad-return-value)
+                                               fn-problems)
+                       failing-paths   (mapcat path-info return-errs)
+                       ;; The 42 partition lives on the :else branch of the inner if
+                       else-paths      (filter (fn [path]
+                                                 (some #(= :else (::cp.art/branch %))
+                                                       (::cp.art/conditions path)))
+                                               failing-paths)
+                       failing-samples (mapcat #(get-in % [::cp.art/actual ::cp.art/failing-samples])
+                                               return-errs)]
+                   (assertions
+                    "union-type-used-incorrectly reports a :error/bad-return-value problem"
+                    (boolean (seq return-errs)) => true
+                    "union-type-used-incorrectly attaches at least one failing path to the error"
+                    (boolean (seq failing-paths)) => true
+                    "union-type-used-incorrectly attributes the error to a path on the :else branch (the int side of the union)"
+                    (boolean (seq else-paths)) => true
+                    "union-type-used-incorrectly reports the literal int 42 as a failing return sample"
+                    (boolean (some #(= 42 %) failing-samples)) => true))
 
-                 (assertions
-                  "union-type-in-arithmetic detects argument errors with union types"
-                  (let [fn-problems (problems-for-function problems 'union-type-in-arithmetic)]
-                    (boolean (seq fn-problems)))
-                  => true)
+                 (let [fn-problems       (problems-for-function problems 'union-type-in-arithmetic)
+                       arg-errs          (filter #(= (::cp.art/problem-type %)
+                                                     :error/function-argument-failed-spec)
+                                                 fn-problems)
+                       arg-failing-samps (mapcat #(get-in % [::cp.art/actual ::cp.art/failing-samples])
+                                                 arg-errs)]
+                   (assertions
+                    "union-type-in-arithmetic reports :error/function-argument-failed-spec (boolean reaching numeric arg)"
+                    (boolean (seq arg-errs)) => true
+                    "union-type-in-arithmetic identifies a boolean failing-sample (the union's truthy branch)"
+                    (boolean (some boolean? arg-failing-samps)) => true))
 
     ;; ========================================================================
     ;; Control Flow Constructs
@@ -148,27 +185,62 @@
                          (has-return-error? fn-problems)))
                   => true)
 
-                 (assertions
-                  "when-with-error detects error in when (which expands to if)"
-                  (let [fn-problems (problems-for-function problems 'when-with-error)]
-                    (boolean (seq fn-problems)))
-                  => true)
+                 (let [fn-problems     (problems-for-function problems 'when-with-error)
+                       return-errs     (filter #(= (::cp.art/problem-type %) :error/bad-return-value)
+                                               fn-problems)
+                       failing-paths   (mapcat path-info return-errs)
+                       ;; (when c body) → (if c body nil): :then path returns 42, :else returns nil
+                       then-paths      (filter (fn [path]
+                                                 (some #(= :then (::cp.art/branch %))
+                                                       (::cp.art/conditions path)))
+                                               failing-paths)
+                       else-paths      (filter (fn [path]
+                                                 (some #(= :else (::cp.art/branch %))
+                                                       (::cp.art/conditions path)))
+                                               failing-paths)
+                       failing-samples (mapcat #(get-in % [::cp.art/actual ::cp.art/failing-samples])
+                                               return-errs)]
+                   (assertions
+                    "when-with-error reports a :error/bad-return-value problem (when expands to if with implicit nil else)"
+                    (boolean (seq return-errs)) => true
+                    "when-with-error attaches at least one failing path to the error"
+                    (boolean (seq failing-paths)) => true
+                    "when-with-error attributes a failing path to the :then branch (returns 42)"
+                    (boolean (seq then-paths)) => true
+                    "when-with-error attributes a failing path to the :else branch (implicit nil return)"
+                    (boolean (seq else-paths)) => true
+                    "when-with-error reports the literal int 42 as a failing return sample"
+                    (boolean (some #(= 42 %) failing-samples)) => true
+                    "when-with-error reports nil (the implicit else) as a failing return sample"
+                    (boolean (some nil? failing-samples)) => true))
 
     ;; ========================================================================
     ;; Argument Type Errors
     ;; ========================================================================
 
-                 (assertions
-                  "wrong-argument-type detects argument type mismatch"
-                  (let [fn-problems (problems-for-function problems 'wrong-argument-type)]
-                    (boolean (seq fn-problems)))
-                  => true)
+                 (let [fn-problems       (problems-for-function problems 'wrong-argument-type)
+                       arg-errs          (filter #(= (::cp.art/problem-type %)
+                                                     :error/function-argument-failed-spec)
+                                                 fn-problems)
+                       arg-failing-samps (mapcat #(get-in % [::cp.art/actual ::cp.art/failing-samples])
+                                                 arg-errs)]
+                   (assertions
+                    "wrong-argument-type reports :error/function-argument-failed-spec on the call to +"
+                    (boolean (seq arg-errs)) => true
+                    "wrong-argument-type identifies a string failing-sample (x typed as string? reaches +)"
+                    (boolean (some string? arg-failing-samps)) => true))
 
-                 (assertions
-                  "conditional-argument-error detects path-specific argument error"
-                  (let [fn-problems (problems-for-function problems 'conditional-argument-error)]
-                    (boolean (seq fn-problems)))
-                  => true)
+                 (let [fn-problems       (problems-for-function problems 'conditional-argument-error)
+                       arg-errs          (filter #(= (::cp.art/problem-type %)
+                                                     :error/function-argument-failed-spec)
+                                                 fn-problems)
+                       arg-failing-samps (mapcat #(get-in % [::cp.art/actual ::cp.art/failing-samples])
+                                                 arg-errs)]
+                   (assertions
+                    "conditional-argument-error reports :error/function-argument-failed-spec on the str/upper-case call"
+                    (boolean (seq arg-errs)) => true
+                    "conditional-argument-error identifies an int failing-sample (x typed as int? reaches str/upper-case on the :else branch)"
+                    (boolean (some integer? arg-failing-samps)) => true))
 
     ;; ========================================================================
     ;; Correct Functions (should have NO errors)

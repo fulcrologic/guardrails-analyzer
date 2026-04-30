@@ -157,10 +157,21 @@ See comprehensive documentation in the repository root:
 
 #### Testing
 
-- **Unit tests**: `artifacts_spec.clj` - Comprehensive path spec tests
-- **REPL tests**: `src/dev/path_analysis_repl_tests.clj` - Manual verification suite
-- **Control flow tests**: `src/dev/control_flow_tests.clj` - Control flow verification
-- **All tests pass**: 40 tests, 157 assertions, 0 failures, zero regressions
+Path-based analysis is covered by the spec files added under `src/test/` (the
+real `:test-paths` registered in `tests.edn`):
+
+- `artifacts_spec.clj` - Path spec data structure tests
+- `analysis/function_type_spec.clj` - Path-aware return type validation
+- `analysis/path_analysis_integration_spec.clj` - End-to-end path tracking through `if`/`when`/`cond`
+- `path_explosion_spec.clj` - Deduplication and path-limit guards
+- `concurrent_check_spec.clj` / `prepared_check_spec.clj` - Checker-level coverage
+- `transit_handlers_spec.clj` - Transit round-tripping of path-based data
+
+Note: `src/dev/path_analysis_repl_tests.clj` and `src/dev/control_flow_tests.clj`
+are REPL scratch buffers (their forms live inside `(comment …)` blocks and the
+`src/dev` directory is not on `:test-paths`). They are useful for manual
+verification but are NOT part of the automated test suite — do not rely on them
+for coverage claims.
 
 #### Error Message Examples
 
@@ -284,60 +295,14 @@ Example formatter code from ui/problem_formatter.cljc:65-72:
                 (format-expected problem) (format-actual problem) message-suffix)}))
 ```
 
-#### ⚠️ Bindings: Potential Issue
+#### ✅ Bindings: Fully Compatible
 
-**BUG FOUND**: `binding_formatter.cljc` does NOT handle path-based type descriptions correctly.
-
-**Current Code** (ui/binding_formatter.cljc:27-38):
-```clojure
-(defn format-binding [bind]
-  (-> bind
-    (assoc ::cp.art/tooltip
-           (format "<b>Sample Values:</b><br>%s"
-             (str/join
-               (mapv ... (::cp.art/samples bind)))))))  ;; ❌ Assumes ::samples exists
-
-(defn format-bindings [bindings]
-  ($/transform [($/walker ::cp.art/samples)] format-binding bindings))  ;; ❌ Won't find path-based
-```
-
-**Problem**:
-- Specter walker searches for `::cp.art/samples` key
-- Path-based type descriptions use `::cp.art/execution-paths` instead
-- Bindings with path-based types won't be formatted
-- Tooltip will show no sample values
-
-**Impact**:
-- Variables inside conditional branches will have incomplete hover information
-- No error, just missing data in IDE tooltips
-- Type information still shown, but sample values missing
-
-**Fix Required**:
-Update `binding_formatter.cljc` to handle both formats:
-
-```clojure
-(defn format-binding [bind]
-  (let [samples (if (cp.art/path-based? bind)
-                  (cp.art/extract-all-samples bind)
-                  (::cp.art/samples bind))]
-    (-> bind
-      (assoc ::cp.art/message
-             (str "Bindings for: " (::cp.art/original-expression bind)))
-      (assoc ::cp.art/tooltip
-             (format "<b>Type:</b>%s<br><b>Sample Values:</b><br>%s"
-               (some-> bind ::cp.art/type html-escape)
-               (str/join
-                 (mapv (comp #(format "<pre>%s</pre>" (html-escape %))
-                         #(str/trim (with-out-str (pprint %))))
-                   samples)))))))
-
-(defn format-bindings [bindings]
-  ;; Find both regular and path-based bindings
-  ($/transform [($/walker (fn [x]
-                            (or (contains? x ::cp.art/samples)
-                                (contains? x ::cp.art/execution-paths))))]
-    format-binding bindings))
-```
+`binding_formatter.cljc` correctly handles both legacy `::cp.art/samples`
+bindings and path-based bindings carrying `::cp.art/execution-paths`. When a
+binding is path-based, samples are extracted via `cp.art/extract-all-samples`
+before tooltip formatting, and the Specter walker matches both shapes so no
+binding is silently dropped. Variables defined inside conditional branches
+render full type and sample-value tooltips in editor hovers.
 
 ### Daemon-Specific Encoders
 
@@ -368,10 +333,10 @@ To verify daemon communication with path-based analysis:
 
 ### Summary
 
-**Status**: Mostly compatible, one bug found
+**Status**: Fully compatible with path-based analysis
 
 - ✅ Problems: Fully compatible with path-based analysis
-- ⚠️ Bindings: Need fix in `binding_formatter.cljc`
+- ✅ Bindings: Fully compatible (`binding_formatter.cljc` handles both legacy and path-based shapes)
 - ✅ Daemon: No changes needed
 - ✅ LSP: No changes needed
 - ✅ Encoding: Working correctly

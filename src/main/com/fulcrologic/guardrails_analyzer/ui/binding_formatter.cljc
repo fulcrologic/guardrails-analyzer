@@ -15,7 +15,6 @@
               [goog.string.format]])
    [clojure.pprint :refer [pprint]]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [com.fulcrologic.guardrails-analyzer.artifacts :as cp.art]))
 
 (defn html-escape [s]
@@ -41,11 +40,9 @@
                        samples)))))))
 
 (defn format-bindings [bindings]
-  (walk/postwalk
-   (fn [node]
-     (if (and (map? node)
-              (or (contains? node ::cp.art/samples)
-                  (contains? node ::cp.art/execution-paths)))
-       (format-binding node)
-       node))
-   bindings))
+  ;; `bindings` is always a flat top-level vector (production:
+  ;; `@cp.art/bindings`; tests: `tf/capture-bindings` collects via swap!/conj
+  ;; into a flat atom). Every entry is the type-description recorded by
+  ;; `record-binding!`, which always carries `::cp.art/samples` or
+  ;; `::cp.art/execution-paths`, so `format-binding` is safe on each entry.
+  (mapv format-binding bindings))

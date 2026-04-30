@@ -1,31 +1,31 @@
 (ns com.fulcrologic.guardrails-analyzer.daemon.lsp.server
   (:require
-    [clojure.core.async :as async]
-    [clojure.data.json :as json]
-    [clojure.java.io :as io]
-    [com.fulcrologic.guardrails-analyzer.daemon.lsp.commands :as lsp.cmds]
-    [com.fulcrologic.guardrails-analyzer.daemon.lsp.diagnostics :as lsp.diag]
-    [com.fulcrologicpro.taoensso.timbre :as log])
+   [clojure.core.async :as async]
+   [clojure.data.json :as json]
+   [clojure.java.io :as io]
+   [com.fulcrologic.guardrails-analyzer.daemon.lsp.commands :as lsp.cmds]
+   [com.fulcrologic.guardrails-analyzer.daemon.lsp.diagnostics :as lsp.diag]
+   [com.fulcrologicpro.taoensso.timbre :as log])
   (:import
-    (java.net ServerSocket SocketException SocketTimeoutException)
-    (java.util UUID)
-    (java.util.concurrent CompletableFuture)
-    (org.eclipse.lsp4j
-      DidChangeConfigurationParams
-      DidChangeTextDocumentParams
-      DidChangeWatchedFilesParams
-      DidCloseTextDocumentParams
-      DidOpenTextDocumentParams
-      DidSaveTextDocumentParams
-      ExecuteCommandOptions
-      ExecuteCommandParams
-      InitializeParams
-      InitializeResult
-      InitializedParams
-      ServerCapabilities
-      TextDocumentSyncOptions)
-    (org.eclipse.lsp4j.launch LSPLauncher)
-    (org.eclipse.lsp4j.services LanguageServer TextDocumentService WorkspaceService)))
+   (java.net InetAddress ServerSocket SocketException SocketTimeoutException)
+   (java.util UUID)
+   (java.util.concurrent CompletableFuture)
+   (org.eclipse.lsp4j
+    DidChangeConfigurationParams
+    DidChangeTextDocumentParams
+    DidChangeWatchedFilesParams
+    DidCloseTextDocumentParams
+    DidOpenTextDocumentParams
+    DidSaveTextDocumentParams
+    ExecuteCommandOptions
+    ExecuteCommandParams
+    InitializeParams
+    InitializeResult
+    InitializedParams
+    ServerCapabilities
+    TextDocumentSyncOptions)
+   (org.eclipse.lsp4j.launch LSPLauncher)
+   (org.eclipse.lsp4j.services LanguageServer TextDocumentService WorkspaceService)))
 
 (defn read-json [x]
   (json/read-str (str x) :key-fn keyword))
@@ -69,18 +69,18 @@
         (let [id (UUID/randomUUID)]
           (log/info "initialize server!" {:id id})
           (swap! lsp.diag/client:id->info
-            assoc id {:remote      (.getRemoteProxy @launcher)
-                      :project-dir (.getRootPath params)})
+                 assoc id {:remote      (.getRemoteProxy @launcher)
+                           :project-dir (.getRootPath params)})
           (reset! client-id id))
         (CompletableFuture/completedFuture
-          (new InitializeResult
-            (doto (new ServerCapabilities)
-              (.setTextDocumentSync
-                (doto (new TextDocumentSyncOptions)
-                  (.setOpenClose true)))
-              (.setExecuteCommandProvider
-                (doto (new ExecuteCommandOptions)
-                  (.setCommands (keys lsp.cmds/commands))))))))
+         (new InitializeResult
+              (doto (new ServerCapabilities)
+                (.setTextDocumentSync
+                 (doto (new TextDocumentSyncOptions)
+                   (.setOpenClose true)))
+                (.setExecuteCommandProvider
+                 (doto (new ExecuteCommandOptions)
+                   (.setCommands (keys lsp.cmds/commands))))))))
       (^void initialized [^InitializedParams params]
         (log/info "client initialized!"))
       (^CompletableFuture shutdown []
@@ -97,7 +97,7 @@
 
 (def port-file
   (io/file (System/getProperty "user.home")
-    ".guardrails/lsp-server.port"))
+           ".guardrails/lsp-server.port"))
 
 (defn write-port-to-file! [file port]
   (io/make-parents file)
@@ -110,7 +110,7 @@
     (.shutdownOutput s)))
 
 (defn start-lsp []
-  (let [server-socket (doto (new ServerSocket 0)
+  (let [server-socket (doto (new ServerSocket 0 50 (InetAddress/getLoopbackAddress))
                         (.setSoTimeout 1000))
         port          (.getLocalPort server-socket)]
     (log/info "Starting Copilot Daemon LSP server on:" port)
@@ -136,9 +136,9 @@
                 (let [launcher (atom nil)
                       server   (new-server launcher)]
                   (reset! launcher
-                    (LSPLauncher/createServerLauncher server
-                      (.getInputStream socket)
-                      (.getOutputStream socket)))
+                          (LSPLauncher/createServerLauncher server
+                                                            (.getInputStream socket)
+                                                            (.getOutputStream socket)))
                   (swap! sockets conj socket)
                   (async/go-loop [F (.startListening @launcher)]
                     (if (future-done? F)

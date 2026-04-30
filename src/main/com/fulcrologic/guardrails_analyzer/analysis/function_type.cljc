@@ -46,15 +46,23 @@
        ([env {::cp.art/keys [return-type return-spec]} type-description original-expression]
         [::cp.art/env ::cp.art/gspec ::cp.art/type-description ::cp.art/original-expression => any?]
         (if (cp.art/path-based? type-description)
-     ;; Path-based: validate each path separately and track which fail
+     ;; Path-based: validate each path separately and track which fail.
+     ;; NOTE: we cannot use `(some #(when-not (valid? %) %) samples)` here
+     ;; because a falsey failing sample (e.g. `nil` for a `string?` return
+     ;; spec on the implicit `else` of a `(when …)` form) would be silently
+     ;; dropped by `some` — `some` treats a `nil` result as "keep looking".
+     ;; Instead, walk samples explicitly with `reduce` + `reduced`.
           (let [paths         (::cp.art/execution-paths type-description)
                 failing-paths (keep (fn [path]
                                       (let [samples        (::cp.art/samples path)
-                                            failing-sample (some #(when-not (cp.spec/valid? env return-spec %)
-                                                                    %)
-                                                                 samples)]
+                                            failing-sample (reduce
+                                                            (fn [_ s]
+                                                              (when-not (cp.spec/valid? env return-spec s)
+                                                                (reduced [s])))
+                                                            nil
+                                                            samples)]
                                         (when failing-sample
-                                          (assoc path ::cp.art/failing-sample failing-sample))))
+                                          (assoc path ::cp.art/failing-sample (first failing-sample)))))
                                     paths)]
             (when (seq failing-paths)
               (cp.art/record-error! env

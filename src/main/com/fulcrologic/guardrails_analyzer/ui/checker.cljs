@@ -52,15 +52,15 @@
 
 (defn DBG_ENV! [])
 
-(defn report-analysis! []
-  (let [analysis (cp.checker/gather-analysis!)]
+(defn report-analysis! [env]
+  (let [analysis (cp.checker/gather-analysis! env)]
     (comp/transact! @app [(report-analysis analysis)])))
 
 (defn check! [msg]
   (DBG_ENV!)
   (try
     (cp.checker/check! msg
-                       #(report-analysis!))
+                       (fn [env] (report-analysis! env)))
     (catch :default e
       (log/error e "Failed to check!"))))
 

@@ -11,6 +11,7 @@
 
 (ns ^:clj-reload/no-reload com.fulcrologic.guardrails-analyzer.transit-handlers
   (:require
+   [clojure.edn :as edn]
    [com.fulcrologicpro.cognitect.transit :as transit]
    [com.fulcrologicpro.fulcro.algorithms.transit :as f.transit]
    [com.fulcrologic.guardrails-analyzer.log :as log])
@@ -34,7 +35,7 @@
       UnknownTaggedValue "guardrails/unknown-tag"
       #(vector (.tag %) (.value %))
       (fn [[tag value]]
-        (read-string
+        (edn/read-string
          (str "#" tag " " value)))))))
 
 ;; NOTE: for user specific tags with no transit handlers
@@ -47,7 +48,7 @@
 (def default-read-handler
   (reify DefaultReadHandler
     (fromRep [this tag rep]
-      (read-string rep))))
+      (edn/read-string rep))))
 
 (def read-edn #(f.transit/transit-str->clj % {:default-handler default-read-handler}))
 (def write-edn f.transit/transit-clj->str)

@@ -105,10 +105,20 @@
   Also handles conditions that are bound symbols (e.g., `t#` from `(let [t# (even? x)] (if t# ...))`).
   TODO: Extend to handle complex conditions with multiple symbols."
   [env condition-expr condition-td then-expr else-expr condition-id location]
-  (let [;; Helper to extract the symbol being tested in a simple predicate
-        ;; E.g., (even? x) => x, (pos? y) => y
+  (let [;; Helper to extract the symbol being tested in a simple condition.
+        ;; Handles two shapes:
+        ;;  - `(pred sym)` — partition `sym`'s samples by the predicate.
+        ;;    E.g. `(even? x)` => `x`.
+        ;;  - bare `sym`  — partition `sym`'s samples by truthiness. This is
+        ;;    important for `or`'s rewrite `(let [t# s] (if t# t# default))`,
+        ;;    where after binding-expression lookup we end up testing `s`
+        ;;    directly. Without it, the falsey samples (e.g. `nil`) would
+        ;;    leak into the truthy then-branch and produce spurious
+        ;;    return-type errors.
         extract-tested-symbol (fn [expr]
-                                (when (and (seq? expr) (= 2 (count expr)))
+                                (cond
+                                  (symbol? expr) expr
+                                  (and (seq? expr) (= 2 (count expr)))
                                   (let [[_pred sym] expr]
                                     (when (symbol? sym) sym))))
 
@@ -119,7 +129,26 @@
                                     condition-expr)
                                 condition-expr)
 
-        tested-sym            (extract-tested-symbol predicate-expr)
+        ;; Pick the symbol whose samples we will partition. If predicate-expr
+        ;; can't be reduced to a symbol (e.g. it's a literal like `"default"`
+        ;; from `or`'s rewrite of `(or s "default") => (let [t# "default"]
+        ;; (if t# t# nil))`), fall back to the original `condition-expr`
+        ;; symbol when it is a bound local. That way we still partition by
+        ;; truthiness on the binding's actual samples instead of falling
+        ;; through to the unfiltered Case-2 superposition.
+        tested-sym            (or (extract-tested-symbol predicate-expr)
+                                  (when (and (symbol? condition-expr)
+                                             (contains? (::cp.art/local-symbols env)
+                                                        condition-expr))
+                                    condition-expr))
+        ;; If we fell back, the predicate-expr fed to
+        ;; `partition-samples-by-condition` must reference `tested-sym`
+        ;; rather than the literal binding-expression.
+        predicate-expr        (if (and tested-sym
+                                       (= tested-sym condition-expr)
+                                       (not= predicate-expr tested-sym))
+                                tested-sym
+                                predicate-expr)
 
         ;; Look up the symbol's samples from the environment (not from condition paths)
         sym-td                (when tested-sym (cp.art/symbol-detail env tested-sym))
@@ -145,17 +174,37 @@
                   then-paths (::cp.art/execution-paths (cp.art/ensure-path-based then-td))
                   else-paths (::cp.art/execution-paths (cp.art/ensure-path-based else-td))]
               {::cp.art/execution-paths
-               (vec (concat
-                     (map #(cp.art/add-undetermined-condition % condition-id condition-expr location :then)
-                          then-paths)
-                     (map #(cp.art/add-undetermined-condition % condition-id condition-expr location :else)
-                          else-paths)))}))
+               (cp.art/apply-path-limits
+                (vec (concat
+                      (map #(cp.art/add-undetermined-condition % condition-id condition-expr location :then)
+                           then-paths)
+                      (map #(cp.art/add-undetermined-condition % condition-id condition-expr location :else)
+                           else-paths))))}))
 
-          ;; Successfully partitioned - create filtered paths
-          (let [then-results
+          ;; Successfully partitioned - create filtered paths.
+          ;; When the original `condition-expr` is a bare symbol that aliases
+          ;; the tested-sym (e.g. `(let [t# s] (if t# t# default))` ->
+          ;; condition-expr=`t#`, tested-sym=`s`), we also need to narrow
+          ;; `t#`'s samples in the branch env so that analyzing `t#` in
+          ;; e.g. the then-branch returns only the truthy partition. Without
+          ;; this the then-branch leaks falsey values back through the alias.
+          (let [aliased-cond-sym (when (and (symbol? condition-expr)
+                                            (not= condition-expr tested-sym)
+                                            (contains? (::cp.art/local-symbols env)
+                                                       condition-expr))
+                                   condition-expr)
+                update-branch-env
+                (fn [base-env partition-samples]
+                  (cond-> (cp.art/update-binding-with-samples
+                           base-env tested-sym partition-samples)
+                    aliased-cond-sym
+                    (cp.art/update-binding-with-samples
+                     aliased-cond-sym partition-samples)))
+
+                then-results
                 (when (seq true-samples)
                   (let [;; Update environment: replace symbol's samples with filtered ones
-                        env-then   (cp.art/update-binding-with-samples env tested-sym true-samples)
+                        env-then   (update-branch-env env true-samples)
                         ;; Analyze then-expr
                         then-td    (cp.ana.disp/-analyze! env-then then-expr)
                         then-paths (::cp.art/execution-paths (cp.art/ensure-path-based then-td))]
@@ -169,7 +218,7 @@
                 else-results
                 (when (seq false-samples)
                   (let [;; Update environment: replace symbol's samples with filtered ones
-                        env-else   (cp.art/update-binding-with-samples env tested-sym false-samples)
+                        env-else   (update-branch-env env false-samples)
                         ;; Analyze else-expr (or nil if no else clause)
                         else-td    (if else-expr
                                      (cp.ana.disp/-analyze! env-else else-expr)
@@ -188,7 +237,7 @@
                 all-paths (vec (concat then-results else-results))]
 
             (if (seq all-paths)
-              {::cp.art/execution-paths all-paths}
+              {::cp.art/execution-paths (cp.art/apply-path-limits all-paths)}
               ;; Both partitions were empty - fall back to undetermined
               (analyze-if-undetermined env then-expr else-expr condition-id condition-expr location)))))
 
@@ -205,11 +254,12 @@
               then-paths (::cp.art/execution-paths (cp.art/ensure-path-based then-td))
               else-paths (::cp.art/execution-paths (cp.art/ensure-path-based else-td))]
           {::cp.art/execution-paths
-           (vec (concat
-                 (map #(cp.art/add-determined-condition % condition-id condition-expr location true :then)
-                      then-paths)
-                 (map #(cp.art/add-determined-condition % condition-id condition-expr location false :else)
-                      else-paths)))})))))
+           (cp.art/apply-path-limits
+            (vec (concat
+                  (map #(cp.art/add-determined-condition % condition-id condition-expr location true :then)
+                       then-paths)
+                  (map #(cp.art/add-determined-condition % condition-id condition-expr location false :else)
+                       else-paths))))})))))
 
 (defn analyze-if-undetermined
   "Analyze if when we cannot partition samples (superposition).
@@ -237,7 +287,8 @@
                                                                    location :else)
                                else-paths)]
 
-    {::cp.art/execution-paths (vec (concat then-paths-marked else-paths-marked))}))
+    {::cp.art/execution-paths
+     (cp.art/apply-path-limits (vec (concat then-paths-marked else-paths-marked)))}))
 
 (defmethod cp.ana.disp/analyze-mm 'clojure.core/if [env [_ condition then & [else]]]
   ;; Path-based analysis: check if condition is pure and runnable
@@ -360,7 +411,19 @@
     {::cp.art/samples #{nil}}
     (letfn [(COND [clauses]
               (when-let [[tst expr & rst] (seq clauses)]
-                `(if ~tst ~expr ~(COND rst))))]
+                ;; Special-case the conventional `:else` final clause: it is
+                ;; always truthy and always taken if reached, so emit `expr`
+                ;; directly instead of `(if :else expr nil)`. Without this,
+                ;; the rewrite plants an unreachable implicit-nil else path
+                ;; that — once `check-return-type!` correctly reports falsey
+                ;; failing samples — is reported as a spurious return-type
+                ;; violation (e.g. `nil` not satisfying `string?`).
+                ;; The reader wraps top-level forms in meta-wrappers, so the
+                ;; raw `tst` may be `{::cp.art/meta-wrapper? true :value :else}`
+                ;; rather than the bare keyword `:else`.
+                (if (and (= :else (cp.art/unwrap-meta tst)) (nil? (seq rst)))
+                  expr
+                  `(if ~tst ~expr ~(COND rst)))))]
       (cp.ana.disp/-analyze! env (COND clauses)))))
 
 (defmethod cp.ana.disp/analyze-mm 'clojure.core/-> [env [_ subject & args]]

@@ -42,7 +42,8 @@
   (-explain [this spec value])
   (-generator [this spec])
   (-generate [this spec])
-  (-sample [this spec]))
+  (-sample [this spec])
+  (-cache-key [this spec]))
 
 (defrecord ClojureSpecAlpha [opts]
   ISpec
@@ -50,8 +51,26 @@
   (-valid? [this spec value] (s/valid? spec value))
   (-explain [this spec value] (s/explain-str spec value))
   (-generator [this spec] (assoc (s/gen spec) ::spec spec))
-  (-generate [this spec] (gen/generate spec))
-  (-sample [this spec] (seq (take (:num-samples opts) (sample-seq spec)))))
+  (-generate [this spec]
+    ;; Accept either a test.check Generator (passed by sampler) or a spec/predicate
+    ;; (passed by direct callers). For specs/predicates, derive a generator via s/gen.
+    (gen/generate
+     (if (instance? clojure.test.check.generators.Generator spec)
+       spec
+       (s/gen spec))))
+  (-sample [this spec] (seq (take (:num-samples opts) (sample-seq spec))))
+  (-cache-key [this spec]
+    ;; Normalize to s/form so semantically-equal specs share cache entries.
+    ;; Important for inline forms like `(s/and pos? int?)` whose spec object
+    ;; is freshly built each call (causing the prior identity-keyed cache to
+    ;; degenerate to a no-op while still accumulating entries).
+    (try
+      (let [f (s/form spec)]
+        (cond
+          (= f :clojure.spec.alpha/unknown) spec
+          (identical? f spec) spec
+          :else f))
+      (catch #?(:clj Throwable :cljs :default) _ spec))))
 
 (defrecord MalliSpec [opts]
   ISpec
@@ -72,7 +91,12 @@
   (-generate [this spec]
     (mg/generate spec {:registry gr.malli.reg/registry}))
   (-sample [this spec]
-    (seq (take (:num-samples opts) (sample-seq spec)))))
+    (seq (take (:num-samples opts) (sample-seq spec))))
+  (-cache-key [this spec]
+    ;; Normalize via m/form for the same reason as ClojureSpecAlpha — inline
+    ;; schema vectors `[:and pos? int?]` parse to fresh schema objects per call.
+    (try (m/form spec {:registry gr.malli.reg/registry})
+         (catch #?(:clj Throwable :cljs :default) _ spec))))
 
 (defn with-spec-impl
   ([env impl-type] (with-spec-impl env impl-type {}))
@@ -122,19 +146,45 @@
 
 (defonce cache (atom {}))
 
+;; Audit instrumentation for the sample cache. Counts are reset per check
+;; alongside the cache itself (see `with-empty-cache`). Exposed via
+;; `cache-stats-snapshot` so the user can verify cache effectiveness after
+;; running a workload (e.g. the test suite) without having to re-instrument.
+(defonce cache-stats (atom {:hits 0 :misses 0}))
+
+(defn cache-stats-snapshot
+  "Returns the current sample-cache hit/miss counts and ratio. Useful for
+   manual auditing of cache effectiveness — call after running a workload."
+  []
+  (let [{:keys [hits misses] :as s} @cache-stats
+        total (+ hits misses)]
+    (assoc s
+           :total total
+           :hit-rate (when (pos? total) (double (/ hits total))))))
+
+(defn reset-cache-stats! [] (reset! cache-stats {:hits 0 :misses 0}))
+
 (defn sample [env gen]
   (if-not (:cache-samples? (:opts (::impl env)))
     (-sample (::impl env) gen)
-    (let [spec (::spec gen gen)]
-      (if-let [samples (get @cache spec)]
-        (do (log/debug "Using cached samples for" spec)
+    (let [impl (::impl env)
+          spec (::spec gen gen)
+          ;; Normalized key (see `-cache-key`) — collapses semantically-equal
+          ;; inline specs onto a single entry rather than keying on the freshly
+          ;; allocated impl object that the prior implementation used.
+          k    (-cache-key impl spec)]
+      (if-let [samples (get @cache k)]
+        (do (swap! cache-stats update :hits inc)
+            (log/debug "Using cached samples for" k)
             samples)
         (cp.analytics/profile ::new-samples
-                              (let [samples (-sample (::impl env) gen)]
-                                (log/debug "Caching new samples for:" spec)
-                                (swap! cache assoc spec samples)
+                              (let [samples (-sample impl gen)]
+                                (swap! cache-stats update :misses inc)
+                                (log/debug "Caching new samples for:" k)
+                                (swap! cache assoc k samples)
                                 samples))))))
 
 (defn with-empty-cache [f & args]
   (reset! cache {})
+  (reset! cache-stats {:hits 0 :misses 0})
   (apply f args))

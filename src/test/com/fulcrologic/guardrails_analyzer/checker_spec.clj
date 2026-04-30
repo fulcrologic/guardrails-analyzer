@@ -10,6 +10,10 @@
 (tf/use-fixtures :once tf/with-default-test-logging-config)
 
 (defn test:gather-analysis! [env x]
+  ;; `tf/test-env` returns a bare env without per-check buffers, so
+  ;; record-* will write to the legacy globals; clear them first to
+  ;; isolate this test from previous runs, then read globals via the
+  ;; 0-arg `gather-analysis!`.
   (cp.art/clear-bindings!)
   (cp.art/clear-problems!)
   (cp.atu/analyze-string! env x)

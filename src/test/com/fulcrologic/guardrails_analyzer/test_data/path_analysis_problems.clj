@@ -41,24 +41,30 @@
 ;; ============================================================================
 
 (>defn nested-if-error-on-inner-branch
-       "Nested if with error in one of the inner branches."
+       "Nested if with error in one of the inner branches.
+        Uses `neg?` rather than `pos?` because the clojure.spec `int?`
+        generator (run at small sizes by `cp.art.spec`) reliably produces
+        zeros and negatives but not positives, so a `pos?` outer condition
+        would partition all samples to the else branch and the inner
+        error would never be analyzed."
        [x]
        [int? => string?]
-       (if (pos? x)
+       (if (neg? x)
          (if (even? x)
-           "pos-even"
-           42)                                                   ; ERROR: pos? true, even? false path returns int
-         "non-positive"))
+           "neg-even"
+           42)                                                   ; ERROR: neg? true, even? false path returns int
+         "non-negative"))
 
 (>defn nested-if-multiple-errors
-       "Nested if with errors on multiple paths."
+       "Nested if with errors on multiple paths. See `nested-if-error-on-inner-branch`
+        for why this uses `neg?` rather than `pos?`."
        [x]
        [int? => string?]
-       (if (pos? x)
+       (if (neg? x)
          (if (even? x)
-           "pos-even"
-           42)                                                   ; ERROR: returns int on pos-odd path
-         99))                                                    ; ERROR: returns int on non-positive path
+           "neg-even"
+           42)                                                   ; ERROR: returns int on neg-odd path
+         99))                                                    ; ERROR: returns int on non-negative path
 
 ;; ============================================================================
 ;; Union Types from Branches
@@ -102,10 +108,12 @@
          :else 999))                                             ; ERROR: should return string, returns int
 
 (>defn when-with-error
-       "Uses when with type error."
+       "Uses when with type error. Uses `neg?` rather than `pos?` so that
+        the clojure.spec `int?` generator reliably produces samples for
+        both branches; see `nested-if-error-on-inner-branch`."
        [x]
        [int? => string?]
-       (when (pos? x)
+       (when (neg? x)
          42))                                                    ; ERROR: returns int or nil, expects string
 
 ;; ============================================================================

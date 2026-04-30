@@ -6,7 +6,7 @@
    [mount.core :refer [defstate]]
    [org.httpkit.server :as http-kit])
   (:import
-   (java.net ServerSocket)))
+   (java.net InetAddress ServerSocket)))
 
 (defn write-port-to-file! [file port]
   (io/make-parents file)
@@ -17,9 +17,11 @@
            ".guardrails/daemon.port"))
 
 (defstate http-server
-  :start (let [socket    (new ServerSocket 0)
+  :start (let [loopback  (InetAddress/getLoopbackAddress)
+               socket    (new ServerSocket 0 50 loopback)
                open-port (.getLocalPort socket)
-               config    {:port open-port}]
+               config    {:port open-port
+                          :ip   (.getHostAddress loopback)}]
            (.close socket)
            (log/info "Starting Copilot Daemon HTTP Server with config:" (pr-str config))
            (.deleteOnExit port-file)

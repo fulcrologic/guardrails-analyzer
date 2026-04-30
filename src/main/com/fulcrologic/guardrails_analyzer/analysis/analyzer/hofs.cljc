@@ -116,38 +116,32 @@
 (defmethod cp.ana.disp/analyze-mm 'clojure.core/reduce [env sexpr] (analyze-reduce-like! env sexpr))
 
 (defn analyze-some! [env [this-sym pred coll]]
-  (let [some-td (cp.art/external-function-detail env this-sym)
-        pred-td (cp.ana.disp/-analyze! env pred)
-        coll-td (cp.ana.disp/-analyze! env coll)]
-    (if-not (cp.fnt/validate-argtypes!? env
-                                        (cp.art/get-arity (::cp.art/arities some-td) [pred-td coll-td])
-                                        [pred-td coll-td])
+  (let [some-td  (cp.art/external-function-detail env this-sym)
+        pred-td  (cp.ana.disp/-analyze! env pred)
+        coll-td  (cp.ana.disp/-analyze! env coll)
+        args-td  [pred-td coll-td]
+        arity    (cp.art/get-arity (::cp.art/arities some-td) args-td)]
+    (if-not (cp.fnt/validate-argtypes!? env arity args-td)
       {::cp.art/samples (cp.sampler/try-sampling! env
                                                   (cp.spec/generator env
-                                                                     (get-in (cp.art/get-arity
-                                                                              (::cp.art/arities some-td)
-                                                                              [pred-td coll-td])
-                                                                             [::cp.art/gspec ::cp.art/return-spec])))}
+                                                                     (get-in arity [::cp.art/gspec ::cp.art/return-spec])))}
       ;; TODO: validate that pred accepts coll elements
-      (cp.fnt/analyze-function-call! env some-td [pred-td coll-td]))))
+      (cp.fnt/analyze-function-call! env some-td args-td))))
 
 (defmethod cp.ana.disp/analyze-mm 'clojure.core/some [env sexpr] (analyze-some! env sexpr))
 
 (defn analyze-split-with! [env [this-sym pred coll]]
   (let [split-with-td (cp.art/external-function-detail env this-sym)
         pred-td       (cp.ana.disp/-analyze! env pred)
-        coll-td       (cp.ana.disp/-analyze! env coll)]
-    (if-not (cp.fnt/validate-argtypes!? env
-                                        (cp.art/get-arity (::cp.art/arities split-with-td) [pred-td coll-td])
-                                        [pred-td coll-td])
+        coll-td       (cp.ana.disp/-analyze! env coll)
+        args-td       [pred-td coll-td]
+        arity         (cp.art/get-arity (::cp.art/arities split-with-td) args-td)]
+    (if-not (cp.fnt/validate-argtypes!? env arity args-td)
       {::cp.art/samples (cp.sampler/try-sampling! env
                                                   (cp.spec/generator env
-                                                                     (get-in (cp.art/get-arity
-                                                                              (::cp.art/arities split-with-td)
-                                                                              [pred-td coll-td])
-                                                                             [::cp.art/gspec ::cp.art/return-spec])))}
+                                                                     (get-in arity [::cp.art/gspec ::cp.art/return-spec])))}
       ;; TODO: validate that pred accepts coll elements
-      (cp.fnt/analyze-function-call! env split-with-td [pred-td coll-td]))))
+      (cp.fnt/analyze-function-call! env split-with-td args-td))))
 
 (defmethod cp.ana.disp/analyze-mm 'clojure.core/split-with [env sexpr] (analyze-split-with! env sexpr))
 
@@ -156,23 +150,18 @@
         atom-td      (cp.ana.disp/-analyze! env a)
         func-td      (cp.ana.disp/-analyze! env f)
         args-td      (map (partial cp.ana.disp/-analyze! env) args)
-        swap-args-td (concat [atom-td func-td] args-td)]
+        swap-args-td (concat [atom-td func-td] args-td)
+        func-arity   (cp.art/get-arity (::cp.art/arities func-td) (cons {} args-td))]
     (if-not (cp.fnt/validate-argtypes!? env
                                         (cp.art/get-arity (::cp.art/arities swap-td) swap-args-td)
                                         swap-args-td)
       {::cp.art/samples (cp.sampler/try-sampling! env
                                                   (cp.spec/generator env
-                                                                     (get-in (cp.art/get-arity
-                                                                              (::cp.art/arities func-td)
-                                                                              (cons {} args-td))
-                                                                             [::cp.art/gspec ::cp.art/return-spec])))}
+                                                                     (get-in func-arity [::cp.art/gspec ::cp.art/return-spec])))}
       (let [func-arg-td {::cp.art/samples
                          (cp.sampler/try-sampling! env
                                                    (cp.spec/generator env
-                                                                      (get-in (cp.art/get-arity
-                                                                               (::cp.art/arities func-td)
-                                                                               (cons {} args-td))
-                                                                              [::cp.art/gspec ::cp.art/argument-specs 0])))}]
+                                                                      (get-in func-arity [::cp.art/gspec ::cp.art/argument-specs 0])))}]
         (cp.fnt/analyze-function-call! env func-td (cons func-arg-td args-td))))))
 
 (defmethod cp.ana.disp/analyze-mm 'clojure.core/swap! [env sexpr] (analyze-swap! env sexpr))
@@ -188,16 +177,12 @@
         func-td        (cp.ana.disp/-analyze! env f)
         args-td        (map (partial cp.ana.disp/-analyze! env) args)
         func-args-td   (concat [map-entry-td] args-td)
-        update-args-td (concat [map-td key-td func-td] args-td)]
-    (if-not (cp.fnt/validate-argtypes!? env
-                                        (cp.art/get-arity (::cp.art/arities func-td) func-args-td)
-                                        func-args-td)
+        update-args-td (concat [map-td key-td func-td] args-td)
+        func-arity     (cp.art/get-arity (::cp.art/arities func-td) func-args-td)]
+    (if-not (cp.fnt/validate-argtypes!? env func-arity func-args-td)
       (let [samples (cp.sampler/try-sampling! env
                                               (cp.spec/generator env
-                                                                 (get-in (cp.art/get-arity
-                                                                          (::cp.art/arities func-td)
-                                                                          func-args-td)
-                                                                         [::cp.art/gspec ::cp.art/return-spec])))]
+                                                                 (get-in func-arity [::cp.art/gspec ::cp.art/return-spec])))]
         (update map-td ::cp.art/samples
                 (partial (comp set map)
                          (fn [m]

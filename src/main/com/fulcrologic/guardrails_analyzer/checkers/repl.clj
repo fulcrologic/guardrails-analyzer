@@ -66,8 +66,8 @@
 
 ;; ===== Reporting helpers =====
 
-(defn- report-analysis! []
-  (let [analysis (cp.checker/gather-analysis!)]
+(defn- report-analysis! [env]
+  (let [analysis (cp.checker/gather-analysis! env)]
     (comp/transact! APP [(report-analysis analysis)])))
 
 (defn- report-error! [error]
@@ -78,9 +78,9 @@
                                   "See checker logs for more detailed information."])}]
     (comp/transact! APP [(report-error params)])))
 
-(defn- on-check-done! []
+(defn- on-check-done! [env]
   (comp/transact! APP [(report-analytics (cp.analytics/gather-analytics!))])
-  (report-analysis!))
+  (report-analysis! env))
 
 ;; ===== Check operations =====
 
@@ -300,10 +300,10 @@
       (update :forms cp.forms/form-expression)))
 
 (defn- compact-problems
-  "Returns a compact vector of problems from the current analysis state.
+  "Returns a compact vector of problems for `env`'s analysis run.
    Each problem is a map with `:file`, `:line`, `:column`, `:severity`, and `:message`."
-  []
-  (let [{:keys [problems]} (cp.checker/gather-analysis!)]
+  [env]
+  (let [{:keys [problems]} (cp.checker/gather-analysis! env)]
     (mapv (fn [p]
             {:file     (::cp.art/file p)
              :line     (::cp.art/line-start p)
@@ -320,9 +320,10 @@
    Each problem is a map with `:file`, `:line`, `:column`, `:severity`, and `:message`.
    Does not push results to the daemon — use `check-file!` for that."
   [path]
-  (let [msg (read-src-file path)]
-    (cp.checker/check! msg (fn []))
-    (compact-problems)))
+  (let [msg    (read-src-file path)
+        result (promise)]
+    (cp.checker/check! msg (fn [env] (deliver result (compact-problems env))))
+    @result))
 
 (defn check-ns
   "Checks the namespace `ns-sym` and returns a vector of problems.
@@ -330,8 +331,9 @@
    Does not push results to the daemon — use `check-ns!` for that."
   [ns-sym]
   (when-let [msg (read-ns-file ns-sym)]
-    (cp.checker/check! msg (fn []))
-    (compact-problems)))
+    (let [result (promise)]
+      (cp.checker/check! msg (fn [env] (deliver result (compact-problems env))))
+      @result)))
 
 (defn check-file!
   "Checks a source file at `path` and pushes results to the daemon (and thus your editor)."
