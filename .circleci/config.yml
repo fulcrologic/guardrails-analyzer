@@ -7,6 +7,12 @@ jobs:
       - checkout
       - restore_cache:
           key: clj-{{ checksum "deps.edn" }}
+      - run:
+          name: Compile vendored Java sources
+          command: |
+            mkdir -p target/classes
+            find src/main -name "*.java" > target/java-sources.txt
+            javac -source 11 -target 11 -cp "$(clojure -A:dev:daemon:test:system-test:clj-tests -Spath)" -d target/classes @target/java-sources.txt
       - run: clojure -J-Dtest -J-Dguardrails.mode=:all -A:dev:daemon:test:system-test:clj-tests
       - save_cache:
           paths:
