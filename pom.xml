@@ -10,6 +10,8 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
+        <!-- Vendored Java sources have legacy HTML4 javadoc that fails HTML5 doclint; skip. -->
+        <maven.javadoc.skip>true</maven.javadoc.skip>
     </properties>
     <name>guardrails-analyzer</name>
     <description>A library for using Clojure specs more like a type system during development.</description>
