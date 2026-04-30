@@ -44,7 +44,8 @@
               ::cp.art/location     #::cp.art{:line-start   1
                                               :column-start 1}})
       (cp.spec/with-spec-impl :clojure.spec.alpha
-        {:cache-samples? false})))
+        {:cache-samples? false
+         :num-samples    50})))
 
 (defn capture-errors [f & args]
   (let [errors  (atom [])
