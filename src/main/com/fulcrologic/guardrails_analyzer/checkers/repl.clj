@@ -24,6 +24,7 @@
    [clj-reload.core :as reload]
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [com.fulcrologicpro.clojure.data.json :as json]
    [com.fulcrologic.guardrails-analyzer.analytics :as cp.analytics]
    [com.fulcrologic.guardrails-analyzer.artifacts :as cp.art]
    [com.fulcrologic.guardrails-analyzer.checker :as cp.checker]
@@ -164,7 +165,7 @@
                  (.setConnectTimeout 5000)
                  (.setReadTimeout 5000))
           body (slurp (.getInputStream conn))]
-      (second (re-find #"\"latest_release\"\s*:\s*\"([^\"]+)\"" body)))
+      (get (json/read-str body :key-fn keyword) :latest_release))
     (catch Exception e
       (log/warn "Could not query Clojars for daemon version:" (.getMessage e))
       nil)))

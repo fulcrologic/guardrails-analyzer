@@ -7,37 +7,22 @@ tests:
 resources/public/js/daemon-ui/main.js: $(DAEMONUI)
 	shadow-cljs release daemon-ui
 
-daemon-jar:
-	rm -rf target/daemon-classes
-	mkdir -p target/daemon-classes
-	cp -r src/main/* target/daemon-classes/
-	cp -r src/daemon/* target/daemon-classes/
-	cp -r src/daemon_main/* target/daemon-classes/
-	find target/daemon-classes -name "*.java" > target/daemon-java-sources.txt
-	javac --release 11 -cp "$$(clojure -A:daemon -Spath)" -d target/daemon-classes @target/daemon-java-sources.txt
-	find target/daemon-classes -name "*.java" -delete
-	jar cf target/guardrails-analyzer-daemon.jar -C target/daemon-classes .
+install-analyzer:
+	rm -rf target
+	mvn install -f pom.xml
 
-deploy-daemon: daemon-jar
-	mvn deploy:deploy-file -Dfile=target/guardrails-analyzer-daemon.jar -DpomFile=pom-daemon.xml -DrepositoryId=clojars -Durl=https://clojars.org/repo
+deploy-analyzer:
+	rm -rf target
+	mvn deploy -f pom.xml
 
-install-daemon: daemon-jar
-	mvn install:install-file -Dfile=target/guardrails-analyzer-daemon.jar -DpomFile=pom-daemon.xml
+# Daemon depends on guardrails-analyzer; install the analyzer locally first.
+install-daemon: install-analyzer
+	rm -rf target
+	mvn install -f pom-daemon.xml
 
-analyzer-jar:
-	rm -rf target/analyzer-classes
-	mkdir -p target/analyzer-classes
-	cp -r src/main/* target/analyzer-classes/
-	find target/analyzer-classes -name "*.java" > target/analyzer-java-sources.txt
-	javac -source 11 -target 11 -d target/analyzer-classes @target/analyzer-java-sources.txt
-	find target/analyzer-classes -name "*.java" -delete
-	jar cf target/guardrails-analyzer.jar -C target/analyzer-classes .
-
-deploy-analyzer: analyzer-jar
-	mvn deploy:deploy-file -Dfile=target/guardrails-analyzer.jar -DpomFile=pom.xml -DrepositoryId=clojars -Durl=https://clojars.org/repo
-
-install-analyzer: analyzer-jar
-	mvn install:install-file -Dfile=target/guardrails-analyzer.jar -DpomFile=pom.xml
+deploy-daemon:
+	rm -rf target
+	mvn deploy -f pom-daemon.xml
 
 # gem install asciidoctor asciidoctor-diagram coderay
 docs/user-guide/UserGuide.html: docs/user-guide/UserGuide.adoc
