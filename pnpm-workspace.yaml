@@ -1,0 +1,5 @@
+saveExact: true
+minimumReleaseAge: 10080   # minutes = 7 days
+allowBuilds:
+  core-js: false
+  fsevents: false

@@ -5,7 +5,7 @@ tests:
 	clojure -J-Dtest -J-Dguardrails.mode=:all -A:dev:daemon:test:system-test:clj-tests
 
 resources/public/js/daemon-ui/main.js: $(DAEMONUI)
-	shadow-cljs release daemon-ui
+	pnpm exec shadow-cljs release daemon-ui
 
 install-analyzer:
 	rm -rf target

@@ -14,7 +14,11 @@
   "author": "Tony Kay",
   "license": "MIT",
   "dependencies": {
-    "react": "^16.13.1",
-    "react-dom": "^16.13.1"
+    "react": "16.13.1",
+    "react-dom": "16.13.1"
+  },
+  "packageManager": "pnpm@11.21.0",
+  "scripts": {
+    "preinstall": "npx only-allow@1.2.2 pnpm"
   }
 }
