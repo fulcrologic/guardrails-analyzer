@@ -32,4 +32,5 @@
                            :release    {:compiler-options {:static-fns false}}
                            :js-options {:js-provider :shadow}
                            :output-to  "target/ci.js"
-                           :ns-regexp  "-spec$"}}}
+                           ;; test-cases.* are CLJ analyzer fixtures (run by test-cases-runner), not CLJS tests
+                           :ns-regexp  "^(?!test-cases\\.).*-spec$"}}}
